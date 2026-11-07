@@ -1,77 +1,125 @@
-<p align="center"><img src="docs/logo.png" width="220" alt="ZukaForce"></p>
+<p align="center">
+  <img src="docs/banner.png" alt="FS25 RealFFB - force feedback de verdade no Farming Simulator 25">
+</p>
 
-# FS25 RealFFB
+<p align="center">
+  <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/OptimusZuka/FS25-RealFFB?include_prereleases&label=vers%C3%A3o&color=FFCC00&labelColor=111111" alt="versão"></a>
+  <a href="../../releases"><img src="https://img.shields.io/github/downloads/OptimusZuka/FS25-RealFFB/total?label=downloads&color=FFCC00&labelColor=111111" alt="downloads"></a>
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-FFCC00?labelColor=111111" alt="Windows 10 e 11">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licen%C3%A7a-MIT-FFCC00?labelColor=111111" alt="licença MIT"></a>
+</p>
 
-Force feedback real no **Farming Simulator 25** para volantes **Fanatec** (testado na CSL DD 8 Nm, em modo PC) e **Logitech G29 / G920 / G923**.
+<p align="center">
+  <a href="../../releases/latest"><b>⬇ Baixar o instalador</b></a> ·
+  <a href="docs/INSTALACAO.md">Guia de instalação</a> ·
+  <a href="docs/PROBLEMAS.md">Resolução de problemas</a>
+</p>
 
-O FFB do próprio jogo é praticamente inexistente. O RealFFB calcula a força a partir da telemetria do trator — centragem que depende da velocidade e da carga, textura do piso, buracos, impactos e vibração do motor — e envia-a diretamente para a base.
+---
 
-## Instalar
+## O problema
 
-1. Abra **[Releases](../../releases/latest)** e descarregue `FS25_RealFFB_Setup_x.y.z.exe`.
-2. (Recomendado) [Verifique o SHA-256](docs/INSTALACAO.md#verificar-o-ficheiro).
-3. Execute o ficheiro e siga as 7 etapas.
-4. Abra o atalho **FS25 RealFFB**: ele abre a app e o jogo.
+O Farming Simulator 25 aceita volantes, mas o force feedback dele é quase inexistente. Em bases direct drive como a Fanatec CSL DD, o volante fica solto: não pesa, não volta ao centro e não sente o terreno. Mexer nas definições do jogo não resolve, porque o jogo simplesmente não gera essas forças.
 
-Não precisa de compilar nada, nem de instalar Python ou Visual Studio. Guia completo: [docs/INSTALACAO.md](docs/INSTALACAO.md). Problemas: [docs/PROBLEMAS.md](docs/PROBLEMAS.md).
+## A solução
 
-> **O instalador não tem assinatura digital.** O SmartScreen pode avisar ("O Windows protegeu o PC"), e o **Smart App Control**, se estiver ligado, bloqueia ficheiros sem assinatura e não deixa abrir uma exceção. Não desative nenhuma proteção por causa do RealFFB. O motivo e o plano de assinatura gratuita estão em [docs/ASSINATURA.md](docs/ASSINATURA.md).
+O **FS25 RealFFB** gera o force feedback por fora do jogo. Um mod lê o que acontece com o trator a cada frame. Um programa no Windows transforma isso em forças reais no volante, como nos simuladores de corrida e no Euro Truck Simulator.
+
+<p align="center">
+  <img src="docs/screenshot-app.png" alt="FS25 RealFFB a funcionar: comandos e forças ao vivo" width="900">
+  <br><sub>A app a funcionar: definições à esquerda, comandos e forças ao vivo à direita.</sub>
+</p>
+
+## O que você sente no volante
+
+| | |
+|---|---|
+| 🛞 **Centragem realista** | O volante volta ao centro só com o trator em movimento, com mais força quanto maior a velocidade e o peso. Parado, fica onde você o deixar, como num trator de verdade. |
+| 🌾 **Terreno** | Asfalto, terra, relva e lavoura têm texturas diferentes. Na estrada sente-se o "zumbido" dos pneus agrícolas. |
+| 🕳️ **Buracos e impactos** | Pancadas da suspensão, buracos e batidas chegam ao volante com a força certa. |
+| 🚜 **Motor** | Vibração que acompanha as rotações e a carga do motor. |
+| 🎚️ **Perfil por veículo** | Cada trator ou máquina guarda as suas afinações. O programa muda sozinho quando você troca de veículo. |
+| 🎮 **Outros comandos intactos** | Button box, manetes e alavanca de mudanças continuam a funcionar direto no jogo. |
+| 📌 **Fixar no topo** | Janela compacta, sempre visível, para ver os comandos e as forças enquanto joga. |
+| 🔄 **Atualizações** | O programa avisa quando há versão nova e só instala com a sua autorização, depois de verificar o arquivo. |
+
+## Volantes suportados
+
+| Fabricante | Modelos | Estado |
+|---|---|---|
+| **Fanatec** (modo PC) | CSL DD, GT DD Pro, ClubSport DD, Podium DD1/DD2, ClubSport V2/V2.5, CSL Elite | ✅ testado na **CSL DD 8 Nm** |
+| **Logitech** | G29, G920, G923, G PRO, G27, G25 | 🧪 suportado, ainda sem testes num volante real |
+
+Para volantes Logitech: instale o **Logitech G HUB** e desligue a "mola de centragem" (centering spring) do volante nele.
+
+## Instalar em 4 passos
+
+1. Abra **[Releases](../../releases/latest)** e baixe `FS25_RealFFB_Setup_x.y.z.exe`.
+2. Execute o arquivo e siga as 7 etapas do instalador. Ele encontra o jogo, o volante e o HidHide sozinho.
+3. Abra o atalho **FS25 RealFFB**: ele abre a app e o jogo.
+4. No jogo, ative o mod **Real FFB Telemetry** no seu save.
+
+Você não precisa compilar nada nem instalar Python ou Visual Studio. O instalador:
+- não pede administrador. A exceção é o HidHide, que é um driver.
+- faz cópia de segurança de tudo o que altera;
+- se for desinstalado, deixa o PC como estava.
+
+> **Aviso do Windows:** o instalador ainda não tem assinatura digital.
+> - Com o SmartScreen, clique em "Mais informações" → "Executar assim mesmo".
+> - Se o **Smart App Control** estiver ligado, o Windows bloqueia o instalador. Nesse caso use o `.zip` "Compilar no PC" da mesma página e dê dois cliques em `instalar.bat`.
+>
+> Cada versão publica códigos SHA-256 para você confirmar que o arquivo é o original. Mais detalhes em [docs/INSTALACAO.md](docs/INSTALACAO.md) e [docs/ASSINATURA.md](docs/ASSINATURA.md).
 
 ## Como funciona
 
-```
-FS25 + mod FS25_RealFFBTelemetry ──telemetria (pipe \\.\pipe\FS25RealFFB)──► RealFFB.exe ──DirectInput FFB──► Fanatec
-            ▲                                                                   │
-            └──── direção e pedais (modSettings\FS25_RealFFB_input.xml) ◄────────┘
-```
+<p align="center">
+  <img src="docs/arquitetura.svg" alt="Arquitetura: mod no FS25, RealFFB.exe e volante" width="900">
+</p>
 
-- O FS25 agarra a base em modo exclusivo e não deixa outro programa enviar força. O **[HidHide](https://github.com/nefarius/HidHide)** (Nefarius, gratuito e de código aberto) esconde a base do jogo. Só o RealFFB.exe fica autorizado a vê-la.
-- A app passa a direção e os pedais ao jogo através do mod. Os outros controladores (button box, manetes, alavanca) continuam a funcionar diretamente no jogo e **não são tocados**.
-- Com o RealFFB fechado, a ocultação desliga-se: a base volta a funcionar normalmente no iRacing, ACC, ETS2 e outros.
+1. **O mod** (`FS25_RealFFBTelemetry`) lê a velocidade, a massa, o piso, a suspensão de cada roda, o motor e o ângulo de direção. Envia tudo ao programa por um canal local do Windows.
+2. **O RealFFB.exe** calcula as forças: mola de centragem dependente da velocidade, amortecimento, atrito, pancadas, textura e motor. Envia-as ao volante por DirectInput em modo exclusivo.
+3. **O HidHide** ([Nefarius](https://github.com/nefarius/HidHide), gratuito e de código aberto) esconde o volante do jogo. Sem isso, o FS25 agarra a base e bloqueia o force feedback de qualquer outro programa. Só o RealFFB.exe fica autorizado a ver o volante. Quando a app fecha, a base volta a funcionar normalmente nos outros jogos.
+4. **A ponte de comandos** devolve ao jogo a direção e os pedais lidos pelo RealFFB, através de um pequeno arquivo que o mod lê a cada frame.
 
-## Requisitos
+O motor de força nunca ultrapassa o limite que você define em "Força máxima".
 
-- Windows 10 ou 11 de 64 bits
-- Farming Simulator 25 (Steam ou outra loja; qualquer disco)
-- Volante com force feedback:
-  - Fanatec em modo PC: CSL DD, GT DD Pro, ClubSport DD, Podium DD1/DD2, ClubSport V2/V2.5, CSL Elite
-  - Logitech: G29, G920, G923, G PRO, G27, G25 (com o Logitech G HUB instalado e a "mola de centragem" do G HUB desligada)
-  - testado apenas na Fanatec CSL DD; o torque de pico é escolhido pelo modelo e pode ser ajustado na app
-- HidHide 1.2 ou mais recente (o instalador trata disto)
+## Como foi feito
 
-## O que o instalador altera
+O FS25 RealFFB nasceu de uma frustração: uma CSL DD de 8 Nm que no Farming Simulator 25 parecia um volante de brinquedo. Foi desenvolvido por **OptimusZuka** com a ajuda do **Claude** (Anthropic), passo a passo e testado volta a volta na base real:
 
-| O quê | Onde | Na desinstalação |
-|---|---|---|
-| App e ajudante | `%LOCALAPPDATA%\Programs\FS25 RealFFB` | removidos |
-| Mod | pasta `mods` do FS25 (respeita `modsDirectoryOverride`) | removido |
-| `game.xml` | joystick ativo, FFB do jogo desligado (com cópia de segurança) | valores originais repostos |
-| HidHide | autoriza o RealFFB.exe e esconde **só** a base escolhida | só o que foi acrescentado é removido; o HidHide fica instalado |
-| Definições | `%APPDATA%\FS25 RealFFB` | mantidas ou apagadas, à sua escolha |
+- **C# / .NET Framework 4.x**, compilado com o compilador que já vem com o Windows. Não depende de nada para instalar.
+- **DirectInput 8** para o force feedback (spring, damper, friction, constant e duas ondas senoidais: textura e motor).
+- **Lua**, para o mod do FS25.
+- **HidHide**, para isolar o volante do jogo.
+- **Inno Setup** e **GitHub Actions**, para compilar, testar e publicar cada versão automaticamente.
 
-Nenhum serviço, tarefa agendada ou entrada de arranque permanente. A única exceção é uma entrada `RunOnce`, usada só quando é preciso reiniciar depois de instalar o HidHide.
+Pelo caminho ficaram várias tentativas que não funcionaram:
+- o FFB do próprio jogo;
+- o Windows.Gaming.Input;
+- uma DLL injetada no jogo, que o Smart App Control bloqueou.
 
-## Atualizações
+A solução atual é a que funcionou sem desligar nenhuma proteção do Windows.
 
-A app verifica a última Release ao abrir. Se houver versão nova, aparece um botão: descarrega, confirma o SHA-256 publicado e abre o instalador. As definições ficam intactas. Nada é atualizado sem autorização, nem o HidHide.
-
-## Compilar (programadores)
-
-```bat
-build.bat
-```
-
-Usa o `csc.exe` que vem com o Windows (.NET Framework 4.x) e o [Inno Setup 6](https://jrsoftware.org/isdl.php). O resultado fica em `dist\`. As versões são publicadas pelo GitHub Actions a partir de uma tag `vX.Y.Z` igual ao ficheiro `VERSION`.
+## Estrutura do projeto
 
 ```
-src/RealFFB/         app (motor FFB, ponte de comandos, atualizações)
-src/RealFFB.Setup/   ajudante do instalador (deteção, HidHide, game.xml, verificação, diagnóstico)
+src/RealFFB/         app: motor de FFB, ponte de comandos, perfis, atualizações
+src/RealFFB.Setup/   ajudante do instalador: deteção, HidHide, game.xml, diagnóstico
 mod/                 mod Lua do FS25
-installer/           script Inno Setup
+installer/           script do Inno Setup
 tests/               testes automáticos (sem hardware)
-tools/TesteA/        teste de FFB isolado
+docs/                guias e imagens
 ```
+
+Para compilar: `build.bat` (gera tudo em `dist\`). Para instalar a partir do código: `instalar.bat`.
+
+## Ajuda e sugestões
+
+- Algo não funciona? Na app, clique em **"Gerar relatório de diagnóstico"** e anexe o arquivo a um [Issue](../../issues). O relatório não inclui o seu nome de usuário nem o nome do PC.
+- Testou num volante que ainda não está na lista? Conte como foi num Issue.
 
 ## Licença
 
-[MIT](LICENSE). O HidHide é um projeto à parte, da Nefarius Software Solutions, com licença própria. É descarregado do repositório oficial e não é redistribuído aqui. Farming Simulator é marca da GIANTS Software, e Fanatec é marca da Endor AG. Este projeto não é afiliado a nenhuma delas.
+[MIT](LICENSE). O HidHide é um projeto separado da Nefarius Software Solutions, com licença própria. É baixado do repositório oficial e não é redistribuído aqui.
+
+Farming Simulator é marca da GIANTS Software, Fanatec é marca da Endor AG e Logitech é marca da Logitech International. Este projeto não é afiliado a nenhuma delas.

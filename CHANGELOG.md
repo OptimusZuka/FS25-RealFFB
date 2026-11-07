@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## [0.5.2] - 2026-11-07 (beta)
+- Ícone do instalador e dos programas visível no Explorador do Windows (o ficheiro .ico passou a ter imagens BMP nos tamanhos pequenos).
+- Página do projeto (README) nova, com imagens e explicação.
+
 ## [0.5.1] - 2026-11-07 (beta)
 - Escolha do volante (secção "Volante"): automático ou um volante específico.
 - Cabeçalho: os botões já não ficam cortados.
