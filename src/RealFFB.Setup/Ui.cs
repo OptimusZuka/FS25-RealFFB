@@ -86,6 +86,16 @@ namespace RealFFBSetup
             return f.ShowDialog() == DialogResult.Yes;
         }
 
+        public static Image Logo()
+        {
+            try
+            {
+                System.IO.Stream st = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("RealFFB.logo.png");
+                return st == null ? null : Image.FromStream(st);
+            }
+            catch { return null; }
+        }
+
         public static void Info(string title, string text) { MessageBox.Show(text, "FS25 RealFFB Installer - " + title, MessageBoxButtons.OK, MessageBoxIcon.Information); }
         public static void Error(string title, string text) { MessageBox.Show(text, "FS25 RealFFB Installer - " + title, MessageBoxButtons.OK, MessageBoxIcon.Warning); }
     }

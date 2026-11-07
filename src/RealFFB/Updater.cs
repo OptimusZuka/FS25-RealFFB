@@ -55,11 +55,17 @@ namespace FS25RealFFB
                 try
                 {
                     string json;
-                    using (WebClient wc = Client()) json = wc.DownloadString("https://api.github.com/repos/" + AppInfo.Repo + "/releases/latest");
+                    using (WebClient wc = Client()) json = wc.DownloadString("https://api.github.com/repos/" + AppInfo.Repo + "/releases?per_page=1");   // inclui versoes beta (pre-lancamento)
                     Release r = Parse(json);
                     if (r == null) return;
                     if (Compare(r.Version, AppInfo.Version) > 0) onNewer(r);
                     else log("Atualizacoes: esta e a versao mais recente (" + AppInfo.Version + ").");
+                }
+                catch (WebException wex)
+                {
+                    HttpWebResponse hr = wex.Response as HttpWebResponse;
+                    if (hr != null && hr.StatusCode == HttpStatusCode.NotFound) log("Atualizacoes: nenhuma versao publica encontrada no GitHub (repositorio privado ou sem releases).");
+                    else log("Atualizacoes: nao foi possivel verificar (" + wex.Message + ").");
                 }
                 catch (Exception ex) { log("Atualizacoes: nao foi possivel verificar (" + ex.Message + ")."); }
             });
