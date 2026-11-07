@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## [0.5.1] - 2026-11-07 (beta)
+- Escolha do volante (secção "Volante"): automático ou um volante específico.
+- Cabeçalho: os botões já não ficam cortados.
+- Pedais desligados da base (todos os eixos a 0) já não são enviados ao jogo como meio pedal.
+- Verificação de atualizações passa a encontrar versões beta.
+- Logótipo na janela do instalador local.
+
 ## [0.5.0] - 2026-11-07 (beta)
 Primeira versão pública, em teste.
 
