@@ -1,4 +1,5 @@
-﻿// FS25 Real FFB - controlador da base (DirectInput). Uma instancia = uma base.
+﻿// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
+// FS25 Real FFB - controlador da base (DirectInput). Uma instancia = uma base.
 // Efeitos de condicao (mola, amortecedor, atrito) sao calculados pela propria base a ~1 kHz;
 // a forca constante e o seno levam as componentes dinamicas (pancadas, textura).
 using System;

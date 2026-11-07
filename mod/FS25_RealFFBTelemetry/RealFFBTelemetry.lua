@@ -1,3 +1,4 @@
+-- FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
 -- FS25 Real FFB - Telemetria
 -- Projeto FS25-RealFFB (OptimusZuka). Escrito de raiz para este projeto.
 -- Envia dados do veiculo do jogador local para a app RealFFB por named pipe

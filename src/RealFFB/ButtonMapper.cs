@@ -1,4 +1,5 @@
-﻿// FS25 Real FFB - comandos -> teclado.
+﻿// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
+// FS25 Real FFB - comandos -> teclado.
 // Com os joysticks desligados no FS25 (necessario para o FFB), a app le a ButtonBox, o TCA,
 // o A320, o aro Fanatec, etc., e carrega nas teclas que o FS25 usa para cada funcao.
 // "Importar do FS25" le o inputBinding.xml do jogo e cria as atribuicoes automaticamente:

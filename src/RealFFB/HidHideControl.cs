@@ -1,3 +1,4 @@
+// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
 // FS25 Real FFB - liga/desliga o HidHide automaticamente.
 // App aberta -> Fanatec escondida (o FS25 nao a agarra; a app esta na lista de excecoes).
 // App fechada -> Fanatec visivel para os outros jogos (iRacing, ACC, ETS2...).

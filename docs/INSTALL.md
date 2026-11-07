@@ -65,3 +65,6 @@ Go to **Settings → Apps → FS25 RealFFB → Uninstall**.
 - `game.xml` and HidHide are restored to how they were.
 - HidHide itself stays installed because other programs may use it. Remove it separately if you want.
 - At the start, the uninstaller asks whether to keep your settings.
+
+---
+© 2026 OptimusZuka. All rights reserved. See [LICENSE](../LICENSE).

@@ -1,4 +1,5 @@
-﻿// FS25 Real FFB - motor de force feedback (v0.1, perfil "estilo Euro Truck").
+﻿// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
+// FS25 Real FFB - motor de force feedback (v0.1, perfil "estilo Euro Truck").
 // Componentes, todas derivadas da telemetria:
 //   Centragem  : mola na base; rigidez e forca crescem com a velocidade e a massa;
 //                reduzida em piso de menor aderencia e com as rodas no ar.

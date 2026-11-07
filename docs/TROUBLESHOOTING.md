@@ -37,3 +37,6 @@ Logs are in `%APPDATA%\FS25 RealFFB\` (`RealFFB_log.txt`, `setup_log.txt`). Back
 2. If needed:
    - the original `game.xml` is in `%APPDATA%\FS25 RealFFB\backup\game.xml.*.bak`;
    - the original HidHide setup is in `backup\hidhide-original-*.txt`. Each line is a `HidHideCLI.exe` option.
+
+---
+© 2026 OptimusZuka. All rights reserved. See [LICENSE](../LICENSE).

@@ -1,3 +1,4 @@
+// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
 // FS25 Real FFB - ponte de comandos: a app tem a base em exclusivo (para o FFB funcionar),
 // por isso e ela que entrega direcao e pedais ao jogo.
 // Canal: ficheiro XML pequeno em modSettings, que o mod le a cada frame com a API XML do

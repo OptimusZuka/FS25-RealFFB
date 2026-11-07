@@ -1,21 +1,61 @@
-MIT License
+FS25 RealFFB
+Copyright (c) 2026 OptimusZuka. All rights reserved.
 
-Copyright (c) 2026 OptimusZuka
+This is a copyright notice, not an open source license.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+The source code, compiled programs, Farming Simulator 25 mod, installer
+scripts, documentation, images, logos (including "ZukaForce" and the
+OptimusZuka visual identity) and all other original materials in this
+repository and in its releases (together, "the Materials") are the
+property of OptimusZuka and are protected by copyright law.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The Materials are published so that people can read the source code and
+download the official releases. Publication does not grant any licence
+beyond what is stated below.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+WHAT YOU MAY DO
+  - Download the official releases published at
+    https://github.com/OptimusZuka/FS25-RealFFB/releases and use them on
+    your own computers for personal, non-commercial use.
+  - Read the source code.
+  - Share links to this repository or to its official releases.
+
+WHAT REQUIRES PRIOR WRITTEN PERMISSION FROM OPTIMUSZUKA
+  - Copying, reproducing or republishing the Materials, in whole or in
+    part, outside the functions offered by GitHub itself.
+  - Modifying the Materials or creating derivative works from them.
+  - Distributing, re-uploading or mirroring the Materials or modified
+    versions of them, on any site, store or mod portal.
+  - Any commercial use, including selling, bundling, paid services or
+    monetised redistribution.
+  - Removing or altering author, copyright or trademark notices.
+  - Using the names "FS25 RealFFB", "ZukaForce" or "OptimusZuka", or the
+    related logos and visual identity, for any other product, project or
+    publication, or in a way that suggests endorsement.
+
+To ask for permission, open an issue at
+https://github.com/OptimusZuka/FS25-RealFFB/issues or contact OptimusZuka
+through the channels listed on the GitHub profile.
+
+Versions of the Materials that were previously published under the MIT
+License stay under that license for those specific copies. This notice
+applies to the Materials from the version where it was introduced onwards.
+
+THIRD-PARTY COMPONENTS
+HidHide (Nefarius Software Solutions) is not part of the Materials. It is
+not included in this repository or in the releases. The installer
+downloads it from its official source, and it is governed by its own
+license. Farming Simulator and FS25 are trademarks of GIANTS Software
+GmbH. Fanatec, Logitech and other product names are trademarks of their
+respective owners. FS25 RealFFB is an independent project and is not
+affiliated with, endorsed by or sponsored by GIANTS Software or any of
+those companies.
+
+DISCLAIMER
+THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. TO THE EXTENT
+PERMITTED BY LAW, IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+MATERIALS OR THEIR USE. Force feedback wheels can produce strong forces:
+use them responsibly and keep the force limits at a safe level.

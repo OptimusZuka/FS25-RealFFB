@@ -1,4 +1,5 @@
-﻿// FS25 Real FFB - configuracoes (guardadas em RealFFB.ini ao lado do exe).
+﻿// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
+// FS25 Real FFB - configuracoes (guardadas em RealFFB.ini ao lado do exe).
 using System;
 using System.Globalization;
 using System.IO;

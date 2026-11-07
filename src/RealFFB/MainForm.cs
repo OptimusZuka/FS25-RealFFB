@@ -1,4 +1,5 @@
-﻿// FS25 Real FFB - janela principal: configuracao, monitor e ciclo de atualizacao.
+﻿// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
+// FS25 Real FFB - janela principal: configuracao, monitor e ciclo de atualizacao.
 using System;
 using System.Diagnostics;
 using System.Drawing;

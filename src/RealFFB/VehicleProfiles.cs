@@ -1,3 +1,4 @@
+// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
 // FS25 RealFFB - um perfil de FFB por veiculo (%APPDATA%\FS25 RealFFB\perfis\<veiculo>.ini).
 // Veiculo sem perfil usa as afinacoes gerais; mexer nos controlos dentro de um veiculo cria o perfil dele.
 using System;

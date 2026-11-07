@@ -1,3 +1,4 @@
+// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
 // Testes automaticos (sem hardware): compilados com as fontes do RealFFB.Setup pelo build.bat / CI.
 using System;
 using System.Collections.Generic;

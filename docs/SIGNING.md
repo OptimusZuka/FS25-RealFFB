@@ -21,25 +21,16 @@ Measures already in place to reduce false positives:
 
 For PCs with Smart App Control on, each release also ships `FS25_RealFFB_BuildOnPC_x.y.z.zip`: `install.bat` compiles the app on the user's own PC with the C# compiler built into Windows.
 
-## Free option: SignPath Foundation
+## Signing options
 
-[SignPath Foundation](https://signpath.org) signs open source projects for free. The certificate is issued to "SignPath Foundation", and each signature is tied to a build made from this public repository.
+### SignPath Foundation (not available with the current license)
+[SignPath Foundation](https://signpath.org) signs open source projects for free, but it requires an OSI-approved open source license. Since FS25 RealFFB is now **all rights reserved** (see [LICENSE](../LICENSE)), it no longer qualifies. It would qualify again only if the project went back to an open source license.
 
-Main requirements (always check SignPath's page, they may change):
+### Microsoft Store (free registration for individual developers)
+Publishing an MSIX package through the Microsoft Store has Microsoft sign it, so Smart App Control accepts it. Registration is free for individual developers. Each version goes through Microsoft's review. RealFFB needs the HidHide driver, which the Store cannot install, so the package would have to download HidHide separately; whether the review accepts that is not known yet.
 
-1. public repository with an OSI license (MIT ✔);
-2. built from source on a CI service (GitHub Actions ✔);
-3. MFA enabled on the GitHub and SignPath accounts;
-4. manual approval of each release;
-5. a project page with the code signing policy.
+### Paid certificates
+OV/EV code signing certificates and Azure Trusted Signing work regardless of the license, but they are not free.
 
-Steps for the maintainer:
-
-1. Apply at https://signpath.org/apply.
-2. Once approved, add the [official action](https://github.com/SignPath/github-action-submit-signing-request) to `release.yml`:
-   - sign `RealFFB.exe` and `RealFFB.Setup.exe` before ISCC runs;
-   - sign the installer after ISCC;
-   - store the token in the `SIGNPATH_API_TOKEN` secret.
-3. Remove the "not signed" notice from the release notes.
-
-Another free route is publishing through the Microsoft Store (free developer registration for individuals), where Microsoft signs the package.
+---
+© 2026 OptimusZuka. All rights reserved. See [LICENSE](../LICENSE).

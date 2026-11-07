@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+- License changed from MIT to **all rights reserved** (see `LICENSE` and `NOTICE.md`). Versions up to v0.6.0 remain under the MIT License for the copies already published.
+- Copyright notices added to the source files, mod, documentation and diagram. No functional changes.
+
 ## [0.6.0] - 2026-11-07 (beta)
 - Everything in English by default, with Portuguese (Brazil), Spanish and French available in the app (System → Language) and in the installer (language chosen in the first window).
 - New project page (README), guides in English, and English images.
@@ -37,3 +41,6 @@ First public version, in testing.
 - Logitech wheel support (G29, G920, G923, G PRO, G27, G25), with peak torque per model.
 - "Create diagnostic report" button (anonymised).
 - Force feedback engine unchanged from v0.17.
+
+---
+© 2026 OptimusZuka. All rights reserved. See [LICENSE](LICENSE).

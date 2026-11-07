@@ -1,3 +1,4 @@
+// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
 // FS25 RealFFB - idiomas da interface. Ingles por omissao; portugues (Brasil), espanhol e frances.
 // Chave = texto em ingles. Texto sem traducao aparece em ingles.
 using System;

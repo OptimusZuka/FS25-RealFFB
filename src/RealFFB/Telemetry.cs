@@ -1,4 +1,5 @@
-﻿// FS25 Real FFB - recetor de telemetria (named pipe \\.\pipe\FS25RealFFB).
+﻿// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
+// FS25 Real FFB - recetor de telemetria (named pipe \\.\pipe\FS25RealFFB).
 // Linha do mod: RFFB|1|seq=..|t=..|act=1|veh=..|spd=..|mass=..|steer=..|dir=..|vx=..|..|w=c,surf,susp,steer;...
 using System;
 using System.Collections.Generic;

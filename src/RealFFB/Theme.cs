@@ -1,3 +1,4 @@
+// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
 // FS25 RealFFB - identidade visual (OptimusZuka: preto, amarelo, branco) e controlos proprios.
 using System;
 using System.Drawing;

@@ -7,7 +7,7 @@
   <a href="../../releases"><img src="https://img.shields.io/github/downloads/OptimusZuka/FS25-RealFFB/total?label=downloads&color=FFCC00&labelColor=111111" alt="downloads"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-FFCC00?labelColor=111111" alt="Windows 10 and 11">
   <img src="https://img.shields.io/badge/languages-EN%20%7C%20PT%20%7C%20ES%20%7C%20FR-FFCC00?labelColor=111111" alt="languages">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-FFCC00?labelColor=111111" alt="MIT license"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/%C2%A9%202026-OptimusZuka%20%C2%B7%20all%20rights%20reserved-FFCC00?labelColor=111111" alt="Copyright 2026 OptimusZuka, all rights reserved"></a>
 </p>
 
 <p align="center">
@@ -122,8 +122,27 @@ To build, run `build.bat` (everything goes to `dist\`). To install from source, 
 - **Something not working?** In the app, click **"Create diagnostic report"** and attach the file to an [issue](../../issues). The report does not include your user name or PC name.
 - **Tried a wheel that is not on the list?** Tell us how it went in an issue.
 
-## License
+## Copyright and Intellectual Property
 
-[MIT](LICENSE). HidHide is a separate project by Nefarius Software Solutions with its own license. It is downloaded from its official repository and not redistributed here.
+**FS25 RealFFB** was created by **OptimusZuka**, who owns the copyright and all other rights in the project's original materials:
+- the source code of the app and of the installer helper;
+- the Farming Simulator 25 mod;
+- the installer and build scripts;
+- the documentation;
+- the images, the **ZukaForce** logo, the **ZF** icon and the OptimusZuka visual identity.
 
-Farming Simulator is a trademark of GIANTS Software, Fanatec of Endor AG, and Logitech of Logitech International. This project is not affiliated with any of them.
+Copyright © 2026 OptimusZuka. **All rights reserved.**
+
+- You may download the official releases and use them for personal, non-commercial use, and read the source code.
+- Copying, modifying, redistributing, re-uploading, commercial use, or using the names and logos requires **prior written permission** from OptimusZuka.
+- Removing author or copyright notices is not allowed.
+- The full terms are in [LICENSE](LICENSE), and the list of original materials and third-party components is in [NOTICE.md](NOTICE.md).
+- To ask for permission, open an [issue](../../issues).
+
+Versions published before this notice was added (up to v0.6.0) were released under the MIT License, and those copies remain under that license.
+
+**Trademarks:**
+- Farming Simulator and FS25 are trademarks of GIANTS Software GmbH.
+- FS25 RealFFB is an **independent project** and is **not affiliated with, endorsed by or sponsored by GIANTS Software**.
+- Fanatec, Logitech and other product names are trademarks of their respective owners and are mentioned only to describe compatibility.
+- HidHide is a separate project by Nefarius Software Solutions with its own license. It is downloaded from its official repository and is not included in this project.
