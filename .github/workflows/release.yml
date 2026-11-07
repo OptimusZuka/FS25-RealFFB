@@ -1,6 +1,6 @@
-# Publica uma versao: enviar o commit para o ramo 'lancamento' (ou Actions > release > Run workflow).
-# A etiqueta vX.Y.Z (igual ao ficheiro VERSION) e criada pelo proprio GitHub.
-# Publica a Release (marcada como pre-lancamento/beta) com o instalador, o pacote para compilar no PC e o SHA256SUMS.txt.
+# Publishes a release: push the commit to the 'lancamento' branch (or Actions > release > Run workflow).
+# The vX.Y.Z tag (same as the VERSION file) is created by GitHub.
+# The release (marked as pre-release/beta) contains the installer, the build-on-PC package and SHA256SUMS.txt.
 name: release
 
 on:
@@ -23,22 +23,22 @@ jobs:
           $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
           if (-not $iscc) { choco install innosetup --no-progress -y }
 
-      - name: Compilar, testar e gerar o instalador
+      - name: Build, test and create the installer
         shell: cmd
         run: build.bat
 
-      # Assinatura gratuita (SignPath Foundation): ver docs/ASSINATURA.md. Enquanto nao estiver
-      # aprovada, o instalador sai SEM assinatura e as notas da versao dizem-no.
+      # Free signing (SignPath Foundation): see docs/SIGNING.md. Until approved, the installer
+      # ships UNSIGNED and the release notes say so.
 
-      - name: Pacote para compilar no PC (instalar.bat)
+      - name: Build-on-PC package (install.bat)
         shell: pwsh
         run: |
           $v = (Get-Content VERSION -Raw).Trim()
-          git archive --format=zip -o "dist\FS25_RealFFB_Compilar_no_PC_$v.zip" HEAD
-          $h = (Get-FileHash "dist\FS25_RealFFB_Compilar_no_PC_$v.zip" -Algorithm SHA256).Hash.ToLower()
-          Add-Content dist\SHA256SUMS.txt "$h  FS25_RealFFB_Compilar_no_PC_$v.zip"
+          git archive --format=zip -o "dist\FS25_RealFFB_BuildOnPC_$v.zip" HEAD
+          $h = (Get-FileHash "dist\FS25_RealFFB_BuildOnPC_$v.zip" -Algorithm SHA256).Hash.ToLower()
+          Add-Content dist\SHA256SUMS.txt "$h  FS25_RealFFB_BuildOnPC_$v.zip"
 
-      - name: Notas da versao
+      - name: Release notes
         shell: pwsh
         run: |
           $v = (Get-Content VERSION -Raw).Trim()
@@ -48,24 +48,24 @@ jobs:
           $body = @"
           $($m.Value)
 
-          ### Verificar o ficheiro (SHA-256)
+          ### Which file to download
+          - **FS25_RealFFB_Setup_$v.exe** - the normal installer (English, Português, Español, Français). It is **not digitally signed yet** (see docs/SIGNING.md): SmartScreen may show "Windows protected your PC" > "More info" > "Run anyway". With **Smart App Control on**, Windows blocks it.
+          - **FS25_RealFFB_BuildOnPC_$v.zip** - for PCs with Smart App Control on: extract it and double-click ``install.bat``. It compiles the app on your PC with the compiler built into Windows (nothing to install) and opens the same installer.
+
+          ### Verify the file (SHA-256)
           ``````
           $sums
           ``````
-          No PowerShell: ``Get-FileHash .\FS25_RealFFB_Setup_$v.exe -Algorithm SHA256`` - o valor tem de ser igual ao de cima.
-          Guia: docs/INSTALACAO.md
-
-          ### Qual descarregar
-          - **FS25_RealFFB_Setup_$v.exe** - instalador normal. Ainda **nao tem assinatura digital** (ver docs/ASSINATURA.md): o SmartScreen pode mostrar "O Windows protegeu o PC" > "Mais informacoes" > "Executar assim mesmo". Com o **Smart App Control ligado** o Windows bloqueia-o.
-          - **FS25_RealFFB_Compilar_no_PC_$v.zip** - para PCs com Smart App Control ligado: extraia e de dois cliques em ``instalar.bat``. Compila no seu PC com o compilador do proprio Windows (nao instala nada) e abre o mesmo instalador.
+          In PowerShell: ``Get-FileHash .\FS25_RealFFB_Setup_$v.exe -Algorithm SHA256`` - the value must match the one above.
+          Guide: docs/INSTALL.md
           "@
           Set-Content -Path notes.md -Value $body -Encoding utf8
 
-      - name: Publicar a Release
+      - name: Publish the release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $v = (Get-Content VERSION -Raw).Trim()
           gh release create "v$v" --target "${{ github.sha }}" --prerelease --title "FS25 RealFFB $v beta" --notes-file notes.md `
-            "dist\FS25_RealFFB_Setup_$v.exe" "dist\FS25_RealFFB_Compilar_no_PC_$v.zip" "dist\SHA256SUMS.txt"
+            "dist\FS25_RealFFB_Setup_$v.exe" "dist\FS25_RealFFB_BuildOnPC_$v.zip" "dist\SHA256SUMS.txt"

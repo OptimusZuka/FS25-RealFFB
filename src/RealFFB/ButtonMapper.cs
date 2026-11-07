@@ -113,7 +113,7 @@ namespace FS25RealFFB
             buf = Alloc(Size);
 
             Guid iid = DI.IID_IDirectInput8W;
-            if (DI.DirectInput8Create(DI.GetModuleHandle(null), 0x0800, ref iid, out di, IntPtr.Zero) < 0 || di == null) { log("Comandos: DirectInput falhou."); return; }
+            if (DI.DirectInput8Create(DI.GetModuleHandle(null), 0x0800, ref iid, out di, IntPtr.Zero) < 0 || di == null) { log("Controllers: DirectInput failed."); return; }
             List<DIDEVICEINSTANCEW> list = new List<DIDEVICEINSTANCEW>();
             EnumDevicesCallback cb = delegate(IntPtr p, IntPtr r)
             {
@@ -136,7 +136,7 @@ namespace FS25RealFFB
                 Joy j = new Joy();
                 j.Id = d.guidInstance.ToString(); j.Name = d.tszProductName.Trim(); j.Dev = dev; j.Vid = vid; j.Pid = pid;
                 joys.Add(j);
-                log(string.Format("Comandos: ligado {0} (VID {1:X4} PID {2:X4})", j.Name, vid, pid));
+                log(string.Format("Controllers: connected {0} (VID {1:X4} PID {2:X4})", j.Name, vid, pid));
             }
             Load();
         }
@@ -184,7 +184,7 @@ namespace FS25RealFFB
                     if (now[b] && !prev[b])
                     {
                         learnDev = id; learnName = name; learnButton = b; LearnState = 2;
-                        log("Botao " + (b + 1) + " de " + name + ". Agora carregue na TECLA (Esc cancela).");
+                        log("Button " + (b + 1) + " of " + name + ". Now press the KEY (Esc cancels).");
                         break;
                     }
             Array.Copy(now, prev, Buttons);
@@ -236,8 +236,8 @@ namespace FS25RealFFB
         }
 
         // ------------------------------------------------------------------ atribuicao manual
-        public void StartLearn() { LearnState = 1; log("Carregue no botao do comando que quer configurar..."); }
-        public void CancelLearn() { if (LearnState != 0) log("Configuracao cancelada."); LearnState = 0; }
+        public void StartLearn() { LearnState = 1; log("Press the controller button you want to set up..."); }
+        public void CancelLearn() { if (LearnState != 0) log("Setup cancelled."); LearnState = 0; }
 
         public void LearnKey(Keys key)
         {
@@ -248,7 +248,7 @@ namespace FS25RealFFB
             Mappings.Add(m);
             LearnState = 0;
             Save();
-            log("Guardado: " + m);
+            log("Saved: " + m);
         }
 
         public void Remove(Mapping m)
@@ -294,7 +294,7 @@ namespace FS25RealFFB
         public void ImportFromGame()
         {
             string file = Path.Combine(Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "My Games"), "FarmingSimulator2025"), "inputBinding.xml");
-            if (!File.Exists(file)) { log("Importar: nao encontrei " + file); return; }
+            if (!File.Exists(file)) { log("Import: not found " + file); return; }
             string xml = File.ReadAllText(file);
             Regex actRx = new Regex("<actionBinding action=\"([^\"]+)\">(.*?)</actionBinding>", RegexOptions.Singleline);
             Regex bRx = new Regex("<binding device=\"([^\"]+)\" input=\"([^\"]+)\" axisComponent=\"([+-])\"");
@@ -336,8 +336,8 @@ namespace FS25RealFFB
                 }
             }
             Save();
-            log(string.Format("Importar: {0} atribuicoes criadas a partir do FS25. Ignoradas: {1} de comandos nao ligados, {2} sem tecla no FS25.", made, noDev, noKey));
-            foreach (string s in missing) log("  sem tecla no FS25 (atribua uma tecla a esta acao no jogo e importe de novo): " + s);
+            log(string.Format("Import: {0} bindings created from FS25. Skipped: {1} from controllers not connected, {2} with no key in FS25.", made, noDev, noKey));
+            foreach (string s in missing) log("  no key in FS25 (bind a key to this action in the game and import again): " + s);
         }
 
         // ------------------------------------------------------------------ ficheiro
@@ -350,7 +350,7 @@ namespace FS25RealFFB
                 foreach (int v in m.Vks) { if (k.Length > 0) k.Append(","); k.Append(v); }
                 sb.AppendLine(m.DeviceId + "|" + m.Kind + "|" + m.Index + "|" + m.Sign + "|" + k + "|" + m.DeviceName.Replace("|", " ") + "|" + m.Action);
             }
-            try { File.WriteAllText(path, sb.ToString()); } catch (Exception ex) { log("Comandos: nao consegui guardar - " + ex.Message); }
+            try { File.WriteAllText(path, sb.ToString()); } catch (Exception ex) { log("Controllers: could not save - " + ex.Message); }
         }
 
         private void Load()
@@ -369,7 +369,7 @@ namespace FS25RealFFB
                     m.DeviceId = p[0]; m.Kind = kind; m.Index = idx; m.Sign = sign; m.Vks = v.ToArray(); m.DeviceName = p[5]; m.Action = p[6];
                     Mappings.Add(m);
                 }
-                log("Comandos: " + Mappings.Count + " atribuicoes carregadas.");
+                log("Controllers: " + Mappings.Count + " bindings loaded.");
             }
             catch { }
         }

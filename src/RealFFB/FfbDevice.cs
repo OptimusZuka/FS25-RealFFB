@@ -111,7 +111,7 @@ namespace FS25RealFFB
         {
             Guid iid = DI.IID_IDirectInput8W;
             int hr = DI.DirectInput8Create(DI.GetModuleHandle(null), 0x0800, ref iid, out di, IntPtr.Zero);
-            if (hr < 0 || di == null) { log("DirectInput8Create falhou " + DI.Hr(hr)); return false; }
+            if (hr < 0 || di == null) { log("DirectInput8Create failed " + DI.Hr(hr)); return false; }
 
             List<DIDEVICEINSTANCEW> ff = new List<DIDEVICEINSTANCEW>();
             EnumDevicesCallback cb = delegate(IntPtr p, IntPtr r)
@@ -128,7 +128,7 @@ namespace FS25RealFFB
             foreach (DIDEVICEINSTANCEW d in ff) if (Vid(d) == 0x0EB7 && Pid(d) == 0x0020) candidates.Add(d);
             foreach (DIDEVICEINSTANCEW d in ff) if (!candidates.Contains(d) && KnownNm(Vid(d), Pid(d)) > 0) candidates.Add(d);
             foreach (DIDEVICEINSTANCEW d in ff) if (!candidates.Contains(d)) candidates.Add(d);
-            if (candidates.Count == 0) { log("Nenhum volante com force feedback encontrado."); return false; }
+            if (candidates.Count == 0) { log("No force feedback wheel found."); return false; }
 
             Available.Clear();
             foreach (DIDEVICEINSTANCEW d in candidates)
@@ -145,10 +145,10 @@ namespace FS25RealFFB
                 foreach (DIDEVICEINSTANCEW d in candidates)
                     if ((Vid(d).ToString("X4") + ":" + Pid(d).ToString("X4")) == Preferred) only.Add(d);
                 if (only.Count > 0) { candidates.Clear(); candidates.AddRange(only); }
-                else log("O volante escolhido (" + Preferred + ") nao esta ligado: a usar o primeiro encontrado.");
+                else log("The chosen wheel (" + Preferred + ") is not connected: using the first one found.");
             }
 
-            log("DirectInput: volantes/interfaces com FFB: " + candidates.Count);
+            log("DirectInput: FFB wheels/interfaces: " + candidates.Count);
             for (int i = 0; i < candidates.Count; i++)
             {
                 DIDEVICEINSTANCEW c = candidates[i];
@@ -158,7 +158,7 @@ namespace FS25RealFFB
                     DeviceName = string.Format("{0} ({1:X4}:{2:X4})", c.tszProductName, Vid(c), Pid(c));
                     OpenVid = Vid(c); OpenPid = Pid(c);
                     IsOpen = true;
-                    log("Base aberta: " + DeviceName);
+                    log("Wheel opened: " + DeviceName);
                     return true;
                 }
             }
@@ -202,11 +202,11 @@ namespace FS25RealFFB
         {
             Guid g = inst.guidInstance;
             int hr = di.CreateDevice(ref g, out dev, IntPtr.Zero);
-            if (hr < 0 || dev == null) { log("CreateDevice falhou " + DI.Hr(hr)); return false; }
+            if (hr < 0 || dev == null) { log("CreateDevice failed " + DI.Hr(hr)); return false; }
             hr = dev.SetDataFormat(dataFormat);
-            if (hr < 0) { log("SetDataFormat falhou " + DI.Hr(hr)); return false; }
+            if (hr < 0) { log("SetDataFormat failed " + DI.Hr(hr)); return false; }
             hr = dev.SetCooperativeLevel(hwnd, DI.DISCL_EXCLUSIVE | DI.DISCL_BACKGROUND);
-            if (hr < 0) { log("SetCooperativeLevel falhou " + DI.Hr(hr)); return false; }
+            if (hr < 0) { log("SetCooperativeLevel failed " + DI.Hr(hr)); return false; }
             SetRange(-10000, 10000);
             SetRangeDevice(-10000, 10000);
             SetDword(DI.DIPROP_AUTOCENTER, 0);
@@ -214,7 +214,7 @@ namespace FS25RealFFB
             hr = dev.Acquire();
             if (hr < 0)
             {
-                log("Acquire falhou " + DI.Hr(hr) + " (outra aplicacao tem a base em modo exclusivo?)");
+                log("Acquire failed " + DI.Hr(hr) + " (another program holds the wheel in exclusive mode?)");
                 return false;
             }
             dev.SendForceFeedbackCommand(DI.DISFFC_RESET);
@@ -320,7 +320,7 @@ namespace FS25RealFFB
             WriteEffect(tsp, cb);
             IDirectInputEffect e;
             int hr = dev.CreateEffect(ref g, effPtr, out e, IntPtr.Zero);
-            if (hr < 0 || e == null) { log("Efeito " + name + " falhou " + DI.Hr(hr)); return null; }
+            if (hr < 0 || e == null) { log("Effect " + name + " failed " + DI.Hr(hr)); return null; }
             return e;
         }
 
@@ -343,9 +343,9 @@ namespace FS25RealFFB
                 if (errorCount == 1 || errorCount % 2000 == 0)
                 {
                     if (hr == unchecked((int)0x80040205))
-                        log("CONFLITO: outra aplicacao (provavelmente o FS25) tomou o controlo exclusivo do FFB da base. Desligue o Force Feedback do jogo.");
+                        log("CONFLICT: another program (probably FS25) took exclusive FFB control of the wheel. Turn off force feedback in the game.");
                     else
-                        log("SetParameters falhou " + DI.Hr(hr) + " - a recuperar a base");
+                        log("SetParameters failed " + DI.Hr(hr) + " - recovering the wheel");
                 }
                 Recover();
                 return;
@@ -364,7 +364,7 @@ namespace FS25RealFFB
             int hr = dev.Acquire();
             if (hr >= 0)
             {
-                if (lostLogged) log("Controlo da base recuperado (interface " + (current + 1) + ").");
+                if (lostLogged) log("Wheel control recovered (interface " + (current + 1) + ").");
                 lostLogged = false;
                 ResetCache();
                 StartAll();
@@ -373,7 +373,7 @@ namespace FS25RealFFB
             if (!lostLogged)
             {
                 lostLogged = true;
-                log("Base ocupada por outro programa (" + DI.Hr(hr) + "). Janela em primeiro plano: " + ForegroundProcess());
+                log("Wheel busy with another program (" + DI.Hr(hr) + "). Foreground window: " + ForegroundProcess());
             }
             if (candidates.Count > 1)
             {
@@ -382,13 +382,13 @@ namespace FS25RealFFB
                 if (TryOpen(candidates[next], window))
                 {
                     current = next;
-                    log("Mudei para a interface " + (next + 1) + " da base.");
+                    log("Switched to wheel interface " + (next + 1) + ".");
                     lostLogged = false;
                     ResetCache();
                 }
                 else
                 {
-                    log("Interface " + (next + 1) + " tambem ocupada.");
+                    log("Interface " + (next + 1) + " is busy too.");
                     ReleaseDevice();
                     TryOpen(candidates[current], window);
                 }

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="113">
     <author>OptimusZuka</author>
-    <version>1.0.0.0</version>
+    <version>0.6.0.0</version>
     <title><en>Real FFB Telemetry</en></title>
     <description>
-        <en><![CDATA[Envia telemetria do veiculo do jogador local para a app RealFFB (Windows), que gera force feedback para bases direct drive. So le dados; nao altera o jogo.]]></en>
+        <en><![CDATA[Sends the local player's vehicle telemetry to the RealFFB app (Windows), which creates force feedback for Fanatec and Logitech wheels. Read-only: it does not change the game.]]></en>
     </description>
     <iconFilename>icon_RealFFB.dds</iconFilename>
     <multiplayer supported="true"/>

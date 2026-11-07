@@ -130,29 +130,29 @@ namespace FS25RealFFB
             {
                 // ---- coluna 1: comandos
                 int x = pad, y = 12;
-                g.DrawString("COMANDOS  " + (BridgeOn ? "" : "(PONTE DESLIGADA)"), h, yb, x, y);
+                g.DrawString(L.T("COMMANDS") + "  " + (BridgeOn ? "" : L.T("(BRIDGE OFF)")), h, yb, x, y);
                 y += 28;
-                y = Centered(g, f, tb, mb, "Direcao", Steer, x, y, colW);
-                y = Bar(g, f, tb, mb, "Acelerador", Throttle, 1, (Throttle * 100).ToString("0") + " %", x, y, colW, Theme.Good);
-                y = Bar(g, f, tb, mb, "Travao", Brake, 1, (Brake * 100).ToString("0") + " %", x, y, colW, Theme.Bad);
-                y = Bar(g, f, tb, mb, "Embraiagem", Clutch, 1, (Clutch * 100).ToString("0") + " %", x, y, colW, Theme.Muted);
+                y = Centered(g, f, tb, mb, L.T("Steering"), Steer, x, y, colW);
+                y = Bar(g, f, tb, mb, L.T("Throttle"), Throttle, 1, (Throttle * 100).ToString("0") + " %", x, y, colW, Theme.Good);
+                y = Bar(g, f, tb, mb, L.T("Brake"), Brake, 1, (Brake * 100).ToString("0") + " %", x, y, colW, Theme.Bad);
+                y = Bar(g, f, tb, mb, L.T("Clutch"), Clutch, 1, (Clutch * 100).ToString("0") + " %", x, y, colW, Theme.Muted);
                 y += 6;
                 g.DrawString(Speed.ToString("0") , big, tb, x, y);
                 SizeF sz = g.MeasureString(Speed.ToString("0"), big);
                 g.DrawString("km/h", f, mb, x + sz.Width, y + 12);
-                g.DrawString(Active ? Vehicle + "  |  " + Mass.ToString("0.0") + " t  |  " + Surface : "a aguardar o FS25...", f, mb, x, y + 34);
+                g.DrawString(Active ? Vehicle + "  |  " + Mass.ToString("0.0") + " t  |  " + Surface : L.T("waiting for FS25..."), f, mb, x, y + 34);
 
                 // ---- coluna 2: forcas
                 x = pad + colW + 24; y = 12;
-                g.DrawString("FORCA NA BASE  (ganho " + (Gain * 100).ToString("0") + " %)", h, yb, x, y);
+                g.DrawString(L.F("FORCE AT THE WHEEL  (gain {0} %)", (Gain * 100).ToString("0")), h, yb, x, y);
                 y += 28;
                 double m = Math.Max(0.5, MaxNm);
-                y = Bar(g, f, tb, mb, "Centragem", Spring, m, Spring.ToString("0.00") + " Nm", x, y, colW, Theme.Yellow);
-                y = Bar(g, f, tb, mb, "Amortecimento", Damper, m, Damper.ToString("0.00") + " Nm", x, y, colW, Theme.Yellow);
-                y = Bar(g, f, tb, mb, "Atrito", Friction, m, Friction.ToString("0.00") + " Nm", x, y, colW, Theme.Yellow);
-                y = CenteredNm(g, f, tb, mb, "Pancadas", Bump, m, x, y, colW);
-                y = Bar(g, f, tb, mb, "Textura", Texture, m, Texture.ToString("0.00") + " Nm", x, y, colW, Theme.Yellow);
-                y = Bar(g, f, tb, mb, "Motor", Engine, m, Engine.ToString("0.00") + " Nm", x, y, colW, Theme.Yellow);
+                y = Bar(g, f, tb, mb, L.T("Centering"), Spring, m, Spring.ToString("0.00") + " Nm", x, y, colW, Theme.Yellow);
+                y = Bar(g, f, tb, mb, L.T("Damping"), Damper, m, Damper.ToString("0.00") + " Nm", x, y, colW, Theme.Yellow);
+                y = Bar(g, f, tb, mb, L.T("Friction"), Friction, m, Friction.ToString("0.00") + " Nm", x, y, colW, Theme.Yellow);
+                y = CenteredNm(g, f, tb, mb, L.T("Bumps"), Bump, m, x, y, colW);
+                y = Bar(g, f, tb, mb, L.T("Texture"), Texture, m, Texture.ToString("0.00") + " Nm", x, y, colW, Theme.Yellow);
+                y = Bar(g, f, tb, mb, L.T("Engine"), Engine, m, Engine.ToString("0.00") + " Nm", x, y, colW, Theme.Yellow);
             }
         }
 

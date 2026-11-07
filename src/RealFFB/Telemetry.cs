@@ -86,7 +86,7 @@ namespace FS25RealFFB
                         if (!running) break;
                         pipe.EndWaitForConnection(ar);
                         Connected = true;
-                        Post("FS25 ligado a telemetria.");
+                        Post("FS25 connected to telemetry.");
                         using (StreamReader reader = new StreamReader(pipe, Encoding.UTF8))
                         {
                             string line;
@@ -96,12 +96,12 @@ namespace FS25RealFFB
                 }
                 catch (Exception ex)
                 {
-                    Post("Telemetria: " + ex.GetType().Name + " - " + ex.Message);
+                    Post("Telemetry: " + ex.GetType().Name + " - " + ex.Message);
                     Thread.Sleep(500);
                 }
                 finally
                 {
-                    if (Connected) Post("FS25 desligou da telemetria.");
+                    if (Connected) Post("FS25 disconnected from telemetry.");
                     Connected = false;
                 }
             }
@@ -120,7 +120,7 @@ namespace FS25RealFFB
         {
             string[] parts = line.Split('|');
             if (parts.Length < 2 || parts[0] != "RFFB") return;
-            if (!firstLineLogged) { firstLineLogged = true; Post("Primeira linha: " + line); }
+            if (!firstLineLogged) { firstLineLogged = true; Post("First line: " + line); }
 
             TelemetryFrame f = new TelemetryFrame();
             string wheels = null;
@@ -175,7 +175,7 @@ namespace FS25RealFFB
             if (f.Active && f.Vehicle != lastVehicle)
             {
                 lastVehicle = f.Vehicle;
-                Post(string.Format(CultureInfo.InvariantCulture, "Veiculo: {0} | massa {1:0.0} t | rodas {2}", f.Vehicle, f.MassT, f.Wheels));
+                Post(string.Format(CultureInfo.InvariantCulture, "Vehicle: {0} | mass {1:0.0} t | wheels {2}", f.Vehicle, f.MassT, f.Wheels));
             }
 
             lock (gate)

@@ -25,7 +25,7 @@ namespace FS25RealFFB
         public static string Run(string args)
         {
             string cli = Cli();
-            if (cli == null) return "HidHideCLI nao encontrado";
+            if (cli == null) return "HidHideCLI not found";
             try
             {
                 ProcessStartInfo psi = new ProcessStartInfo(cli, args);
@@ -36,11 +36,11 @@ namespace FS25RealFFB
                 using (Process p = Process.Start(psi))
                 {
                     string output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
-                    if (!p.WaitForExit(5000)) { try { p.Kill(); } catch { } return "sem resposta (o HidHide Configuration Client esta aberto? feche-o)"; }
-                    return p.ExitCode == 0 ? "ok" + (output.Trim().Length > 0 ? " (" + output.Trim() + ")" : "") : "erro " + p.ExitCode + ": " + output.Trim();
+                    if (!p.WaitForExit(5000)) { try { p.Kill(); } catch { } return "no response (is the HidHide Configuration Client open? close it)"; }
+                    return p.ExitCode == 0 ? "ok" + (output.Trim().Length > 0 ? " (" + output.Trim() + ")" : "") : "error " + p.ExitCode + ": " + output.Trim();
                 }
             }
-            catch (Exception ex) { return "falhou: " + ex.Message; }
+            catch (Exception ex) { return "failed: " + ex.Message; }
         }
 
         public static string On() { return Run("--cloak-on"); }

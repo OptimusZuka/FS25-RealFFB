@@ -26,7 +26,7 @@ namespace FS25RealFFB
             try { Directory.CreateDirectory(dir); } catch { }
             path = Path.Combine(dir, "FS25_RealFFB_input.xml");
             tmp = path + ".tmp";
-            log("Ponte de comandos: " + path);
+            log("Command bridge: " + path);
         }
 
         public long Served { get { return written; } }
@@ -53,7 +53,7 @@ namespace FS25RealFFB
             catch (Exception ex)
             {
                 errors++;
-                if (errors == 1 || errors % 5000 == 0) log("Ponte: escrita falhou (" + ex.Message + ") - normal se for ocasional.");
+                if (errors == 1 || errors % 5000 == 0) log("Bridge: write failed (" + ex.Message + ") - fine if occasional.");
             }
         }
     }

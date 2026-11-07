@@ -10,7 +10,8 @@ namespace FS25RealFFB
     {
         public double BaseNm = 8.0;        // torque de pico do volante (definido pelo modelo detetado; ajustavel)
         public string BaseDevice = "";
-        public string PreferredWheel = "";  // VID:PID escolhido ("" = automatico)    // VID:PID do volante a que BaseNm diz respeito
+        public string PreferredWheel = "";
+        public string Language = "";        // en, pt, es, fr ("" = o escolhido no instalador, senao ingles)  // VID:PID escolhido ("" = automatico)    // VID:PID do volante a que BaseNm diz respeito
         public double MaxNm = 3.0;         // limite de seguranca da app
         public const int Version = 4;      // ao subir, as afinacoes antigas sao repostas
         public double Center = 0.45;
@@ -104,6 +105,7 @@ namespace FS25RealFFB
             sb.AppendLine("BaseNm=" + BaseNm.ToString(c));
             sb.AppendLine("BaseDevice=" + BaseDevice);
             sb.AppendLine("PreferredWheel=" + PreferredWheel);
+            sb.AppendLine("Language=" + Language);
             double[] tu = GlobalTuning ?? GetTuning();
             sb.AppendLine("MaxNm=" + tu[0].ToString(c));
             sb.AppendLine("Center=" + tu[1].ToString(c));
@@ -148,6 +150,7 @@ namespace FS25RealFFB
                         case "BaseNm": if (isNum) s.BaseNm = Math.Max(1, Math.Min(25, d)); break;
                         case "BaseDevice": s.BaseDevice = v; break;
                         case "PreferredWheel": s.PreferredWheel = v; break;
+                        case "Language": s.Language = v; break;
                         case "MaxNm": if (isNum) s.MaxNm = Math.Max(0.5, Math.Min(s.BaseNm, d)); break;
                         case "Center": if (isNum) s.Center = Clamp01(d); break;
                         case "Damping": if (isNum) s.Damping = Clamp01(d); break;
