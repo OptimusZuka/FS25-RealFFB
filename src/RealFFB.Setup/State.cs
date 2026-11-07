@@ -50,6 +50,17 @@ namespace RealFFBSetup
             return l;
         }
 
+        // Idioma escolhido no instalador (en, pt, es, fr); aceita tambem nomes do Inno (english, brazilianportuguese...)
+        public void SetLang(string code)
+        {
+            string c = (code ?? "").ToLowerInvariant();
+            if (c.StartsWith("pt") || c.Contains("portug")) c = "pt";
+            else if (c.StartsWith("es") || c.Contains("spanish")) c = "es";
+            else if (c.StartsWith("fr") || c.Contains("french")) c = "fr";
+            else c = "en";
+            Set("Lang", c); Save();
+        }
+
         public void SetList(string k, List<string> l) { Set(k, l.Count == 0 ? null : string.Join("|", l.ToArray())); }
 
         public void Save()

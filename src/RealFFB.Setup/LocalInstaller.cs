@@ -39,10 +39,10 @@ namespace RealFFBSetup
             logo.Image = Ui.Logo(); f.Controls.Add(logo);
             Label head = new Label(); head.Text = "FS25 RealFFB Installer"; head.ForeColor = Ui.Accent;
             head.Font = new Font("Segoe UI Semibold", 15f); head.SetBounds(110, 12, 510, 34); f.Controls.Add(head);
-            Label sub = new Label(); sub.Text = "by OptimusZuka  |  instala na sua conta, sem administrador (so o HidHide pede UAC)";
+            Label sub = new Label(); sub.Text = "by OptimusZuka  |  " + L.T("Installs in your user account, no administrator needed (only HidHide asks for UAC)");
             sub.ForeColor = Color.Silver; sub.SetBounds(112, 46, 510, 20); f.Controls.Add(sub);
-            string[] names = { "1. Verificacao do sistema", "2. Detecao do Farming Simulator 25", "3. Verificacao do volante",
-                "4. Instalacao do HidHide", "5. Configuracao dos dispositivos", "6. Instalacao do RealFFB", "7. Verificacao final" };
+            string[] names = { L.T("1. System check"), L.T("2. Farming Simulator 25 detection"), L.T("3. Wheel check"),
+                L.T("4. HidHide installation"), L.T("5. Device setup"), L.T("6. RealFFB installation"), L.T("7. Final check") };
             stepNames = names;
             steps = new Label[names.Length];
             for (int i = 0; i < names.Length; i++)
@@ -53,9 +53,9 @@ namespace RealFFBSetup
             logBox = new TextBox(); logBox.Multiline = true; logBox.ReadOnly = true; logBox.ScrollBars = ScrollBars.Vertical;
             logBox.BackColor = Color.FromArgb(28, 28, 28); logBox.ForeColor = Color.Gainsboro; logBox.BorderStyle = BorderStyle.None;
             logBox.Font = new Font("Consolas", 9f); logBox.SetBounds(20, 280, 600, 200); f.Controls.Add(logBox);
-            Button go = new Button(); go.Text = "Instalar"; go.SetBounds(380, 492, 116, 34);
+            Button go = new Button(); go.Text = L.T("Install"); go.SetBounds(380, 492, 116, 34);
             go.FlatStyle = FlatStyle.Flat; go.BackColor = Ui.Accent; go.ForeColor = Color.Black; go.FlatAppearance.BorderColor = Ui.Accent;
-            Button close = new Button(); close.Text = "Fechar"; close.SetBounds(504, 492, 116, 34);
+            Button close = new Button(); close.Text = L.T("Close"); close.SetBounds(504, 492, 116, 34);
             close.FlatStyle = FlatStyle.Flat; close.BackColor = Color.FromArgb(45, 45, 45); close.ForeColor = Ui.Fg; close.FlatAppearance.BorderColor = Ui.Accent;
             close.Click += delegate { f.Close(); };
             int result = 2;
@@ -63,12 +63,27 @@ namespace RealFFBSetup
             {
                 go.Enabled = false; close.Enabled = false;
                 try { result = Run(f); }
-                catch (Exception ex) { Out("ERRO: " + ex.Message); result = 1; }
-                close.Enabled = true; close.Text = "Concluir";
+                catch (Exception ex) { Out("ERROR: " + ex.Message); result = 1; }
+                close.Enabled = true; close.Text = L.T("Finish");
             };
+            ComboBox lang = new ComboBox(); lang.DropDownStyle = ComboBoxStyle.DropDownList;
+            lang.FlatStyle = FlatStyle.Flat; lang.BackColor = Color.FromArgb(28, 28, 28); lang.ForeColor = Ui.Fg;
+            foreach (string n in L.Names) lang.Items.Add(n);
+            lang.SelectedIndex = Math.Max(0, Array.IndexOf(L.Codes, L.Current));
+            lang.SetBounds(20, 497, 200, 26);
+            lang.SelectedIndexChanged += delegate
+            {
+                string code = L.Codes[Math.Max(0, lang.SelectedIndex)];
+                if (code == L.Current || !go.Enabled) return;
+                State.Load().SetLang(code);
+                try { Process.Start(Application.ExecutablePath, "install"); } catch { }
+                f.Close();
+            };
+            go.Click += delegate { lang.Enabled = false; };
+            f.Controls.Add(lang);
             f.Controls.Add(go); f.Controls.Add(close);
-            Out("Pasta de instalacao: " + InstallDir);
-            Out("Feche o Farming Simulator 25 e o RealFFB antes de continuar.");
+            Out(L.F("Install folder: {0}", InstallDir));
+            Out(L.T("Close Farming Simulator 25 and RealFFB before continuing."));
             Application.Run(f);
             return result;
         }
@@ -96,9 +111,9 @@ namespace RealFFBSetup
             Busy(0);
             int major, build;
             Diagnostics.WinVersion(out major, out build);
-            if (!Environment.Is64BitOperatingSystem || major < 10) { Fail(0); Out("Precisa do Windows 10 ou 11 de 64 bits."); return 1; }
+            if (!Environment.Is64BitOperatingSystem || major < 10) { Fail(0); Out(L.T("Requires 64-bit Windows 10 or 11.")); return 1; }
             Out("Windows " + (build >= 22000 ? "11" : "10") + " build " + build + " 64 bits");
-            if (Program.GameRunning()) { Fail(0); Out("O FS25 esta aberto. Feche-o e carregue de novo em Instalar."); return 1; }
+            if (Program.GameRunning()) { Fail(0); Out(L.T("FS25 is open. Close it and click Install again.")); return 1; }
             Ok(0);
 
             // 2. FS25
@@ -106,17 +121,17 @@ namespace RealFFBSetup
             State st = State.Load();
             string src;
             string game = st.Get("GameDir");
-            if (!GameLocator.IsValidGameDir(game)) game = GameLocator.Find(out src); else src = "instalacao anterior";
+            if (!GameLocator.IsValidGameDir(game)) game = GameLocator.Find(out src); else src = "previous installation";
             if (game == null)
             {
-                Out("FS25 nao encontrado automaticamente (" + src + "). Indique a pasta.");
+                Out(L.F("FS25 not found automatically ({0}). Choose the folder.", src));
                 using (FolderBrowserDialog d = new FolderBrowserDialog())
                 {
-                    d.Description = "Pasta do Farming Simulator 25 (a que tem FarmingSimulator2025.exe)";
+                    d.Description = L.T("Farming Simulator 25 folder (the one with FarmingSimulator2025.exe)");
                     if (d.ShowDialog(owner) == DialogResult.OK && GameLocator.IsValidGameDir(d.SelectedPath)) game = d.SelectedPath;
                 }
             }
-            if (game == null) { Fail(1); Out("Sem a pasta do FS25 nao e possivel continuar."); return 1; }
+            if (game == null) { Fail(1); Out(L.T("Cannot continue without the FS25 folder.")); return 1; }
             string profile = GameLocator.ProfileDir();
             string mods = Program.ModsDir(profile);
             Out("FS25: " + game + " (" + src + ")");
@@ -126,9 +141,9 @@ namespace RealFFBSetup
             // 3. Fanatec
             Busy(2);
             List<FanatecBase> bases = new List<FanatecBase>();
-            try { bases = Fanatec.Detect(null); } catch (Exception ex) { Out("Volante: " + ex.Message); }
-            foreach (FanatecBase b in bases) Out("Volante: " + b.Label);
-            if (bases.Count == 0) { Warn(2); Out("Nenhum volante suportado ligado. Pode configurar depois (Iniciar > FS25 RealFFB - Configurar dispositivos)."); }
+            try { bases = Fanatec.Detect(null); } catch (Exception ex) { Out("Wheel: " + ex.Message); }
+            foreach (FanatecBase b in bases) Out("Wheel: " + b.Label);
+            if (bases.Count == 0) { Warn(2); Out(L.T("No supported wheel connected. You can set it up later (Start > FS25 RealFFB - Configure devices).")); }
             else Ok(2);
 
             // 4. HidHide
@@ -136,21 +151,19 @@ namespace RealFFBSetup
             bool reboot = false;
             string ver = HidHide.InstalledVersion();
             bool hidOk = ver != null && (ver == "desconhecida" || HidHide.CompareVersions(ver, HidHide.MinVersion) >= 0);
-            if (hidOk) { Out("HidHide " + ver + " ja instalado."); Ok(3); }
+            if (hidOk) { Out(L.F("HidHide {0} already installed.", ver)); Ok(3); }
             else
             {
-                if (!Ui.Confirm("Instalacao do HidHide",
-                    "O RealFFB precisa do HidHide (Nefarius Software Solutions, gratuito, codigo aberto), um driver que esconde o volante do FS25.\n\n" +
-                    "Vai ser descarregado o instalador oficial de github.com/nefarius/HidHide. A assinatura digital e verificada antes de executar e o ficheiro nao e alterado.\n\n" +
-                    "O Windows vai pedir autorizacao de administrador (UAC). Pode ser preciso reiniciar."))
-                { Warn(3); Out("HidHide nao instalado. O RealFFB nao funciona sem ele."); }
+                if (!Ui.Confirm(L.T("HidHide installation"),
+                    L.T("RealFFB needs HidHide (Nefarius Software Solutions, free, open source), a driver that hides the wheel from FS25.\n\nThe official installer will be downloaded from github.com/nefarius/HidHide. Its digital signature is checked before running and the file is not modified.\n\nWindows will ask for administrator permission (UAC). A restart may be needed.")))
+                { Warn(3); Out(L.T("HidHide not installed. RealFFB does not work without it.")); }
                 else
                 {
                     Result r = new Result();
                     int c = Program.InstallHidHide(r);
-                    if (c == 0) { Ok(3); Out("HidHide instalado."); }
-                    else if (c == 3) { Warn(3); reboot = true; Out("HidHide instalado: e preciso reiniciar o Windows."); }
-                    else { Fail(3); Out("HidHide falhou (codigo " + c + "). Veja o registo em %APPDATA%\\FS25 RealFFB\\setup_log.txt."); }
+                    if (c == 0) { Ok(3); Out(L.T("HidHide installed.")); }
+                    else if (c == 3) { Warn(3); reboot = true; Out(L.T("HidHide installed: Windows needs a restart.")); }
+                    else { Fail(3); Out(L.F("HidHide failed (code {0}). See the log at %APPDATA%\\FS25 RealFFB\\setup_log.txt.", c)); }
                 }
             }
 
@@ -159,14 +172,14 @@ namespace RealFFBSetup
             string here = Application.StartupPath;
             string dest = InstallDir;
             string[] files = { "RealFFB.exe", "RealFFB.Setup.exe" };
-            foreach (string fn in files) if (!File.Exists(Path.Combine(here, fn))) { Fail(5); Out("Falta " + fn + " em " + here + ". Corra o build.bat primeiro."); return 1; }
+            foreach (string fn in files) if (!File.Exists(Path.Combine(here, fn))) { Fail(5); Out(L.F("Missing {0} in {1}. Run build.bat first.", fn, here)); return 1; }
             string modZip = Path.Combine(here, "FS25_RealFFBTelemetry.zip");
-            if (!File.Exists(modZip)) { Fail(5); Out("Falta o mod (FS25_RealFFBTelemetry.zip) em " + here + "."); return 1; }
+            if (!File.Exists(modZip)) { Fail(5); Out(L.F("Missing {0} in {1}. Run build.bat first.", "FS25_RealFFBTelemetry.zip", here)); return 1; }
             if (AppRunning())
             {
-                Out("O RealFFB esta aberto: feche-o.");
-                MessageBox.Show(owner, "Feche o FS25 RealFFB e carregue em OK.", "FS25 RealFFB Installer");
-                if (AppRunning()) { Fail(5); Out("O RealFFB continua aberto."); return 1; }
+                Out(L.T("Close FS25 RealFFB first."));
+                MessageBox.Show(owner, L.T("Close FS25 RealFFB and click OK."), "FS25 RealFFB Installer");
+                if (AppRunning()) { Fail(5); Out(L.T("RealFFB is still open.")); return 1; }
             }
             Directory.CreateDirectory(dest);
             bool sameDir = string.Equals(Path.GetFullPath(here).TrimEnd('\\'), Path.GetFullPath(dest).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase);
@@ -177,16 +190,16 @@ namespace RealFFBSetup
             string helper = Path.Combine(dest, "RealFFB.Setup.exe");
             Directory.CreateDirectory(StartMenuDir);
             Shortcut(Path.Combine(StartMenuDir, "FS25 RealFFB.lnk"), exe, "", exe);
-            Shortcut(Path.Combine(StartMenuDir, "FS25 RealFFB - Configurar dispositivos.lnk"), helper, "configure", helper);
-            Shortcut(Path.Combine(StartMenuDir, "FS25 RealFFB - Relatorio de diagnostico.lnk"), helper, "diagnose", helper);
-            Shortcut(Path.Combine(StartMenuDir, "Desinstalar FS25 RealFFB.lnk"), helper, "uninstall", helper);
+            Shortcut(Path.Combine(StartMenuDir, "FS25 RealFFB - Configure devices.lnk"), helper, "configure", helper);
+            Shortcut(Path.Combine(StartMenuDir, "FS25 RealFFB - Diagnostic report.lnk"), helper, "diagnose", helper);
+            Shortcut(Path.Combine(StartMenuDir, "Uninstall FS25 RealFFB.lnk"), helper, "uninstall", helper);
             string fsIcon = Path.Combine(game, "FarmingSimulator2025.exe");
-            if (MessageBox.Show(owner, "Criar atalho no ambiente de trabalho?\n(Abre o RealFFB e o FS25)", "FS25 RealFFB Installer", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            if (MessageBox.Show(owner, L.T("Create a desktop shortcut?\n(Opens RealFFB and FS25)"), "FS25 RealFFB Installer", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                 Shortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "FS25 RealFFB.lnk"), exe, "--jogar", File.Exists(fsIcon) ? fsIcon : exe);
             RegisterUninstall(dest, helper, exe);
             Program.Opt["game"] = game; Program.Opt["mods"] = mods;
             Program.Remember(new Result());
-            Out("Instalado em " + dest);
+            Out(L.F("Installed in {0}", dest));
             Ok(5);
 
             // 5. dispositivos + game.xml
@@ -196,19 +209,19 @@ namespace RealFFBSetup
             {
                 Program.ScheduleResume(new Result());
                 Program.PatchGameXml(new Result());
-                Warn(4); Out("A configuracao dos dispositivos continua sozinha depois de reiniciar o Windows.");
+                Warn(4); Out(L.T("Device setup continues automatically after restarting Windows."));
             }
             else if (HidHide.Cli() != null && bases.Count > 0)
             {
                 Result r = new Result();
                 int c = Program.Configure(r, false);
                 if (c == 0) Ok(4); else Warn(4);
-                Out("Dispositivos: " + (c == 0 ? "configurados" : "nao configurados (use 'Configurar dispositivos' no menu Iniciar)"));
+                Out(c == 0 ? L.T("Devices: configured") : L.T("Devices: not configured (use 'Configure devices' in the Start menu)"));
             }
             else
             {
                 Program.PatchGameXml(new Result());
-                Warn(4); Out("Dispositivos por configurar: ligue o volante e use Iniciar > FS25 RealFFB - Configurar dispositivos.");
+                Warn(4); Out(L.T("Devices not configured yet: connect the wheel and use Start > FS25 RealFFB - Configure devices."));
             }
 
             // 7. verificacao
@@ -217,11 +230,11 @@ namespace RealFFBSetup
             foreach (Diagnostics.Check c in Diagnostics.Verify(dest))
             {
                 Out("[" + c.Status + "] " + c.Name + (c.Detail.Length > 0 ? ": " + c.Detail : ""));
-                if (c.Status == "ERRO") errors++;
+                if (c.Status == "ERROR") errors++;
             }
-            if (reboot) { Warn(6); Out("\r\nReinicie o Windows para concluir."); }
-            else if (errors == 0) { Ok(6); Out("\r\nInstalado e pronto a configurar. Abra o FS25 RealFFB pelo menu Iniciar ou pelo atalho."); }
-            else { Warn(6); Out("\r\nInstalado com " + errors + " problema(s). Use 'Relatorio de diagnostico' para pedir ajuda."); }
+            if (reboot) { Warn(6); Out("\r\n" + L.T("Restart Windows to finish.")); }
+            else if (errors == 0) { Ok(6); Out("\r\n" + L.T("Installed and ready. Open FS25 RealFFB from the Start menu or the shortcut.")); }
+            else { Warn(6); Out("\r\n" + L.F("Installed with {0} problem(s). Use 'Diagnostic report' to ask for help.", errors)); }
             return 0;
         }
 
@@ -259,10 +272,10 @@ namespace RealFFBSetup
         // ------------------------------------------------------------------ desinstalacao
         public static int Uninstall()
         {
-            if (MessageBox.Show("Desinstalar o FS25 RealFFB?\n\nO HidHide e o game.xml voltam ao estado anterior. O HidHide continua instalado.",
+            if (MessageBox.Show(L.T("Uninstall FS25 RealFFB?\n\nHidHide and game.xml go back to how they were. HidHide stays installed."),
                 "FS25 RealFFB", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return 2;
-            if (AppRunning()) { MessageBox.Show("Feche o FS25 RealFFB primeiro.", "FS25 RealFFB"); return 1; }
-            bool purge = MessageBox.Show("Apagar tambem as suas definicoes e perfis (afinacoes, pedais, comandos)?\n\nNao = manter (recomendado se for reinstalar).",
+            if (AppRunning()) { MessageBox.Show(L.T("Close FS25 RealFFB first."), "FS25 RealFFB"); return 1; }
+            bool purge = MessageBox.Show(L.T("Also delete your settings and profiles (FFB tuning, pedals, buttons)?\n\nNo = keep them (recommended if you will reinstall)."),
                 "FS25 RealFFB", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
             State st = State.Load();
             string mods = st.Get("ModsDir") ?? Program.ModsDir(GameLocator.ProfileDir());
@@ -280,7 +293,7 @@ namespace RealFFBSetup
                 psi.CreateNoWindow = true; psi.UseShellExecute = false;
                 Process.Start(psi);
             }
-            MessageBox.Show("FS25 RealFFB desinstalado.", "FS25 RealFFB");
+            MessageBox.Show(L.T("FS25 RealFFB uninstalled."), "FS25 RealFFB");
             return 0;
         }
     }

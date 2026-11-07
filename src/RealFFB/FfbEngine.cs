@@ -84,10 +84,10 @@ namespace FS25RealFFB
             else gain = Math.Max(target, gain - dt / 0.25);                // saida rapida: 0,25 s
             o.Gain = gain;
 
-            if (!enabled) o.State = "FFB desligado";
-            else if (!fresh) o.State = "a aguardar telemetria do FS25";
-            else if (!f.Active) o.State = "pausa / fora do veiculo";
-            else o.State = "ATIVO";
+            if (!enabled) o.State = "FFB off";
+            else if (!fresh) o.State = "waiting for FS25 telemetry";
+            else if (!f.Active) o.State = "paused / out of vehicle";
+            else o.State = "ACTIVE";
 
             if (f == null || !active)
             {

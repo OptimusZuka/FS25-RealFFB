@@ -54,22 +54,22 @@ namespace RealFFBSetup
             string[] files = { "RealFFB.exe", "RealFFB.Setup.exe" };
             List<string> missing = new List<string>();
             foreach (string f in files) if (!File.Exists(Path.Combine(appDir, f))) missing.Add(f);
-            r.Add(missing.Count == 0 ? new Check("Ficheiros da aplicacao", "OK", appDir) : new Check("Ficheiros da aplicacao", "ERRO", "em falta: " + string.Join(", ", missing.ToArray())));
+            r.Add(missing.Count == 0 ? new Check("App files", "OK", appDir) : new Check("App files", "ERROR", "missing: " + string.Join(", ", missing.ToArray())));
 
             // Permissoes da pasta de dados
             try
             {
                 string probe = Path.Combine(State.Dir, "perm.tmp");
                 File.WriteAllText(probe, "x"); File.Delete(probe);
-                r.Add(new Check("Permissoes (pasta de dados)", "OK", State.Dir));
+                r.Add(new Check("Permissions (data folder)", "OK", State.Dir));
             }
-            catch (Exception ex) { r.Add(new Check("Permissoes (pasta de dados)", "ERRO", ex.Message)); }
+            catch (Exception ex) { r.Add(new Check("Permissions (data folder)", "ERROR", ex.Message)); }
 
             // Jogo
             string src;
             string game = st.Get("GameDir");
             if (!GameLocator.IsValidGameDir(game)) game = GameLocator.Find(out src);
-            r.Add(game != null ? new Check("Farming Simulator 25", "OK", game) : new Check("Farming Simulator 25", "ERRO", "nao encontrado"));
+            r.Add(game != null ? new Check("Farming Simulator 25", "OK", game) : new Check("Farming Simulator 25", "ERROR", "not found"));
 
             // Mod
             string profile = GameLocator.ProfileDir();
@@ -79,12 +79,12 @@ namespace RealFFBSetup
             else
             {
                 string found = FindModElsewhere(profile);
-                r.Add(new Check("Mod RealFFB", "ERRO", found != null ? "instalado na pasta errada: " + found + " (esperado: " + mods + ")" : "em falta em " + mods));
+                r.Add(new Check("Mod RealFFB", "ERROR", found != null ? "installed in the wrong folder: " + found + " (expected: " + mods + ")" : "missing in " + mods));
             }
 
             // game.xml
             string gx = Path.Combine(profile, "game.xml");
-            if (!File.Exists(gx)) r.Add(new Check("game.xml", "AVISO", "ainda nao existe (abra o FS25 uma vez)"));
+            if (!File.Exists(gx)) r.Add(new Check("game.xml", "WARN", "does not exist yet (open FS25 once)"));
             else
             {
                 try
@@ -92,26 +92,26 @@ namespace RealFFBSetup
                     string xml = File.ReadAllText(gx);
                     string j, v, f;
                     GameXml.Read(xml, out j, out v, out f);
-                    string d = "joystick=" + j + " vibration=" + v + " forceFeedback=" + (f == "" ? "(ausente)" : f);
-                    r.Add(GameXml.NeedsPatch(xml) ? new Check("game.xml", "ERRO", "configuracao invalida: " + d) : new Check("game.xml", "OK", d));
+                    string d = "joystick=" + j + " vibration=" + v + " forceFeedback=" + (f == "" ? "(missing)" : f);
+                    r.Add(GameXml.NeedsPatch(xml) ? new Check("game.xml", "ERROR", "invalid settings: " + d) : new Check("game.xml", "OK", d));
                 }
-                catch (Exception ex) { r.Add(new Check("game.xml", "ERRO", ex.Message)); }
+                catch (Exception ex) { r.Add(new Check("game.xml", "ERROR", ex.Message)); }
             }
 
             // HidHide
             string ver = HidHide.InstalledVersion();
-            if (ver == null) r.Add(new Check("HidHide", "ERRO", "nao instalado"));
+            if (ver == null) r.Add(new Check("HidHide", "ERROR", "not installed"));
             else
             {
                 bool old = ver != "desconhecida" && HidHide.CompareVersions(ver, HidHide.MinVersion) < 0;
-                r.Add(new Check("HidHide", old ? "AVISO" : "OK", "versao " + ver + (old ? " (desatualizada, minimo " + HidHide.MinVersion + ")" : "")));
+                r.Add(new Check("HidHide", old ? "WARN" : "OK", "version " + ver + (old ? " (outdated, minimum " + HidHide.MinVersion + ")" : "")));
                 try
                 {
                     List<string> apps = HidHide.Apps();
                     List<string> devs = HidHide.HiddenDevices();
-                    r.Add(new Check("Driver HidHide", "OK", "a responder; ocultacao " + (HidHide.CloakOn() ? "ligada" : "desligada (a app liga ao abrir)")));
+                    r.Add(new Check("HidHide driver", "OK", "responding; hiding " + (HidHide.CloakOn() ? "on" : "off (the app turns it on when it opens)")));
                     string exe = Path.Combine(appDir, "RealFFB.exe");
-                    r.Add(Config.Contains(apps, exe) ? new Check("RealFFB autorizada no HidHide", "OK", "") : new Check("RealFFB autorizada no HidHide", "ERRO", "RealFFB.exe nao esta na lista de aplicacoes"));
+                    r.Add(Config.Contains(apps, exe) ? new Check("RealFFB allowed in HidHide", "OK", "") : new Check("RealFFB allowed in HidHide", "ERROR", "RealFFB.exe is not in the application list"));
 
                     List<FanatecBase> bases = Fanatec.Detect(null);
                     int fanHidden = 0; int otherHidden = 0;
@@ -121,12 +121,12 @@ namespace RealFFBSetup
                         if (Fanatec.GroupKey(d, out pid) != null) fanHidden++;
                         else if (d.StartsWith("HID\\", StringComparison.OrdinalIgnoreCase) && !Fanatec.IsWheelVendor(d)) otherHidden++;
                     }
-                    if (bases.Count == 0) r.Add(new Check("Volante", "AVISO", "nenhum volante suportado ligado"));
-                    else r.Add(new Check("Volante", "OK", Labels(bases)));
-                    r.Add(fanHidden > 0 ? new Check("Volante escondido do jogo", "OK", fanHidden + " entrada(s)") : new Check("Volante escondido do jogo", "ERRO", "nenhuma entrada do volante na lista do HidHide (use 'Configurar dispositivos')"));
-                    if (otherHidden > 0) r.Add(new Check("Outros controladores escondidos", "AVISO", otherHidden + " entrada(s) que nao sao o volante (configuradas por si ou por outro programa)"));
+                    if (bases.Count == 0) r.Add(new Check("Wheel", "WARN", "no supported wheel connected"));
+                    else r.Add(new Check("Wheel", "OK", Labels(bases)));
+                    r.Add(fanHidden > 0 ? new Check("Wheel hidden from the game", "OK", fanHidden + " entr(ies)") : new Check("Wheel hidden from the game", "ERROR", "no wheel entry in the HidHide list (use 'Configure devices')"));
+                    if (otherHidden > 0) r.Add(new Check("Other controllers hidden", "WARN", otherHidden + " entr(ies) that are not the wheel (set by you or another program)"));
                 }
-                catch (Exception ex) { r.Add(new Check("Driver HidHide", "ERRO", "nao responde: " + ex.Message + " (reinicie o Windows se acabou de o instalar)")); }
+                catch (Exception ex) { r.Add(new Check("HidHide driver", "ERROR", "not responding: " + ex.Message + " (restart Windows if you just installed it)")); }
             }
             return r;
         }
@@ -152,44 +152,44 @@ namespace RealFFBSetup
         public static string Report(string appDir)
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("FS25 RealFFB - relatorio de diagnostico");
-            sb.AppendLine("Gerado: " + DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm") + " UTC");
-            sb.AppendLine("Nao contem nome de utilizador, nome do PC nem numeros de serie.");
+            sb.AppendLine("FS25 RealFFB - diagnostic report");
+            sb.AppendLine("Created: " + DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm") + " UTC");
+            sb.AppendLine("Contains no user name, PC name or serial numbers.");
             sb.AppendLine();
             int wmaj, wbuild; WinVersion(out wmaj, out wbuild);
             sb.AppendLine("Windows: " + wmaj + " build " + wbuild + (Environment.Is64BitOperatingSystem ? " x64" : " x86"));
             string exe = Path.Combine(appDir, "RealFFB.exe");
             if (File.Exists(exe)) sb.AppendLine("RealFFB: " + FileVersionInfo.GetVersionInfo(exe).FileVersion);
-            sb.AppendLine("Admin: " + (IsAdmin() ? "sim" : "nao"));
+            sb.AppendLine("Admin: " + (IsAdmin() ? "yes" : "no"));
             sb.AppendLine();
-            sb.AppendLine("== Verificacao ==");
+            sb.AppendLine("== Checks ==");
             try
             {
                 foreach (Check c in Verify(appDir))
                     sb.AppendLine("[" + c.Status + "] " + c.Name + (c.Detail.Length > 0 ? ": " + c.Detail : ""));
             }
-            catch (Exception ex) { sb.AppendLine("[ERRO] verificacao interrompida: " + ex.Message); }
+            catch (Exception ex) { sb.AppendLine("[ERROR] checks interrupted: " + ex.Message); }
 
             sb.AppendLine();
-            sb.AppendLine("== Controladores de jogo (so fabricante/produto) ==");
+            sb.AppendLine("== Game controllers (vendor/product only) ==");
             try
             {
                 foreach (HidHide.GamingDevice g in HidHide.GamingDevices())
                     sb.AppendLine(g.Vid.ToString("X4") + ":" + g.Pid.ToString("X4") + "  " + (g.Product ?? g.FriendlyName));
             }
-            catch (Exception ex) { sb.AppendLine("(indisponivel: " + ex.Message + ")"); }
+            catch (Exception ex) { sb.AppendLine("(unavailable: " + ex.Message + ")"); }
 
             sb.AppendLine();
-            sb.AppendLine("== Estado da instalacao ==");
+            sb.AppendLine("== Installation state ==");
             State st = State.Load();
             foreach (string k in new string[] { "Version", "GameDir", "ModsDir", "HH_BaseLabel", "GX_Patched", "PendingResume" })
                 sb.AppendLine(k + "=" + (st.Get(k) ?? ""));
 
             sb.AppendLine();
-            sb.AppendLine("== Ultimas linhas do registo da app ==");
+            sb.AppendLine("== Last lines of the app log ==");
             Tail(sb, Path.Combine(State.Dir, "RealFFB_log.txt"), 40, null);
             sb.AppendLine();
-            sb.AppendLine("== Linhas RealFFB do log do FS25 ==");
+            sb.AppendLine("== RealFFB lines from the FS25 log ==");
             Tail(sb, Path.Combine(GameLocator.ProfileDir(), "log.txt"), 30, "RealFFB");
             return Anon(sb.ToString());
         }
@@ -198,7 +198,7 @@ namespace RealFFBSetup
         {
             try
             {
-                if (!File.Exists(file)) { sb.AppendLine("(nao existe)"); return; }
+                if (!File.Exists(file)) { sb.AppendLine("(does not exist)"); return; }
                 List<string> lines = new List<string>();
                 using (FileStream fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                 using (StreamReader rd = new StreamReader(fs))
@@ -213,7 +213,7 @@ namespace RealFFBSetup
                 }
                 foreach (string l in lines) sb.AppendLine(l);
             }
-            catch (Exception ex) { sb.AppendLine("(erro a ler: " + ex.Message + ")"); }
+            catch (Exception ex) { sb.AppendLine("(read error: " + ex.Message + ")"); }
         }
 
         // Environment.OSVersion devolve 6.2 no Windows 10/11 sem manifesto: ler do registo.

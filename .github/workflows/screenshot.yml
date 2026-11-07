@@ -1,0 +1,55 @@
+# UI screenshot for the README: push to the 'screenshot' branch. Builds the app, opens it (no wheel),
+# captures the window and attaches it to a temporary pre-release named 'ui-screenshot'.
+name: screenshot
+
+on:
+  push:
+    branches: [screenshot]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shot:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        shell: cmd
+        run: build.bat notest
+      - name: Capture the window
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          Add-Type @"
+          using System; using System.Runtime.InteropServices;
+          public static class W {
+            [StructLayout(LayoutKind.Sequential)] public struct R { public int L, T, Rr, B; }
+            [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out R r);
+            [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr dc, uint f);
+            [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr h, int x, int y, int w, int hh, bool p);
+          }
+          "@
+          $p = Start-Process -FilePath dist\app\RealFFB.exe -PassThru
+          Start-Sleep -Seconds 10
+          $p.Refresh()
+          $h = $p.MainWindowHandle
+          [W]::MoveWindow($h, 0, 0, 1180, 780, $true) | Out-Null
+          Start-Sleep -Seconds 3
+          $r = New-Object W+R
+          [W]::GetWindowRect($h, [ref]$r) | Out-Null
+          $bmp = New-Object System.Drawing.Bitmap ($r.Rr - $r.L), ($r.B - $r.T)
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $dc = $g.GetHdc()
+          [W]::PrintWindow($h, $dc, 2) | Out-Null
+          $g.ReleaseHdc($dc)
+          $bmp.Save("ui-screenshot.png", [System.Drawing.Imaging.ImageFormat]::Png)
+          Stop-Process -Id $p.Id -Force
+      - name: Attach to a temporary pre-release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete ui-screenshot --yes --cleanup-tag 2>$null
+          gh release create ui-screenshot ui-screenshot.png --prerelease --target "${{ github.sha }}" --title "UI screenshot (temporary)" --notes "Temporary, for the README."

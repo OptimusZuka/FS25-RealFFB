@@ -58,8 +58,8 @@ namespace RealFFBSetup
                 r.Checked = false;   // nunca pre-selecionar: o utilizador escolhe
                 f.Controls.Add(r); rb.Add(r);
             }
-            Button ok = NewButton("Continuar", DialogResult.OK, 252, h - 46, true);
-            Button no = NewButton("Cancelar", DialogResult.Cancel, 384, h - 46, false);
+            Button ok = NewButton(L.T("Continue"), DialogResult.OK, 252, h - 46, true);
+            Button no = NewButton(L.T("Cancel"), DialogResult.Cancel, 384, h - 46, false);
             ok.Enabled = false;
             foreach (RadioButton r in rb) r.CheckedChanged += delegate { ok.Enabled = true; };
             f.Controls.Add(ok); f.Controls.Add(no);
@@ -78,8 +78,8 @@ namespace RealFFBSetup
             t.Text = text.Replace("\n", "\r\n").Replace("\r\r\n", "\r\n");
             t.SetBounds(16, 50, 528, 250);
             f.Controls.Add(t);
-            Button ok = NewButton("Aplicar", DialogResult.Yes, 292, 314, true);
-            Button no = NewButton("Nao alterar", DialogResult.No, 424, 314, false);
+            Button ok = NewButton(L.T("Apply"), DialogResult.Yes, 292, 314, true);
+            Button no = NewButton(L.T("Don't change"), DialogResult.No, 424, 314, false);
             f.Controls.Add(ok); f.Controls.Add(no);
             f.CancelButton = no;
             f.Shown += delegate { no.Focus(); };

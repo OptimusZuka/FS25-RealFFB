@@ -34,9 +34,11 @@ namespace RealFFBSetup
         private static int Main(string[] args)
         {
             Application.EnableVisualStyles();
+            for (int a = 0; a + 1 < args.Length; a++) if (args[a] == "--lang") State.Load().SetLang(args[a + 1]);
+            L.Set(State.Load().Get("Lang") ?? "en");
             if (args.Length == 0)
             {
-                Ui.Info("Ajuda", "Utilitario do FS25 RealFFB.\nUse o atalho 'Configurar dispositivos' ou o botao de diagnostico da app.");
+                Ui.Info("Help", L.T("FS25 RealFFB utility.\nUse the 'Configure devices' shortcut or the diagnostics button in the app."));
                 return 2;
             }
             string cmd = args[0].ToLowerInvariant();
@@ -220,19 +222,19 @@ namespace RealFFBSetup
         // ------------------------------------------------------------------ configure / resume
         internal static int Configure(Result res, bool resume)
         {
-            string title = "Configuracao dos dispositivos";
+            string title = L.T("Device setup");
             State st = State.Load();
             if (resume) { st.Set("PendingResume", null); st.Save(); }
             string exe = AppExe();
-            if (!File.Exists(exe)) { Ui.Error(title, "RealFFB.exe nao encontrada:\n" + exe); res.Add("status", "no-app"); return 1; }
+            if (!File.Exists(exe)) { Ui.Error(title, L.F("RealFFB.exe not found:\n{0}", exe)); res.Add("status", "no-app"); return 1; }
             if (HidHide.Cli() == null)
             {
-                Ui.Error(title, "O HidHide nao esta instalado.\nVolte a executar o instalador do FS25 RealFFB para o instalar.");
+                Ui.Error(title, L.T("HidHide is not installed.\nRun the FS25 RealFFB installer again to install it."));
                 res.Add("status", "no-hidhide"); return 1;
             }
             if (!Responding())
             {
-                Ui.Error(title, "O driver HidHide nao responde.\n\nSe acabou de o instalar, reinicie o Windows.\nSe o 'HidHide Configuration Client' estiver aberto, feche-o e tente de novo.");
+                Ui.Error(title, L.T("The HidHide driver is not responding.\n\nIf you just installed it, restart Windows.\nIf the 'HidHide Configuration Client' is open, close it and try again."));
                 res.Add("status", "not-responding"); return 3;
             }
 
@@ -240,8 +242,8 @@ namespace RealFFBSetup
             List<FanatecBase> bases = Fanatec.Detect(other);
             if (bases.Count == 0)
             {
-                Ui.Error(title, "Nenhum volante suportado foi detetado (Fanatec em modo PC ou Logitech G29/G920/G923/G27/G25)." + (other.Count > 0 ? "\n(Ha dispositivos Fanatec que nao sao bases: " + string.Join(", ", other.ToArray()) + ")" : "") +
-                    "\n\nLigue o volante (Fanatec: LED vermelho = modo PC) e use o atalho 'FS25 RealFFB - Configurar dispositivos'.\nNada foi alterado.");
+                Ui.Error(title, L.T("No supported wheel was found (Fanatec in PC mode or Logitech G29/G920/G923/G27/G25).") + (other.Count > 0 ? "\n(Fanatec: " + string.Join(", ", other.ToArray()) + ")" : "") + "\n\n" +
+                    L.T("Connect the wheel (Fanatec: red LED = PC mode) and use the 'FS25 RealFFB - Configure devices' shortcut.\nNothing was changed."));
                 res.Add("status", "no-fanatec"); return 2;
             }
             // Atualizacao/reinstalacao: se a base configurada antes continua corretamente configurada, nao perguntar nada.
@@ -259,7 +261,7 @@ namespace RealFFBSetup
                         res.Add("status", "unchanged"); res.Add("device", pb.Label);
                         Log("HidHide ja configurado para " + pb.Label + ": nada alterado.");
                         if (!GameRunning()) PatchGameXml(new Result());
-                        if (resume) Ui.Info(title, "Configuracao ja estava aplicada a " + pb.Label + ".");
+                        if (resume) Ui.Info(title, L.F("Settings were already applied to {0}.", pb.Label));
                         return 0;
                     }
                 }
@@ -270,7 +272,7 @@ namespace RealFFBSetup
             {
                 List<string> labels = new List<string>();
                 for (int i = 0; i < bases.Count; i++) labels.Add((i + 1) + ". " + bases[i].Label);
-                int c = Ui.Choose(title, "Foram detetados varios volantes. Escolha o que vai usar no FS25.\nSo esse sera escondido do jogo.", labels);
+                int c = Ui.Choose(title, L.T("Several wheels were found. Choose the one you will use in FS25.\nOnly that one will be hidden from the game."), labels);
                 if (c < 0) { res.Add("status", "cancelled"); return 2; }
                 b = bases[c];
             }
@@ -278,21 +280,21 @@ namespace RealFFBSetup
             List<string> safe = SafePaths(b);
             if (safe.Count == 0)
             {
-                Ui.Error(title, "Nao foi possivel identificar com seguranca as entradas do HidHide da " + b.Label + ".\nNada foi alterado.\n\nGere o relatorio de diagnostico e abra um Issue no GitHub.");
+                Ui.Error(title, L.F("The HidHide entries of the {0} could not be identified safely.\nNothing was changed.\n\nCreate the diagnostic report and open an issue on GitHub.", b.Label));
                 res.Add("status", "ambiguous"); return 1;
             }
 
             StringBuilder t = new StringBuilder();
-            t.AppendLine("Vao ser feitas estas alteracoes no HidHide:");
+            t.AppendLine(L.T("These changes will be made in HidHide:"));
             t.AppendLine();
-            t.AppendLine("1) Autorizar a aplicacao:");
+            t.AppendLine(L.T("1) Allow the application:"));
             t.AppendLine("   " + exe);
             t.AppendLine();
-            t.AppendLine("2) Esconder dos jogos apenas a " + b.Label + ":");
+            t.AppendLine(L.F("2) Hide only the {0} from games:", b.Label));
             foreach (string p in safe) t.AppendLine("   " + p);
             t.AppendLine();
-            t.AppendLine("Nenhum outro controlador e alterado. A ocultacao so fica ativa enquanto a RealFFB estiver aberta (com 'AutoHide').");
-            t.AppendLine("A configuracao anterior e guardada e reposta ao desinstalar.");
+            t.AppendLine(L.T("No other controller is changed. Hiding is only active while RealFFB is open (with 'AutoHide')."));
+            t.AppendLine(L.T("The previous configuration is saved and restored on uninstall."));
             if (!Ui.Confirm(title, t.ToString())) { res.Add("status", "declined"); return 2; }
 
             Config.Apply(st, b, safe, exe, Log);
@@ -301,8 +303,8 @@ namespace RealFFBSetup
 
             string gxr = "";
             if (!GameRunning()) PatchGameXml(new Result());
-            else gxr = "\n\nO FS25 esta aberto: o game.xml sera ajustado na proxima vez (feche o jogo e volte a usar este atalho).";
-            Ui.Info(title, "Configuracao aplicada a " + b.Label + "." + gxr + (resume ? "\n\nInstalacao concluida. Abra o FS25 RealFFB pelo atalho." : ""));
+            else gxr = "\n\n" + L.T("FS25 is open: game.xml will be adjusted next time (close the game and use this shortcut again).");
+            Ui.Info(title, L.F("Settings applied to {0}.", b.Label) + gxr + (resume ? "\n\n" + L.T("Installation complete. Open FS25 RealFFB from the shortcut.") : ""));
             return 0;
         }
 
@@ -412,6 +414,8 @@ namespace RealFFBSetup
             State st = State.Load();
             string g = Get("game");
             if (GameLocator.IsValidGameDir(g)) st.Set("GameDir", g);
+            string lg = Get("lang");
+            if (!string.IsNullOrEmpty(lg) && lg != "1") st.SetLang(lg);
             string m = Get("mods");
             if (!string.IsNullOrEmpty(m) && m != "1") st.Set("ModsDir", m);
             st.Set("Version", typeof(Program).Assembly.GetName().Version.ToString(3));
@@ -427,7 +431,7 @@ namespace RealFFBSetup
             foreach (Diagnostics.Check c in Diagnostics.Verify(AppDir()))
             {
                 res.Add("check_" + i++, "[" + c.Status + "] " + c.Name + (c.Detail.Length > 0 ? ": " + c.Detail : ""));
-                if (c.Status == "ERRO") errors++;
+                if (c.Status == "ERROR") errors++;
             }
             res.Add("checks", i.ToString());
             res.Add("errors", errors.ToString());

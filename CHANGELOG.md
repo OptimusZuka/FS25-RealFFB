@@ -1,27 +1,39 @@
-# Histórico de versões
+# Changelog
 
-## [0.5.2] - 2026-11-07 (beta)
-- Ícone do instalador e dos programas visível no Explorador do Windows (o ficheiro .ico passou a ter imagens BMP nos tamanhos pequenos).
-- Página do projeto (README) nova, com imagens e explicação.
+## [0.6.0] - 2026-11-07 (beta)
+- Everything in English by default, with Portuguese (Brazil), Spanish and French available in the app (System → Language) and in the installer (language chosen in the first window).
+- New project page (README), guides in English, and English images.
+- Installer and program icons now show in Windows Explorer (BMP images in the small icon sizes).
+- `instalar.bat` renamed to `install.bat`; the "build on your PC" package is now `FS25_RealFFB_BuildOnPC_x.y.z.zip`.
 
 ## [0.5.1] - 2026-11-07 (beta)
-- Escolha do volante (secção "Volante"): automático ou um volante específico.
-- Cabeçalho: os botões já não ficam cortados.
-- Pedais desligados da base (todos os eixos a 0) já não são enviados ao jogo como meio pedal.
-- Verificação de atualizações passa a encontrar versões beta.
-- Logótipo na janela do instalador local.
+- Wheel selection ("Wheel" section): automatic or a specific wheel.
+- Header buttons are no longer cut off.
+- Pedals unplugged from the base (all axes at 0) are no longer sent to the game as half-pressed.
+- Update check now finds beta releases.
+- Logo in the local installer window.
 
 ## [0.5.0] - 2026-11-07 (beta)
-Primeira versão pública, em teste.
+First public version, in testing.
 
-- Primeiro instalador oficial (Inno Setup): verificação do sistema, deteção do FS25 em todas as bibliotecas Steam, deteção da Fanatec, instalação do HidHide oficial com verificação de assinatura, configuração do HidHide só para a base escolhida, ajuste do `game.xml` com cópia de segurança, verificação final.
-- Desinstalação pelas Definições do Windows: repõe o HidHide e o `game.xml` como estavam; o HidHide não é desinstalado; perfis mantidos se o utilizador quiser.
-- Definições passam para `%APPDATA%\FS25 RealFFB` (sobrevivem a atualizações).
-- A app verifica novas versões no GitHub e instala-as só com autorização, depois de confirmar o SHA-256.
-- Botão "Gerar relatório de diagnóstico" (anonimizado).
-- Interface nova com a identidade OptimusZuka (preto, amarelo e branco): cabeçalho com estado, painel ao vivo com comandos e forças, definições por secções.
-- Suporte a volantes Logitech (G29, G920, G923, G PRO, G27, G25): deteção, HidHide e torque de pico por modelo (ajustável em "Torque do volante").
-- Perfil de FFB por veículo: cada trator/máquina guarda as suas afinações (`%APPDATA%\FS25 RealFFB\perfis`); veículos sem perfil usam o padrão.
-- "Fixar no topo": janela compacta sempre visível, só com o painel ao vivo.
-- A roda do rato já não altera os controlos deslizantes: desce a página.
-- Motor de force feedback igual ao da v0.17 (sem alterações).
+- Official installer (Inno Setup) with 7 steps:
+  - system check;
+  - FS25 detection in every Steam library;
+  - wheel detection;
+  - official HidHide installation with signature check;
+  - HidHide setup for the chosen wheel only;
+  - `game.xml` adjustment with a backup;
+  - final check.
+- Uninstall from Windows Settings restores HidHide and `game.xml` as they were. HidHide is not uninstalled, and profiles are kept if you want.
+- Settings live in `%APPDATA%\FS25 RealFFB` and survive updates.
+- The app checks GitHub for new versions and installs them only with permission, after checking the SHA-256.
+- New interface in the OptimusZuka colours (black, yellow and white):
+  - header with status;
+  - live panel with commands and forces;
+  - settings in sections.
+- "Pin on top": a compact window that always stays visible.
+- The mouse wheel no longer changes sliders; it scrolls the page.
+- Per-vehicle FFB profiles.
+- Logitech wheel support (G29, G920, G923, G PRO, G27, G25), with peak torque per model.
+- "Create diagnostic report" button (anonymised).
+- Force feedback engine unchanged from v0.17.
