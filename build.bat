@@ -67,7 +67,7 @@ if errorlevel 1 ( echo [ERRO] Inno Setup & exit /b 1 )
 pushd dist
 > SHA256SUMS.txt (
   for %%F in (FS25_RealFFB_Setup_*.exe app\RealFFB.exe app\RealFFB.Setup.exe app\FS25_RealFFBTelemetry.zip) do (
-    if exist "%%F" for /f "skip=1 delims=" %%H in ('certutil -hashfile "%%F" SHA256 ^| findstr /r "^[0-9a-f ]*$"') do (
+    if exist "%%F" for /f "skip=1 delims=" %%H in ('certutil -hashfile "%%F" SHA256 ^| findstr /v /i /c:"certutil"') do (
       set H=%%H
       set H=!H: =!
       echo !H!  %%~nxF
