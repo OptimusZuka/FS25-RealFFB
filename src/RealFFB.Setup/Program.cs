@@ -25,7 +25,7 @@ namespace RealFFBSetup
 {
     internal static class Program
     {
-        private static readonly Dictionary<string, string> Opt = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        internal static readonly Dictionary<string, string> Opt = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private static readonly StringBuilder LogText = new StringBuilder();
         private const string RunOnceKey = @"Software\Microsoft\Windows\CurrentVersion\RunOnce";
         private const string RunOnceName = "FS25RealFFB_Resume";
@@ -63,6 +63,8 @@ namespace RealFFBSetup
                     case "verify": code = VerifyCmd(res); break;
                     case "diagnose": code = Diagnose(res); break;
                     case "remember": code = Remember(res); break;
+                    case "install": code = LocalInstaller.Install(); break;
+                    case "uninstall": code = LocalInstaller.Uninstall(); break;
                     default: res.Add("error", "comando desconhecido: " + cmd); code = 1; break;
                 }
             }
@@ -81,7 +83,7 @@ namespace RealFFBSetup
 
         private static string Get(string k) { string v; return Opt.TryGetValue(k, out v) ? v : null; }
 
-        private static void Log(string s) { LogText.AppendLine(s); }
+        internal static void Log(string s) { LogText.AppendLine(s); }
 
         private static void AppendSetupLog(string cmd, int code)
         {
@@ -161,7 +163,7 @@ namespace RealFFBSetup
         }
 
         // ------------------------------------------------------------------ HidHide
-        private static int InstallHidHide(Result res)
+        internal static int InstallHidHide(Result res)
         {
             string ver = HidHide.InstalledVersion();
             if (ver != null && (ver == "desconhecida" || HidHide.CompareVersions(ver, HidHide.MinVersion) >= 0))
@@ -216,7 +218,7 @@ namespace RealFFBSetup
         private static int Reboot(Result res) { res.Add("reboot", "1"); return 3; }
 
         // ------------------------------------------------------------------ configure / resume
-        private static int Configure(Result res, bool resume)
+        internal static int Configure(Result res, bool resume)
         {
             string title = "Configuracao dos dispositivos";
             State st = State.Load();
@@ -312,7 +314,7 @@ namespace RealFFBSetup
             return safe;
         }
 
-        private static int ScheduleResume(Result res)
+        internal static int ScheduleResume(Result res)
         {
             string me = Path.Combine(Application.StartupPath, "RealFFB.Setup.exe");
             using (RegistryKey k = Registry.CurrentUser.CreateSubKey(RunOnceKey))
@@ -323,7 +325,7 @@ namespace RealFFBSetup
         }
 
         // ------------------------------------------------------------------ game.xml
-        private static int PatchGameXml(Result res)
+        internal static int PatchGameXml(Result res)
         {
             string gx = Path.Combine(GameLocator.ProfileDir(), "game.xml");
             if (!File.Exists(gx)) { res.Add("status", "absent"); Log("game.xml ainda nao existe (o FS25 cria-o na primeira execucao)."); return 2; }
@@ -385,7 +387,7 @@ namespace RealFFBSetup
         }
 
         // ------------------------------------------------------------------ desinstalacao
-        private static int Restore(Result res)
+        internal static int Restore(Result res)
         {
             State st = State.Load();
             try { Config.Restore(st, Log); } catch (Exception ex) { Log("HidHide: " + ex.Message); }
@@ -405,7 +407,7 @@ namespace RealFFBSetup
         }
 
         // Guarda a pasta do jogo e dos mods escolhidas no instalador (usadas pela app e pela verificacao).
-        private static int Remember(Result res)
+        internal static int Remember(Result res)
         {
             State st = State.Load();
             string g = Get("game");
