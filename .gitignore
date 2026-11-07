@@ -6,3 +6,5 @@ RealFFB.ini
 RealFFB_comandos.txt
 RealFFB_crash.txt
 TesteA_resultado.txt
+build/
+dist/

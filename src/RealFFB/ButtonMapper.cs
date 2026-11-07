@@ -64,7 +64,7 @@ namespace FS25RealFFB
         private readonly List<IntPtr> allocs = new List<IntPtr>();
         private IDirectInput8W di;
         private IntPtr format, buf;
-        private readonly string path = Path.Combine(Application.StartupPath, "RealFFB_comandos.txt");
+        private readonly string path = AppInfo.DataFile("RealFFB_comandos.txt");
         private readonly Dictionary<int, int> keyRefs = new Dictionary<int, int>();
 
         public readonly List<Mapping> Mappings = new List<Mapping>();
