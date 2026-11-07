@@ -1,0 +1,66 @@
+# Publica uma versao: git tag v1.0.0 && git push origin v1.0.0
+# Cria um rascunho de Release com o instalador e o SHA256SUMS.txt. O rascunho so fica publico
+# quando o autor o publica manualmente no GitHub (revisao humana antes de cada versao).
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag igual ao ficheiro VERSION
+        shell: pwsh
+        run: |
+          $v = (Get-Content VERSION -Raw).Trim()
+          if ("v$v" -ne "${{ github.ref_name }}") { throw "Tag ${{ github.ref_name }} diferente de VERSION ($v)" }
+
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { choco install innosetup --no-progress -y }
+
+      - name: Compilar, testar e gerar o instalador
+        shell: cmd
+        run: build.bat
+
+      # Assinatura gratuita (SignPath Foundation): ver docs/ASSINATURA.md. Enquanto nao estiver
+      # aprovada, o instalador sai SEM assinatura e as notas da versao dizem-no.
+
+      - name: Notas da versao
+        shell: pwsh
+        run: |
+          $v = (Get-Content VERSION -Raw).Trim()
+          $log = Get-Content CHANGELOG.md -Raw
+          $m = [regex]::Match($log, "(?ms)^## \[?$([regex]::Escape($v))\]?.*?(?=^## |\z)")
+          $sums = Get-Content dist\SHA256SUMS.txt -Raw
+          $body = @"
+          $($m.Value)
+
+          ### Verificar o ficheiro (SHA-256)
+          ``````
+          $sums
+          ``````
+          No PowerShell: ``Get-FileHash .\FS25_RealFFB_Setup_$v.exe -Algorithm SHA256`` - o valor tem de ser igual ao de cima.
+          Guia: docs/INSTALACAO.md
+
+          > O instalador **nao tem assinatura digital** (ver docs/ASSINATURA.md). O Windows SmartScreen pode mostrar "O Windows protegeu o PC": "Mais informacoes" > "Executar assim mesmo", depois de confirmar o SHA-256.
+          "@
+          Set-Content -Path notes.md -Value $body -Encoding utf8
+
+      - name: Criar rascunho da Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = (Get-Content VERSION -Raw).Trim()
+          gh release create "${{ github.ref_name }}" --draft --title "FS25 RealFFB $v" --notes-file notes.md `
+            "dist\FS25_RealFFB_Setup_$v.exe" "dist\SHA256SUMS.txt"

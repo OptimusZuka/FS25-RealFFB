@@ -48,7 +48,7 @@ namespace FS25RealFFB
 
         public static string FilePath
         {
-            get { return Path.Combine(System.Windows.Forms.Application.StartupPath, "RealFFB.ini"); }
+            get { return AppInfo.DataFile("RealFFB.ini"); }
         }
 
         public void Save()
