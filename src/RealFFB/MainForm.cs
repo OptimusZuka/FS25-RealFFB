@@ -105,6 +105,9 @@ namespace FS25RealFFB
         private double lastProfileSaveMs;
         private Label profileLabel;
         private CheckBox perVehBox;
+        private ComboBox wheelBox;
+        private Label wheelInfo;
+        private bool fillingWheels;
 
         public MainForm()
         {
@@ -149,7 +152,8 @@ namespace FS25RealFFB
             chipsBox = chips;
 
             FlowLayoutPanel actions = new FlowLayoutPanel();
-            actions.Dock = DockStyle.Right; actions.Width = 470; actions.FlowDirection = FlowDirection.RightToLeft;
+            actions.Dock = DockStyle.Right; actions.AutoSize = true; actions.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            actions.FlowDirection = FlowDirection.RightToLeft;
             actions.WrapContents = false; actions.Padding = new Padding(0, 18, 12, 0); actions.BackColor = Theme.Bg;
 
             Button stop = Theme.Btn("PARAR (Esc)", 120, 40, false);
@@ -170,7 +174,7 @@ namespace FS25RealFFB
             pinBtn.Margin = new Padding(8, 0, 0, 0);
             pinBtn.Click += delegate { TogglePin(); };
 
-            Button play = Theme.Btn("Abrir FS25", 80, 40, false);
+            Button play = Theme.Btn("Abrir FS25", 104, 40, false);
             play.Margin = new Padding(8, 0, 0, 0);
             play.Click += delegate { LaunchGame(); };
 
@@ -202,6 +206,17 @@ namespace FS25RealFFB
             profDel.Click += delegate { DeleteProfile(); };
             flow.Controls.Add(profDel);
             UpdateProfileLabel();
+
+            flow.Controls.Add(Theme.Section("Volante", W));
+            wheelBox = new ComboBox();
+            wheelBox.DropDownStyle = ComboBoxStyle.DropDownList; wheelBox.Width = W;
+            wheelBox.FlatStyle = FlatStyle.Flat; wheelBox.BackColor = Theme.Card; wheelBox.ForeColor = Theme.Text;
+            wheelBox.Items.Add("Automatico (primeiro volante encontrado)");
+            wheelBox.SelectedIndex = 0;
+            flow.Controls.Add(wheelBox);
+            wheelInfo = new Label(); wheelInfo.Width = W; wheelInfo.Height = 36; wheelInfo.ForeColor = Theme.Muted;
+            wheelInfo.Text = "A procurar volante...";
+            flow.Controls.Add(wheelInfo);
 
             flow.Controls.Add(Theme.Section("Forca", W));
             flow.Controls.Add(Slider("Torque do volante (pico)", 10, 250, (int)Math.Round(settings.BaseNm * 10),
@@ -469,6 +484,40 @@ namespace FS25RealFFB
             try { settings.Save(); } catch { }
         }
 
+        // Lista de volantes com FFB ligados. A escolha fica guardada e vale a partir da proxima abertura.
+        private void FillWheelList()
+        {
+            if (wheel == null) return;
+            fillingWheels = true;
+            wheelBox.Items.Clear();
+            wheelBox.Items.Add("Automatico (primeiro volante encontrado)");
+            int sel = 0;
+            foreach (string[] a in wheel.Available)
+            {
+                wheelBox.Items.Add(a[1]);
+                if (a[0] == settings.PreferredWheel) sel = wheelBox.Items.Count - 1;
+            }
+            if (settings.PreferredWheel.Length > 0 && sel == 0) wheelBox.Items.Add(settings.PreferredWheel + " (escolhido, nao ligado)");
+            wheelBox.SelectedIndex = settings.PreferredWheel.Length > 0 && sel == 0 ? wheelBox.Items.Count - 1 : sel;
+            fillingWheels = false;
+            wheelInfo.Text = wheel.IsOpen ? "Em uso: " + wheel.DeviceName : "Nenhum volante aberto.";
+            wheelBox.SelectedIndexChanged -= WheelChosen;
+            wheelBox.SelectedIndexChanged += WheelChosen;
+        }
+
+        private void WheelChosen(object sender, EventArgs e)
+        {
+            if (fillingWheels || wheel == null) return;
+            int i = wheelBox.SelectedIndex;
+            string id = i <= 0 ? "" : (i - 1 < wheel.Available.Count ? wheel.Available[i - 1][0] : settings.PreferredWheel);
+            if (id == settings.PreferredWheel) return;
+            settings.PreferredWheel = id;
+            try { settings.Save(); } catch { }
+            wheelInfo.Text = "Escolha guardada. Feche e volte a abrir o RealFFB para trocar de volante.";
+            wheelInfo.ForeColor = Theme.Yellow;
+            Log("Volante escolhido: " + (id.Length == 0 ? "automatico" : id) + " (vale na proxima abertura da app).");
+        }
+
         private void UpdateMaxSlider()
         {
             NoWheelTrackBar t;
@@ -572,6 +621,7 @@ namespace FS25RealFFB
             }
             device = OpenOutput();
             ApplyDeviceTorque();
+            FillWheelList();
             if (!device.IsOpen) Log("A base nao abriu. Feche jogos/programas que usem o volante e reinicie a app.");
 
             for (int q = 1; q < 3; q++)
@@ -695,6 +745,7 @@ namespace FS25RealFFB
         private IWheelOutput OpenOutput()
         {
             FfbDevice d = new FfbDevice(Log);
+            d.Preferred = settings.PreferredWheel;
             d.Open(Handle);
             wheel = d;
             if (d.IsOpen) Log("Saida de forca: DirectInput direto (o FS25 nao pode estar a usar o volante).");
@@ -794,7 +845,11 @@ namespace FS25RealFFB
             if (wheel == null || !wheel.IsOpen || !wheel.ReadState()) return;
             double s = wheel.Axes[0] / 10000.0 * settings.SteerSens * (settings.SteerInvert ? -1 : 1);
             steerOut = s < -1 ? -1 : (s > 1 ? 1 : s);
-            thrOut = Pedal(0); brkOut = Pedal(1); cluOut = Pedal(2);
+            // Todos os eixos dos pedais exatamente a 0 = pedais desligados da base: nunca enviar meio pedal ao jogo
+            bool pedalsDead = true;
+            for (int k = 1; k < FfbDevice.AxisCount; k++) if (wheel.Axes[k] != 0) pedalsDead = false;
+            if (pedalsDead) { thrOut = brkOut = cluOut = 0; }
+            else { thrOut = Pedal(0); brkOut = Pedal(1); cluOut = Pedal(2); }
             bridge.Publish(settings.BridgeOn, steerOut, thrOut, brkOut, cluOut);
 
             if (detectPedal >= 0)

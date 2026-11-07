@@ -130,6 +130,24 @@ namespace FS25RealFFB
             foreach (DIDEVICEINSTANCEW d in ff) if (!candidates.Contains(d)) candidates.Add(d);
             if (candidates.Count == 0) { log("Nenhum volante com force feedback encontrado."); return false; }
 
+            Available.Clear();
+            foreach (DIDEVICEINSTANCEW d in candidates)
+            {
+                string id = Vid(d).ToString("X4") + ":" + Pid(d).ToString("X4");
+                bool seen = false;
+                foreach (string[] a in Available) if (a[0] == id) seen = true;
+                if (!seen) Available.Add(new string[] { id, d.tszProductName + " (" + id + ")" });
+            }
+            // Volante escolhido pelo utilizador: so as interfaces dele (a recuperacao nunca salta para outro volante)
+            if (!string.IsNullOrEmpty(Preferred))
+            {
+                List<DIDEVICEINSTANCEW> only = new List<DIDEVICEINSTANCEW>();
+                foreach (DIDEVICEINSTANCEW d in candidates)
+                    if ((Vid(d).ToString("X4") + ":" + Pid(d).ToString("X4")) == Preferred) only.Add(d);
+                if (only.Count > 0) { candidates.Clear(); candidates.AddRange(only); }
+                else log("O volante escolhido (" + Preferred + ") nao esta ligado: a usar o primeiro encontrado.");
+            }
+
             log("DirectInput: volantes/interfaces com FFB: " + candidates.Count);
             for (int i = 0; i < candidates.Count; i++)
             {
@@ -147,6 +165,8 @@ namespace FS25RealFFB
             return false;
         }
 
+        public string Preferred;   // VID:PID escolhido pelo utilizador ("" = automatico)
+        public readonly List<string[]> Available = new List<string[]>();   // {VID:PID, nome}
         public int OpenVid { get; private set; }
         public int OpenPid { get; private set; }
 

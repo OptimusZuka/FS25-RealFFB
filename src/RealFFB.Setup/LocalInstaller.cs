@@ -33,27 +33,29 @@ namespace RealFFBSetup
             f.Text = "FS25 RealFFB Installer";
             f.BackColor = Ui.Bg; f.ForeColor = Ui.Fg; f.Font = new Font("Segoe UI", 9.5f);
             f.FormBorderStyle = FormBorderStyle.FixedDialog; f.MaximizeBox = false;
-            f.StartPosition = FormStartPosition.CenterScreen; f.ClientSize = new Size(640, 520);
+            f.StartPosition = FormStartPosition.CenterScreen; f.ClientSize = new Size(640, 540);
             try { f.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+            PictureBox logo = new PictureBox(); logo.SizeMode = PictureBoxSizeMode.Zoom; logo.SetBounds(16, 8, 86, 62);
+            logo.Image = Ui.Logo(); f.Controls.Add(logo);
             Label head = new Label(); head.Text = "FS25 RealFFB Installer"; head.ForeColor = Ui.Accent;
-            head.Font = new Font("Segoe UI Semibold", 15f); head.SetBounds(20, 14, 600, 34); f.Controls.Add(head);
+            head.Font = new Font("Segoe UI Semibold", 15f); head.SetBounds(110, 12, 510, 34); f.Controls.Add(head);
             Label sub = new Label(); sub.Text = "by OptimusZuka  |  instala na sua conta, sem administrador (so o HidHide pede UAC)";
-            sub.ForeColor = Color.Silver; sub.SetBounds(22, 48, 600, 20); f.Controls.Add(sub);
+            sub.ForeColor = Color.Silver; sub.SetBounds(112, 46, 510, 20); f.Controls.Add(sub);
             string[] names = { "1. Verificacao do sistema", "2. Detecao do Farming Simulator 25", "3. Verificacao do volante",
                 "4. Instalacao do HidHide", "5. Configuracao dos dispositivos", "6. Instalacao do RealFFB", "7. Verificacao final" };
             stepNames = names;
             steps = new Label[names.Length];
             for (int i = 0; i < names.Length; i++)
             {
-                Label l = new Label(); l.Text = "      " + names[i]; l.SetBounds(22, 80 + i * 26, 600, 24);
+                Label l = new Label(); l.Text = "      " + names[i]; l.SetBounds(22, 90 + i * 26, 600, 24);
                 l.ForeColor = Color.Gray; steps[i] = l; f.Controls.Add(l);
             }
             logBox = new TextBox(); logBox.Multiline = true; logBox.ReadOnly = true; logBox.ScrollBars = ScrollBars.Vertical;
             logBox.BackColor = Color.FromArgb(28, 28, 28); logBox.ForeColor = Color.Gainsboro; logBox.BorderStyle = BorderStyle.None;
-            logBox.Font = new Font("Consolas", 9f); logBox.SetBounds(20, 270, 600, 190); f.Controls.Add(logBox);
-            Button go = new Button(); go.Text = "Instalar"; go.SetBounds(380, 472, 116, 34);
+            logBox.Font = new Font("Consolas", 9f); logBox.SetBounds(20, 280, 600, 200); f.Controls.Add(logBox);
+            Button go = new Button(); go.Text = "Instalar"; go.SetBounds(380, 492, 116, 34);
             go.FlatStyle = FlatStyle.Flat; go.BackColor = Ui.Accent; go.ForeColor = Color.Black; go.FlatAppearance.BorderColor = Ui.Accent;
-            Button close = new Button(); close.Text = "Fechar"; close.SetBounds(504, 472, 116, 34);
+            Button close = new Button(); close.Text = "Fechar"; close.SetBounds(504, 492, 116, 34);
             close.FlatStyle = FlatStyle.Flat; close.BackColor = Color.FromArgb(45, 45, 45); close.ForeColor = Ui.Fg; close.FlatAppearance.BorderColor = Ui.Accent;
             close.Click += delegate { f.Close(); };
             int result = 2;
