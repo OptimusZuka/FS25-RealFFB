@@ -69,3 +69,12 @@ jobs:
           $v = (Get-Content VERSION -Raw).Trim()
           gh release create "v$v" --target "${{ github.sha }}" --prerelease --title "FS25 RealFFB $v beta" --notes-file notes.md `
             "dist\FS25_RealFFB_Setup_$v.exe" "dist\FS25_RealFFB_BuildOnPC_$v.zip" "dist\SHA256SUMS.txt"
+
+      - name: Remove the temporary screenshot release (if any)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete ui-screenshot --yes --cleanup-tag 2>$null
+          git push origin --delete screenshot 2>$null
+          exit 0
