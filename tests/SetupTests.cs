@@ -12,14 +12,14 @@ namespace RealFFBSetupTests
         private static void Eq(string name, object expected, object actual)
         {
             runs++;
-            if (!object.Equals(expected, actual)) { fails++; Console.WriteLine("FALHOU " + name + "\n  esperado: [" + expected + "]\n  obtido:   [" + actual + "]"); }
+            if (!object.Equals(expected, actual)) { fails++; Console.WriteLine("FAILED " + name + "\n  expected: [" + expected + "]\n  got:      [" + actual + "]"); }
             else Console.WriteLine("ok     " + name);
         }
 
         private static void Throws(string name, Action a)
         {
             runs++;
-            try { a(); fails++; Console.WriteLine("FALHOU " + name + " (devia lancar excecao)"); }
+            try { a(); fails++; Console.WriteLine("FAILED " + name + " (should throw)"); }
             catch (InvalidOperationException) { Console.WriteLine("ok     " + name); }
         }
 
@@ -134,7 +134,7 @@ namespace RealFFBSetupTests
             Eq("anon: sem nome de utilizador", false, Diagnostics.Anon(@"C:\Users\" + user + @"\x").Contains(user) && user.Length > 2);
 
             Console.WriteLine();
-            Console.WriteLine(runs + " testes, " + fails + " falhas");
+            Console.WriteLine(runs + " tests, " + fails + " failures");
             return fails == 0 ? 0 : 1;
         }
 
