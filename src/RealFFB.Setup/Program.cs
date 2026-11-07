@@ -240,8 +240,8 @@ namespace RealFFBSetup
             List<FanatecBase> bases = Fanatec.Detect(other);
             if (bases.Count == 0)
             {
-                Ui.Error(title, "Nenhuma base Fanatec em modo PC foi detetada." + (other.Count > 0 ? "\n(Ha dispositivos Fanatec que nao sao bases: " + string.Join(", ", other.ToArray()) + ")" : "") +
-                    "\n\nLigue a base (LED vermelho = modo PC) e use o atalho 'FS25 RealFFB - Configurar dispositivos'.\nNada foi alterado.");
+                Ui.Error(title, "Nenhum volante suportado foi detetado (Fanatec em modo PC ou Logitech G29/G920/G923/G27/G25)." + (other.Count > 0 ? "\n(Ha dispositivos Fanatec que nao sao bases: " + string.Join(", ", other.ToArray()) + ")" : "") +
+                    "\n\nLigue o volante (Fanatec: LED vermelho = modo PC) e use o atalho 'FS25 RealFFB - Configurar dispositivos'.\nNada foi alterado.");
                 res.Add("status", "no-fanatec"); return 2;
             }
             // Atualizacao/reinstalacao: se a base configurada antes continua corretamente configurada, nao perguntar nada.
@@ -270,7 +270,7 @@ namespace RealFFBSetup
             {
                 List<string> labels = new List<string>();
                 for (int i = 0; i < bases.Count; i++) labels.Add((i + 1) + ". " + bases[i].Label);
-                int c = Ui.Choose(title, "Foram detetadas varias bases Fanatec. Escolha a que vai usar no FS25.\nSo essa sera escondida do jogo.", labels);
+                int c = Ui.Choose(title, "Foram detetados varios volantes. Escolha o que vai usar no FS25.\nSo esse sera escondido do jogo.", labels);
                 if (c < 0) { res.Add("status", "cancelled"); return 2; }
                 b = bases[c];
             }
@@ -310,7 +310,7 @@ namespace RealFFBSetup
         {
             List<string> safe = new List<string>();
             foreach (string p in Config.PathsFor(b, HidHide.GamingDevices()))
-                if (p.ToUpperInvariant().Contains("VID_0EB7")) safe.Add(p); else Log("Ignorado (nao e Fanatec): " + p);
+                if (p.ToUpperInvariant().Contains("VID_" + b.Vid.ToString("X4"))) safe.Add(p); else Log("Ignorado (nao e o volante): " + p);
             return safe;
         }
 

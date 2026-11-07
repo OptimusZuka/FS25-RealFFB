@@ -1,4 +1,5 @@
-// Deteccao das bases Fanatec ligadas (VID 0EB7) pelo WMI, agrupadas por dispositivo fisico.
+// Deteccao dos volantes com force feedback suportados (Fanatec 0EB7, Logitech 046D) pelo WMI,
+// agrupados por dispositivo fisico.
 using System;
 using System.Collections.Generic;
 using System.Management;
@@ -8,53 +9,84 @@ namespace RealFFBSetup
 {
     internal sealed class FanatecBase
     {
+        public int Vid = 0x0EB7;
         public int Pid;
         public string Model;
         public string Key;        // identifica o dispositivo fisico: PID + instancia (sem a coleccao HID)
         public List<string> InstanceIds = new List<string>();
-        public string Label { get { return Model + " (PID " + Pid.ToString("X4") + ")"; } }
+        public string Label { get { return Model + " (" + Vid.ToString("X4") + ":" + Pid.ToString("X4") + ")"; } }
     }
 
     internal static class Fanatec
     {
         public const int Vid = 0x0EB7;
 
-        // Bases em modo PC conhecidas. Outros PIDs Fanatec (pedais/volantes USB) nunca sao escondidos.
-        public static string ModelName(int pid)
+        public const int Logitech = 0x046D;
+
+        // Volantes conhecidos. Outros dispositivos destes fabricantes (pedais USB, shifters) nunca sao escondidos.
+        public static string ModelName(int vid, int pid)
         {
-            switch (pid)
-            {
-                case 0x0020: return "Fanatec CSL DD / GT DD Pro / ClubSport DD";
-                case 0x0006: return "Fanatec Podium DD1";
-                case 0x0007: return "Fanatec Podium DD2";
-                case 0x0001: return "Fanatec ClubSport Wheel Base V2";
-                case 0x0004: return "Fanatec ClubSport Wheel Base V2.5";
-                case 0x0E03: return "Fanatec CSL Elite Wheel Base";
-                case 0x0005: return "Fanatec CSL Elite Wheel Base (PS4)";
-                case 0x0011: return "Fanatec CSR Elite";
-                default: return null;
-            }
+            if (vid == Vid)
+                switch (pid)
+                {
+                    case 0x0020: return "Fanatec CSL DD / GT DD Pro / ClubSport DD";
+                    case 0x0006: return "Fanatec Podium DD1";
+                    case 0x0007: return "Fanatec Podium DD2";
+                    case 0x0001: return "Fanatec ClubSport Wheel Base V2";
+                    case 0x0004: return "Fanatec ClubSport Wheel Base V2.5";
+                    case 0x0E03: return "Fanatec CSL Elite Wheel Base";
+                    case 0x0005: return "Fanatec CSL Elite Wheel Base (PS4)";
+                    case 0x0011: return "Fanatec CSR Elite";
+                }
+            if (vid == Logitech)
+                switch (pid)
+                {
+                    case 0xC24F: return "Logitech G29";
+                    case 0xC262: return "Logitech G920";
+                    case 0xC266: case 0xC267: return "Logitech G923 (PlayStation/PC)";
+                    case 0xC26D: case 0xC26E: return "Logitech G923 (Xbox/PC)";
+                    case 0xC268: case 0xC272: return "Logitech G PRO Racing Wheel";
+                    case 0xC29B: return "Logitech G27";
+                    case 0xC299: return "Logitech G25";
+                    case 0xC29A: return "Logitech Driving Force GT";
+                }
+            return null;
+        }
+
+        public static string ModelName(int pid) { return ModelName(Vid, pid); }
+
+        public static bool IsWheelVendor(string path)
+        {
+            string u = (path ?? "").ToUpperInvariant();
+            return u.Contains("VID_0EB7") || u.Contains("VID_046D");
         }
 
         // Chave do dispositivo fisico a partir de um instance id HID, ex.:
-        // HID\VID_0EB7&PID_0020&MI_00&COL01\7&2A3C1B&0&0000  ->  0020|7&2A3C1B&0
+        // HID\VID_0EB7&PID_0020&MI_00&COL01\7&2A3C1B&0&0000  ->  0EB7:0020|7&2A3C1B&0
         public static string GroupKey(string instanceId, out int pid)
         {
-            pid = -1;
-            Match m = Regex.Match(instanceId ?? "", "VID_0EB7&PID_([0-9A-F]{4})[^\\\\]*\\\\(.+)$", RegexOptions.IgnoreCase);
+            int vid;
+            return GroupKey(instanceId, out vid, out pid);
+        }
+
+        public static string GroupKey(string instanceId, out int vid, out int pid)
+        {
+            pid = -1; vid = -1;
+            Match m = Regex.Match(instanceId ?? "", "^HID\\\\VID_(0EB7|046D)&PID_([0-9A-F]{4})[^\\\\]*\\\\(.+)$", RegexOptions.IgnoreCase);
             if (!m.Success) return null;
-            pid = Convert.ToInt32(m.Groups[1].Value, 16);
-            string inst = m.Groups[2].Value;
+            vid = Convert.ToInt32(m.Groups[1].Value, 16);
+            pid = Convert.ToInt32(m.Groups[2].Value, 16);
+            string inst = m.Groups[3].Value;
             int amp = inst.LastIndexOf('&');
             if (amp > 0) inst = inst.Substring(0, amp);
-            return pid.ToString("X4") + "|" + inst.ToUpperInvariant();
+            return vid.ToString("X4") + ":" + pid.ToString("X4") + "|" + inst.ToUpperInvariant();
         }
 
         // Le instance ids HID presentes. other recebe dispositivos Fanatec que nao sao bases.
         public static List<FanatecBase> Detect(List<string> other)
         {
             List<string> ids = new List<string>();
-            using (ManagementObjectSearcher s = new ManagementObjectSearcher("SELECT DeviceID FROM Win32_PnPEntity WHERE DeviceID LIKE 'HID\\\\VID_0EB7%'"))
+            using (ManagementObjectSearcher s = new ManagementObjectSearcher("SELECT DeviceID FROM Win32_PnPEntity WHERE DeviceID LIKE 'HID\\\\VID_0EB7%' OR DeviceID LIKE 'HID\\\\VID_046D%'"))
                 foreach (ManagementObject o in s.Get())
                 {
                     string id = o["DeviceID"] as string;
@@ -69,15 +101,16 @@ namespace RealFFBSetup
             List<FanatecBase> list = new List<FanatecBase>();
             foreach (string id in ids)
             {
-                int pid;
-                string key = GroupKey(id, out pid);
+                int vid, pid;
+                string key = GroupKey(id, out vid, out pid);
                 if (key == null) continue;
-                string model = ModelName(pid);
-                if (model == null) { if (other != null && !other.Contains("PID " + pid.ToString("X4"))) other.Add("PID " + pid.ToString("X4")); continue; }
+                string model = ModelName(vid, pid);
+                string tag = vid.ToString("X4") + ":" + pid.ToString("X4");
+                if (model == null) { if (vid == Vid && other != null && !other.Contains(tag)) other.Add(tag); continue; }
                 FanatecBase b;
                 if (!map.TryGetValue(key, out b))
                 {
-                    b = new FanatecBase(); b.Pid = pid; b.Model = model; b.Key = key;
+                    b = new FanatecBase(); b.Vid = vid; b.Pid = pid; b.Model = model; b.Key = key;
                     map[key] = b; list.Add(b);
                 }
                 b.InstanceIds.Add(id);

@@ -39,7 +39,7 @@ namespace RealFFBSetup
             head.Font = new Font("Segoe UI Semibold", 15f); head.SetBounds(20, 14, 600, 34); f.Controls.Add(head);
             Label sub = new Label(); sub.Text = "by OptimusZuka  |  instala na sua conta, sem administrador (so o HidHide pede UAC)";
             sub.ForeColor = Color.Silver; sub.SetBounds(22, 48, 600, 20); f.Controls.Add(sub);
-            string[] names = { "1. Verificacao do sistema", "2. Detecao do Farming Simulator 25", "3. Verificacao da Fanatec",
+            string[] names = { "1. Verificacao do sistema", "2. Detecao do Farming Simulator 25", "3. Verificacao do volante",
                 "4. Instalacao do HidHide", "5. Configuracao dos dispositivos", "6. Instalacao do RealFFB", "7. Verificacao final" };
             stepNames = names;
             steps = new Label[names.Length];
@@ -124,9 +124,9 @@ namespace RealFFBSetup
             // 3. Fanatec
             Busy(2);
             List<FanatecBase> bases = new List<FanatecBase>();
-            try { bases = Fanatec.Detect(null); } catch (Exception ex) { Out("Fanatec: " + ex.Message); }
-            foreach (FanatecBase b in bases) Out("Fanatec: " + b.Label);
-            if (bases.Count == 0) { Warn(2); Out("Nenhuma base em modo PC ligada. Pode configurar depois (Iniciar > FS25 RealFFB - Configurar dispositivos)."); }
+            try { bases = Fanatec.Detect(null); } catch (Exception ex) { Out("Volante: " + ex.Message); }
+            foreach (FanatecBase b in bases) Out("Volante: " + b.Label);
+            if (bases.Count == 0) { Warn(2); Out("Nenhum volante suportado ligado. Pode configurar depois (Iniciar > FS25 RealFFB - Configurar dispositivos)."); }
             else Ok(2);
 
             // 4. HidHide
@@ -138,7 +138,7 @@ namespace RealFFBSetup
             else
             {
                 if (!Ui.Confirm("Instalacao do HidHide",
-                    "O RealFFB precisa do HidHide (Nefarius Software Solutions, gratuito, codigo aberto), um driver que esconde a base Fanatec do FS25.\n\n" +
+                    "O RealFFB precisa do HidHide (Nefarius Software Solutions, gratuito, codigo aberto), um driver que esconde o volante do FS25.\n\n" +
                     "Vai ser descarregado o instalador oficial de github.com/nefarius/HidHide. A assinatura digital e verificada antes de executar e o ficheiro nao e alterado.\n\n" +
                     "O Windows vai pedir autorizacao de administrador (UAC). Pode ser preciso reiniciar."))
                 { Warn(3); Out("HidHide nao instalado. O RealFFB nao funciona sem ele."); }
@@ -206,7 +206,7 @@ namespace RealFFBSetup
             else
             {
                 Program.PatchGameXml(new Result());
-                Warn(4); Out("Dispositivos por configurar: ligue a Fanatec e use Iniciar > FS25 RealFFB - Configurar dispositivos.");
+                Warn(4); Out("Dispositivos por configurar: ligue o volante e use Iniciar > FS25 RealFFB - Configurar dispositivos.");
             }
 
             // 7. verificacao

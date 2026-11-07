@@ -47,7 +47,7 @@ Name: "pt"; MessagesFile: "compiler:Languages\Portuguese.isl"
 [Messages]
 SetupWindowTitle=FS25 RealFFB Installer
 WelcomeLabel1=FS25 RealFFB Installer
-WelcomeLabel2=Force feedback real no Farming Simulator 25 para bases Fanatec.%n%nEtapas:%n  1. Verificação do sistema%n  2. Deteção do Farming Simulator 25%n  3. Verificação da Fanatec%n  4. Instalação do HidHide%n  5. Configuração dos dispositivos%n  6. Instalação do RealFFB%n  7. Verificação final%n%nFeche o Farming Simulator 25 antes de continuar.
+WelcomeLabel2=Force feedback real no Farming Simulator 25 para volantes Fanatec e Logitech (G29, G920, G923).%n%nEtapas:%n  1. Verificação do sistema%n  2. Deteção do Farming Simulator 25%n  3. Verificação do volante%n  4. Instalação do HidHide%n  5. Configuração dos dispositivos%n  6. Instalação do RealFFB%n  7. Verificação final%n%nFeche o Farming Simulator 25 antes de continuar.
 
 [Tasks]
 Name: "desktopicon"; Description: "Criar atalho no ambiente de trabalho (abre o RealFFB e o FS25)"
@@ -170,9 +170,9 @@ begin
     T := T + '  [FALTA]  ' + R('game_source') + ' (vai poder indicar a pasta a seguir)' + #13#10;
   T := T + '  pasta de mods: ' + ModsDir + #13#10;
   if R('game_running') = '1' then T := T + '  [AVISO]  O FS25 esta aberto. Feche-o antes de continuar.' + #13#10;
-  T := T + #13#10 + 'Etapa 3 - Fanatec' + #13#10;
+  T := T + #13#10 + 'Etapa 3 - Volante' + #13#10;
   if FanCount = 0 then
-    T := T + '  [FALTA]  Nenhuma base Fanatec em modo PC ligada. Pode continuar e configurar depois.' + #13#10
+    T := T + '  [FALTA]  Nenhum volante suportado ligado. Pode continuar e configurar depois.' + #13#10
   else
     for I := 0 to FanCount - 1 do T := T + '  [OK]     ' + R('fanatec_' + IntToStr(I)) + #13#10;
   if R('fanatec_other') <> '' then T := T + '  (outros dispositivos Fanatec, que nao serao alterados: ' + R('fanatec_other') + ')' + #13#10;
@@ -191,7 +191,7 @@ begin
   WizardForm.PageDescriptionLabel.Font.Color := clWhite;
 
   CheckPage := CreateOutputMsgMemoPage(wpLicense, 'Etapas 1 a 3 de 7: verificação',
-    'Sistema, Farming Simulator 25 e Fanatec', 'Resultado da verificação (nada foi alterado):', '');
+    'Sistema, Farming Simulator 25 e volante', 'Resultado da verificação (nada foi alterado):', '');
 
   GamePage := CreateInputDirPage(CheckPage.ID, 'Etapa 2 de 7: Farming Simulator 25',
     'O FS25 não foi encontrado automaticamente',
@@ -200,7 +200,7 @@ begin
 
   HidPage := CreateInputOptionPage(GamePage.ID, 'Etapa 4 de 7: HidHide',
     'É necessário instalar um driver',
-    'O RealFFB usa o HidHide (Nefarius Software Solutions, gratuito, código aberto) para esconder a base Fanatec do FS25 enquanto o RealFFB a controla.' + #13#10#13#10 +
+    'O RealFFB usa o HidHide (Nefarius Software Solutions, gratuito, código aberto) para esconder o volante do FS25 enquanto o RealFFB a controla.' + #13#10#13#10 +
     'O instalador oficial será descarregado do GitHub do projeto (github.com/nefarius/HidHide). A assinatura digital é verificada antes de executar; o ficheiro não é alterado.' + #13#10#13#10 +
     'O Windows vai pedir autorização de administrador (UAC). Pode ser necessário reiniciar; nesse caso a configuração continua sozinha depois de reiniciar.',
     False, False);
@@ -208,9 +208,9 @@ begin
   HidPage.Values[0] := True;
 
   DevPage := CreateInputOptionPage(HidPage.ID, 'Etapa 5 de 7: Configuração dos dispositivos',
-    'Só a base Fanatec escolhida é escondida do jogo',
-    'Depois de copiar os ficheiros, abre-se uma janela que mostra exatamente o que vai ser alterado no HidHide: autorizar o RealFFB.exe e esconder apenas a base Fanatec. Nenhum outro controlador é alterado.' + #13#10#13#10 +
-    'Se existirem várias bases, escolhe qual usar. Se a base não for identificada com segurança, nada é alterado.' + #13#10#13#10 +
+    'Só o volante escolhido é escondido do jogo',
+    'Depois de copiar os ficheiros, abre-se uma janela que mostra exatamente o que vai ser alterado no HidHide: autorizar o RealFFB.exe e esconder apenas o volante. Nenhum outro controlador é alterado.' + #13#10#13#10 +
+    'Se existirem vários volantes, escolhe qual usar. Se o volante não for identificada com segurança, nada é alterado.' + #13#10#13#10 +
     'O game.xml do FS25 também é ajustado (joystick ativo, force feedback do jogo desligado), com cópia de segurança.',
     False, False);
   DevPage.Add('Configurar automaticamente (pede confirmação)');
@@ -285,7 +285,7 @@ begin
     Helper(True, 'remember --game "' + GameDir + '" --mods "' + ModsDir + '"');
     AddStep('Etapa 1 - Sistema: ' + OsText);
     AddStep('Etapa 2 - FS25: ' + GameDir);
-    AddStep('Etapa 3 - Fanatec: ' + IntToStr(FanCount) + ' base(s) detetada(s)');
+    AddStep('Etapa 3 - Volante: ' + IntToStr(FanCount) + ' detetado(s)');
 
     // Etapa 4
     Prog.SetText('Etapa 4 de 7: HidHide', 'A verificar / instalar o HidHide oficial...');

@@ -2,7 +2,7 @@
 
 # FS25 RealFFB
 
-Force feedback real no **Farming Simulator 25** para bases **Fanatec** (testado na CSL DD 8 Nm), em modo PC normal (LED vermelho), sem modo de compatibilidade.
+Force feedback real no **Farming Simulator 25** para volantes **Fanatec** (testado na CSL DD 8 Nm, em modo PC) e **Logitech G29 / G920 / G923**.
 
 O FFB do próprio jogo é praticamente inexistente. O RealFFB calcula a força a partir da telemetria do trator — centragem que depende da velocidade e da carga, textura do piso, buracos, impactos e vibração do motor — e envia-a diretamente para a base.
 
@@ -33,7 +33,10 @@ FS25 + mod FS25_RealFFBTelemetry ──telemetria (pipe \\.\pipe\FS25RealFFB)─
 
 - Windows 10 ou 11 de 64 bits
 - Farming Simulator 25 (Steam ou outra loja; qualquer disco)
-- Base Fanatec em modo PC: CSL DD, GT DD Pro, ClubSport DD, Podium DD1/DD2, ClubSport V2/V2.5, CSL Elite (apenas a CSL DD foi testada)
+- Volante com force feedback:
+  - Fanatec em modo PC: CSL DD, GT DD Pro, ClubSport DD, Podium DD1/DD2, ClubSport V2/V2.5, CSL Elite
+  - Logitech: G29, G920, G923, G PRO, G27, G25 (com o Logitech G HUB instalado e a "mola de centragem" do G HUB desligada)
+  - testado apenas na Fanatec CSL DD; o torque de pico é escolhido pelo modelo e pode ser ajustado na app
 - HidHide 1.2 ou mais recente (o instalador trata disto)
 
 ## O que o instalador altera

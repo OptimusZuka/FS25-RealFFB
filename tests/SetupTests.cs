@@ -117,6 +117,18 @@ namespace RealFFBSetupTests
             Eq("json real: 3 coleccoes + contentor", 4, rp.Count);
             Eq("json real: Thrustmaster fora", false, string.Join("|", rp.ToArray()).Contains("044F"));
 
+            // --- Logitech G29 (e um rato Logitech, que nunca pode contar)
+            List<string> lg = new List<string>(new string[] { @"HID\VID_046D&PID_C24F\7&3B2A1&0&0000", @"HID\VID_046D&PID_C08B&MI_00\8&11&0&0000" });
+            List<string> lgOther = new List<string>();
+            List<FanatecBase> lgb = Fanatec.Group(lg, lgOther);
+            Eq("g29: um volante", 1, lgb.Count);
+            Eq("g29: modelo", "Logitech G29", lgb.Count > 0 ? lgb[0].Model : null);
+            Eq("g29: rato ignorado", 0, lgOther.Count);
+            List<HidHide.GamingDevice> lgg = new List<HidHide.GamingDevice>();
+            lgg.Add(Dev(@"HID\VID_046D&PID_C24F\7&3B2A1&0&0000", @"USB\VID_046D&PID_C24F\5&99&0&4"));
+            lgg.Add(Dev(@"HID\VID_044F&PID_0405\9&e7c901f&0&0000", @"USB\VID_044F&PID_0405\1"));
+            Eq("g29: volante + contentor", 2, lgb.Count > 0 ? Config.PathsFor(lgb[0], lgg).Count : 0);
+
             // --- anonimizacao
             string user = Environment.UserName;
             Eq("anon: sem nome de utilizador", false, Diagnostics.Anon(@"C:\Users\" + user + @"\x").Contains(user) && user.Length > 2);

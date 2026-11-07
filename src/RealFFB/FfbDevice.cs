@@ -124,24 +124,55 @@ namespace FS25RealFFB
 
             window = hwnd;
             candidates.Clear();
+            // Ordem: Fanatec CSL DD, outros volantes conhecidos (Fanatec, Logitech), depois qualquer volante com FFB.
             foreach (DIDEVICEINSTANCEW d in ff) if (Vid(d) == 0x0EB7 && Pid(d) == 0x0020) candidates.Add(d);
-            foreach (DIDEVICEINSTANCEW d in ff) if (Vid(d) == 0x0EB7 && Pid(d) != 0x0020) candidates.Add(d);
-            if (candidates.Count == 0) { log("Nenhuma base Fanatec com force feedback encontrada."); return false; }
+            foreach (DIDEVICEINSTANCEW d in ff) if (!candidates.Contains(d) && KnownNm(Vid(d), Pid(d)) > 0) candidates.Add(d);
+            foreach (DIDEVICEINSTANCEW d in ff) if (!candidates.Contains(d)) candidates.Add(d);
+            if (candidates.Count == 0) { log("Nenhum volante com force feedback encontrado."); return false; }
 
-            log("DirectInput: interfaces Fanatec com FFB: " + candidates.Count);
+            log("DirectInput: volantes/interfaces com FFB: " + candidates.Count);
             for (int i = 0; i < candidates.Count; i++)
             {
                 DIDEVICEINSTANCEW c = candidates[i];
                 if (TryOpen(c, hwnd))
                 {
                     current = i;
-                    DeviceName = string.Format("{0} (PID {1:X4})", c.tszProductName, Pid(c));
+                    DeviceName = string.Format("{0} ({1:X4}:{2:X4})", c.tszProductName, Vid(c), Pid(c));
+                    OpenVid = Vid(c); OpenPid = Pid(c);
                     IsOpen = true;
                     log("Base aberta: " + DeviceName);
                     return true;
                 }
             }
             return false;
+        }
+
+        public int OpenVid { get; private set; }
+        public int OpenPid { get; private set; }
+
+        // Torque de pico de fabrica (Nm) dos volantes conhecidos; 0 = desconhecido.
+        public static double KnownNm(int vid, int pid)
+        {
+            if (vid == 0x0EB7)
+                switch (pid)
+                {
+                    case 0x0020: return 8;     // CSL DD com Boost Kit (5 Nm sem); GT DD Pro 8; ClubSport DD 12 (ajustar)
+                    case 0x0006: return 20;    // Podium DD1
+                    case 0x0007: return 25;    // Podium DD2
+                    case 0x0001: case 0x0004: return 8;   // ClubSport V2 / V2.5
+                    case 0x0E03: case 0x0005: return 6;   // CSL Elite
+                    case 0x0011: return 4;     // CSR Elite
+                }
+            if (vid == 0x046D)
+                switch (pid)
+                {
+                    case 0xC24F: case 0xC262: return 2.2;                          // G29 / G920
+                    case 0xC266: case 0xC267: case 0xC26D: case 0xC26E: return 2.2; // G923
+                    case 0xC268: case 0xC272: return 11;                           // G PRO
+                    case 0xC29B: case 0xC299: return 2.5;                          // G27 / G25
+                    case 0xC29A: return 2;                                         // Driving Force GT
+                }
+            return 0;
         }
 
         private static int Vid(DIDEVICEINSTANCEW d) { return (int)(BitConverter.ToUInt32(d.guidProduct.ToByteArray(), 0) & 0xFFFF); }
