@@ -1,0 +1,10 @@
+﻿FS25 Real FFB - Teste A (Fanatec CSL DD)
+
+1. Feche o Farming Simulator 25.
+2. Base ligada em modo PC normal (LED vermelho).
+3. Duplo clique em build.bat. Ele compila e abre o TesteA_CSLDD.exe.
+4. Clique em "Sequencia automatica" e tire as maos do volante.
+5. Depois experimente "Mola de centragem 5 s" e rode o volante a mao.
+6. Feche o programa. O resultado fica em TesteA_resultado.txt.
+
+Seguranca: maximo de 1,0 Nm, pulsos de 200 ms, Espaco ou Esc param tudo.

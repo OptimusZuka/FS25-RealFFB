@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<modDesc descVersion="113">
+    <author>OptimusZuka</author>
+    <version>0.2.4.0</version>
+    <title><en>Real FFB Telemetry</en></title>
+    <description>
+        <en><![CDATA[Envia telemetria do veiculo do jogador local para a app RealFFB (Windows), que gera force feedback para bases direct drive. So le dados; nao altera o jogo.]]></en>
+    </description>
+    <iconFilename>icon_RealFFB.dds</iconFilename>
+    <multiplayer supported="true"/>
+    <extraSourceFiles>
+        <sourceFile filename="RealFFBTelemetry.lua"/>
+    </extraSourceFiles>
+</modDesc>
