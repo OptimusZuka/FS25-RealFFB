@@ -1,7 +1,6 @@
 # Publica uma versao: enviar o commit para o ramo 'lancamento' (ou Actions > release > Run workflow).
 # A etiqueta vX.Y.Z (igual ao ficheiro VERSION) e criada pelo proprio GitHub.
-# Cria um rascunho de Release com o instalador e o SHA256SUMS.txt. O rascunho so fica publico
-# quando o autor o publica manualmente no GitHub (revisao humana antes de cada versao).
+# Publica a Release (marcada como pre-lancamento/beta) com o instalador, o pacote para compilar no PC e o SHA256SUMS.txt.
 name: release
 
 on:
@@ -62,11 +61,11 @@ jobs:
           "@
           Set-Content -Path notes.md -Value $body -Encoding utf8
 
-      - name: Criar rascunho da Release
+      - name: Publicar a Release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $v = (Get-Content VERSION -Raw).Trim()
-          gh release create "v$v" --target "${{ github.sha }}" --draft --title "FS25 RealFFB $v" --notes-file notes.md `
+          gh release create "v$v" --target "${{ github.sha }}" --prerelease --title "FS25 RealFFB $v beta" --notes-file notes.md `
             "dist\FS25_RealFFB_Setup_$v.exe" "dist\FS25_RealFFB_Compilar_no_PC_$v.zip" "dist\SHA256SUMS.txt"
