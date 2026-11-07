@@ -12,13 +12,13 @@ Cada Release publica o `SHA256SUMS.txt` e repete os valores nas notas da versão
 1. Abra a pasta Transferências, clique com o botão direito num espaço vazio → **Abrir no Terminal** (ou PowerShell).
 2. Execute:
    ```powershell
-   Get-FileHash .\FS25_RealFFB_Setup_0.5.1.exe -Algorithm SHA256
+   Get-FileHash .\FS25_RealFFB_Setup_0.5.2.exe -Algorithm SHA256
    ```
 3. Compare o `Hash` com a linha do `SHA256SUMS.txt`. Maiúsculas e minúsculas não interessam.
    - **Igual** → pode executar.
    - **Diferente** → não execute. Apague o ficheiro e descarregue de novo da página oficial.
 
-Alternativa sem PowerShell: `certutil -hashfile FS25_RealFFB_Setup_0.5.1.exe SHA256` na Linha de Comandos.
+Alternativa sem PowerShell: `certutil -hashfile FS25_RealFFB_Setup_0.5.2.exe SHA256` na Linha de Comandos.
 
 ## 2. Avisos do Windows (o que é normal)
 
