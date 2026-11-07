@@ -31,7 +31,7 @@ mkdir dist\app
 set COMMON=/nologo /optimize+ /platform:x64 /win32icon:assets\realffb.ico /r:System.Windows.Forms.dll /r:System.Drawing.dll
 
 echo [1/5] RealFFB.exe
-"%CSC%" %COMMON% /target:winexe /r:System.Core.dll /out:dist\app\RealFFB.exe build\Version.g.cs src\RealFFB\*.cs > build\app_log.txt 2>&1
+"%CSC%" %COMMON% /target:winexe /r:System.Core.dll /resource:assets\logo.png,RealFFB.logo.png /out:dist\app\RealFFB.exe build\Version.g.cs src\RealFFB\*.cs > build\app_log.txt 2>&1
 if errorlevel 1 ( type build\app_log.txt & echo [ERRO] RealFFB.exe & exit /b 1 )
 
 echo [2/5] RealFFB.Setup.exe
