@@ -204,6 +204,8 @@ namespace FS25RealFFB
             UpdateProfileLabel();
 
             flow.Controls.Add(Theme.Section("Forca", W));
+            flow.Controls.Add(Slider("Torque do volante (pico)", 10, 250, (int)Math.Round(settings.BaseNm * 10),
+                delegate(int v) { settings.BaseNm = v / 10.0; UpdateMaxSlider(); }, delegate(int v) { return (v / 10.0).ToString("0.0") + " Nm"; }));
             flow.Controls.Add(Slider("Forca maxima", 5, (int)(settings.BaseNm * 10), (int)(settings.MaxNm * 10),
                 delegate(int v) { settings.MaxNm = v / 10.0; }, delegate(int v) { return (v / 10.0).ToString("0.0") + " Nm"; }));
             flow.Controls.Add(Slider("Centragem / alinhamento", 0, 100, (int)(settings.Center * 100),
@@ -451,6 +453,32 @@ namespace FS25RealFFB
             UpdateProfileLabel();
         }
 
+        // Torque de pico conforme o volante detetado (so quando muda de volante; depois e o utilizador que manda).
+        private void ApplyDeviceTorque()
+        {
+            if (wheel == null || !wheel.IsOpen) return;
+            string id = wheel.OpenVid.ToString("X4") + ":" + wheel.OpenPid.ToString("X4");
+            if (settings.BaseDevice == id) return;
+            double nm = FfbDevice.KnownNm(wheel.OpenVid, wheel.OpenPid);
+            settings.BaseNm = nm > 0 ? nm : 3;
+            settings.BaseDevice = id;
+            SetSlider("Torque do volante (pico)", (int)Math.Round(settings.BaseNm * 10));
+            UpdateMaxSlider();
+            Log(nm > 0 ? string.Format(CultureInfo.InvariantCulture, "Volante {0}: torque de pico {1:0.0} Nm (ajuste em 'Torque do volante' se for diferente).", id, nm)
+                       : "Volante " + id + " desconhecido: torque assumido 3 Nm. Ajuste 'Torque do volante' ao valor do fabricante.");
+            try { settings.Save(); } catch { }
+        }
+
+        private void UpdateMaxSlider()
+        {
+            NoWheelTrackBar t;
+            if (!sliders.TryGetValue("Forca maxima", out t)) return;
+            int max = Math.Max(6, (int)Math.Round(settings.BaseNm * 10));
+            if (settings.MaxNm > settings.BaseNm) settings.MaxNm = settings.BaseNm;
+            t.Maximum = max;
+            if (t.Value > max) t.Value = max;
+        }
+
         private void SetSlider(string title, int value)
         {
             NoWheelTrackBar t;
@@ -543,6 +571,7 @@ namespace FS25RealFFB
                 else Log("HidHide nao encontrado: a gestao automatica fica desligada.");
             }
             device = OpenOutput();
+            ApplyDeviceTorque();
             if (!device.IsOpen) Log("A base nao abriu. Feche jogos/programas que usem o volante e reinicie a app.");
 
             for (int q = 1; q < 3; q++)

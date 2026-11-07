@@ -119,12 +119,12 @@ namespace RealFFBSetup
                     {
                         int pid;
                         if (Fanatec.GroupKey(d, out pid) != null) fanHidden++;
-                        else if (d.StartsWith("HID\\", StringComparison.OrdinalIgnoreCase) && !d.ToUpperInvariant().Contains("VID_0EB7")) otherHidden++;
+                        else if (d.StartsWith("HID\\", StringComparison.OrdinalIgnoreCase) && !Fanatec.IsWheelVendor(d)) otherHidden++;
                     }
-                    if (bases.Count == 0) r.Add(new Check("Fanatec", "AVISO", "nenhuma base ligada (ligue-a em modo PC)"));
-                    else r.Add(new Check("Fanatec", "OK", bases.Count + " base(s): " + Labels(bases)));
-                    r.Add(fanHidden > 0 ? new Check("Fanatec escondida do jogo", "OK", fanHidden + " entrada(s)") : new Check("Fanatec escondida do jogo", "ERRO", "nenhuma entrada Fanatec na lista do HidHide (use 'Configurar dispositivos')"));
-                    if (otherHidden > 0) r.Add(new Check("Outros controladores escondidos", "AVISO", otherHidden + " entrada(s) que nao sao Fanatec (configuradas por si ou por outro programa)"));
+                    if (bases.Count == 0) r.Add(new Check("Volante", "AVISO", "nenhum volante suportado ligado"));
+                    else r.Add(new Check("Volante", "OK", Labels(bases)));
+                    r.Add(fanHidden > 0 ? new Check("Volante escondido do jogo", "OK", fanHidden + " entrada(s)") : new Check("Volante escondido do jogo", "ERRO", "nenhuma entrada do volante na lista do HidHide (use 'Configurar dispositivos')"));
+                    if (otherHidden > 0) r.Add(new Check("Outros controladores escondidos", "AVISO", otherHidden + " entrada(s) que nao sao o volante (configuradas por si ou por outro programa)"));
                 }
                 catch (Exception ex) { r.Add(new Check("Driver HidHide", "ERRO", "nao responde: " + ex.Message + " (reinicie o Windows se acabou de o instalar)")); }
             }

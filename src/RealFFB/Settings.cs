@@ -8,7 +8,8 @@ namespace FS25RealFFB
 {
     internal sealed class Settings
     {
-        public double BaseNm = 8.0;        // torque maximo da base (CSL DD + Boost Kit)
+        public double BaseNm = 8.0;        // torque de pico do volante (definido pelo modelo detetado; ajustavel)
+        public string BaseDevice = "";    // VID:PID do volante a que BaseNm diz respeito
         public double MaxNm = 3.0;         // limite de seguranca da app
         public const int Version = 4;      // ao subir, as afinacoes antigas sao repostas
         public double Center = 0.45;
@@ -99,6 +100,8 @@ namespace FS25RealFFB
             CultureInfo c = CultureInfo.InvariantCulture;
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("SettingsVersion=" + Version);
+            sb.AppendLine("BaseNm=" + BaseNm.ToString(c));
+            sb.AppendLine("BaseDevice=" + BaseDevice);
             double[] tu = GlobalTuning ?? GetTuning();
             sb.AppendLine("MaxNm=" + tu[0].ToString(c));
             sb.AppendLine("Center=" + tu[1].ToString(c));
@@ -140,6 +143,8 @@ namespace FS25RealFFB
                     switch (k)
                     {
                         case "SettingsVersion": sawVersion = isNum && (int)d == Version; break;
+                        case "BaseNm": if (isNum) s.BaseNm = Math.Max(1, Math.Min(25, d)); break;
+                        case "BaseDevice": s.BaseDevice = v; break;
                         case "MaxNm": if (isNum) s.MaxNm = Math.Max(0.5, Math.Min(s.BaseNm, d)); break;
                         case "Center": if (isNum) s.Center = Clamp01(d); break;
                         case "Damping": if (isNum) s.Damping = Clamp01(d); break;
