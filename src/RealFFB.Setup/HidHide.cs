@@ -123,22 +123,49 @@ namespace RealFFBSetup
         public static List<GamingDevice> ParseGaming(string json)
         {
             List<GamingDevice> list = new List<GamingDevice>();
-            foreach (Match d in Regex.Matches(json, "\\{[^{}]*\"deviceInstancePath\"[^{}]*\\}", RegexOptions.Singleline))
+            // Objetos-folha (sem objetos dentro), ignorando chavetas dentro de strings:
+            // o HidHide escreve GUIDs como "{745A17A0-...}".
+            List<int> stack = new List<int>();
+            List<bool> hasChild = new List<bool>();
+            bool inStr = false;
+            for (int i = 0; i < json.Length; i++)
             {
-                GamingDevice g = new GamingDevice();
-                g.InstancePath = Field(d.Value, "deviceInstancePath");
-                g.ContainerPath = Field(d.Value, "baseContainerDeviceInstancePath");
-                g.Product = Field(d.Value, "product");
-                g.Vendor = Field(d.Value, "vendor");
-                g.FriendlyName = Field(d.Value, "friendlyName");
-                if (g.FriendlyName == null)
-                {   // nome do grupo (objeto pai), se existir antes deste objeto
-                    MatchCollection fn = Regex.Matches(json.Substring(0, d.Index), "\"friendlyName\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
-                    if (fn.Count > 0) g.FriendlyName = Unescape(fn[fn.Count - 1].Groups[1].Value);
+                char c = json[i];
+                if (inStr)
+                {
+                    if (c == '\\') i++;
+                    else if (c == '"') inStr = false;
+                    continue;
                 }
-                Match vp = Regex.Match(g.InstancePath ?? "", "VID_([0-9A-Fa-f]{4})&PID_([0-9A-Fa-f]{4})");
-                if (vp.Success) { g.Vid = Convert.ToInt32(vp.Groups[1].Value, 16); g.Pid = Convert.ToInt32(vp.Groups[2].Value, 16); }
-                if (!string.IsNullOrEmpty(g.InstancePath)) list.Add(g);
+                if (c == '"') inStr = true;
+                else if (c == '{')
+                {
+                    if (hasChild.Count > 0) hasChild[hasChild.Count - 1] = true;
+                    stack.Add(i); hasChild.Add(false);
+                }
+                else if (c == '}' && stack.Count > 0)
+                {
+                    int start = stack[stack.Count - 1];
+                    bool child = hasChild[hasChild.Count - 1];
+                    stack.RemoveAt(stack.Count - 1); hasChild.RemoveAt(hasChild.Count - 1);
+                    if (child) continue;
+                    string obj = json.Substring(start, i - start + 1);
+                    GamingDevice g = new GamingDevice();
+                    g.InstancePath = Field(obj, "deviceInstancePath");
+                    if (string.IsNullOrEmpty(g.InstancePath)) continue;
+                    g.ContainerPath = Field(obj, "baseContainerDeviceInstancePath");
+                    g.Product = Field(obj, "product");
+                    g.Vendor = Field(obj, "vendor");
+                    g.FriendlyName = Field(obj, "friendlyName");
+                    if (g.FriendlyName == null)
+                    {   // nome do grupo (objeto pai), antes deste objeto
+                        MatchCollection fn = Regex.Matches(json.Substring(0, start), "\"friendlyName\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
+                        if (fn.Count > 0) g.FriendlyName = Unescape(fn[fn.Count - 1].Groups[1].Value);
+                    }
+                    Match vp = Regex.Match(g.InstancePath, "VID_([0-9A-Fa-f]{4})&PID_([0-9A-Fa-f]{4})");
+                    if (vp.Success) { g.Vid = Convert.ToInt32(vp.Groups[1].Value, 16); g.Pid = Convert.ToInt32(vp.Groups[2].Value, 16); }
+                    list.Add(g);
+                }
             }
             return list;
         }

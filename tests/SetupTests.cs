@@ -100,6 +100,23 @@ namespace RealFFBSetupTests
             Eq("json: contentor", @"USB\VID_0EB7&PID_0020\SERIAL1", pj.Count > 0 ? pj[0].ContainerPath : null);
             Eq("json: nome do grupo", "FANATEC Wheel", pj.Count > 0 ? pj[0].FriendlyName : null);
 
+
+            // formato real do HidHideCLI 1.7 (GUIDs entre chavetas dentro de strings, 3 coleccoes)
+            string real = " [ { \"friendlyName\" : \"Fanatec Wheel\" , \"devices\" : [\n" +
+                Obj("HID\\\\VID_0EB7&PID_0020&Col01\\\\7&1a020f5&0&0000", "USB\\\\VID_0EB7&PID_0020\\\\6&2349&0&2") + " ,\n" +
+                Obj("HID\\\\VID_0EB7&PID_0020&Col02\\\\7&1a020f5&0&0001", "USB\\\\VID_0EB7&PID_0020\\\\6&2349&0&2") + " ,\n" +
+                Obj("HID\\\\VID_0EB7&PID_0020&Col03\\\\7&1a020f5&0&0002", "USB\\\\VID_0EB7&PID_0020\\\\6&2349&0&2") + " ] } ,\n" +
+                "{ \"friendlyName\" : \"Thrustmaster T.A320 Pilot\" , \"devices\" : [\n" +
+                Obj("HID\\\\VID_044F&PID_0405\\\\9&e7c901f&0&0000", "USB\\\\VID_044F&PID_0405\\\\1") + " ] } ] ";
+            List<HidHide.GamingDevice> rg = HidHide.ParseGaming(real);
+            Eq("json real: 4 dispositivos", 4, rg.Count);
+            List<FanatecBase> wmi = Fanatec.Group(new List<string>(new string[] {
+                @"HID\VID_0EB7&PID_0020&COL03\7&1A020F5&0&0002", @"HID\VID_0EB7&PID_0020&COL02\7&1A020F5&0&0001", @"HID\VID_0EB7&PID_0020&COL01\7&1A020F5&0&0000" }), null);
+            Eq("json real: WMI 1 base", 1, wmi.Count);
+            List<string> rp = wmi.Count == 1 ? Config.PathsFor(wmi[0], rg) : new List<string>();
+            Eq("json real: 3 coleccoes + contentor", 4, rp.Count);
+            Eq("json real: Thrustmaster fora", false, string.Join("|", rp.ToArray()).Contains("044F"));
+
             // --- anonimizacao
             string user = Environment.UserName;
             Eq("anon: sem nome de utilizador", false, Diagnostics.Anon(@"C:\Users\" + user + @"\x").Contains(user) && user.Length > 2);
@@ -107,6 +124,12 @@ namespace RealFFBSetupTests
             Console.WriteLine();
             Console.WriteLine(runs + " testes, " + fails + " falhas");
             return fails == 0 ? 0 : 1;
+        }
+
+        private static string Obj(string inst, string cont)
+        {
+            return "{ \"present\" : true ,\n\"symbolicLink\" : \"\\\\\\\\?\\\\hid#x#{4d1e55b2-f16f-11cf-88cb-001111000030}\" ,\n\"vendor\" : \"V\" ,\n\"product\" : \"P\" ,\n" +
+                "\"deviceInstancePath\" : \"" + inst + "\" ,\n\"baseContainerDeviceInstancePath\" : \"" + cont + "\" ,\n\"baseContainerClassGuid\" : \"{745A17A0-74D3-11D0-B6FE-00A0C90F57DA}\" ,\n\"baseContainerDeviceCount\" : 3 }";
         }
 
         private static HidHide.GamingDevice Dev(string inst, string cont)
