@@ -1,11 +1,13 @@
-# Publica uma versao: git tag v1.0.0 && git push origin v1.0.0
+# Publica uma versao: enviar o commit para o ramo 'lancamento' (ou Actions > release > Run workflow).
+# A etiqueta vX.Y.Z (igual ao ficheiro VERSION) e criada pelo proprio GitHub.
 # Cria um rascunho de Release com o instalador e o SHA256SUMS.txt. O rascunho so fica publico
 # quando o autor o publica manualmente no GitHub (revisao humana antes de cada versao).
 name: release
 
 on:
   push:
-    tags: ['v*']
+    branches: [lancamento]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,12 +17,6 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Tag igual ao ficheiro VERSION
-        shell: pwsh
-        run: |
-          $v = (Get-Content VERSION -Raw).Trim()
-          if ("v$v" -ne "${{ github.ref_name }}") { throw "Tag ${{ github.ref_name }} diferente de VERSION ($v)" }
 
       - name: Inno Setup
         shell: pwsh
@@ -72,5 +68,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $v = (Get-Content VERSION -Raw).Trim()
-          gh release create "${{ github.ref_name }}" --draft --title "FS25 RealFFB $v" --notes-file notes.md `
+          gh release create "v$v" --target "${{ github.sha }}" --draft --title "FS25 RealFFB $v" --notes-file notes.md `
             "dist\FS25_RealFFB_Setup_$v.exe" "dist\FS25_RealFFB_Compilar_no_PC_$v.zip" "dist\SHA256SUMS.txt"
