@@ -35,6 +35,14 @@ jobs:
       # Assinatura gratuita (SignPath Foundation): ver docs/ASSINATURA.md. Enquanto nao estiver
       # aprovada, o instalador sai SEM assinatura e as notas da versao dizem-no.
 
+      - name: Pacote para compilar no PC (instalar.bat)
+        shell: pwsh
+        run: |
+          $v = (Get-Content VERSION -Raw).Trim()
+          git archive --format=zip -o "dist\FS25_RealFFB_Compilar_no_PC_$v.zip" HEAD
+          $h = (Get-FileHash "dist\FS25_RealFFB_Compilar_no_PC_$v.zip" -Algorithm SHA256).Hash.ToLower()
+          Add-Content dist\SHA256SUMS.txt "$h  FS25_RealFFB_Compilar_no_PC_$v.zip"
+
       - name: Notas da versao
         shell: pwsh
         run: |
@@ -52,7 +60,9 @@ jobs:
           No PowerShell: ``Get-FileHash .\FS25_RealFFB_Setup_$v.exe -Algorithm SHA256`` - o valor tem de ser igual ao de cima.
           Guia: docs/INSTALACAO.md
 
-          > O instalador **nao tem assinatura digital** (ver docs/ASSINATURA.md). O Windows SmartScreen pode mostrar "O Windows protegeu o PC": "Mais informacoes" > "Executar assim mesmo", depois de confirmar o SHA-256.
+          ### Qual descarregar
+          - **FS25_RealFFB_Setup_$v.exe** - instalador normal. Ainda **nao tem assinatura digital** (ver docs/ASSINATURA.md): o SmartScreen pode mostrar "O Windows protegeu o PC" > "Mais informacoes" > "Executar assim mesmo". Com o **Smart App Control ligado** o Windows bloqueia-o.
+          - **FS25_RealFFB_Compilar_no_PC_$v.zip** - para PCs com Smart App Control ligado: extraia e de dois cliques em ``instalar.bat``. Compila no seu PC com o compilador do proprio Windows (nao instala nada) e abre o mesmo instalador.
           "@
           Set-Content -Path notes.md -Value $body -Encoding utf8
 
@@ -63,4 +73,4 @@ jobs:
         run: |
           $v = (Get-Content VERSION -Raw).Trim()
           gh release create "${{ github.ref_name }}" --draft --title "FS25 RealFFB $v" --notes-file notes.md `
-            "dist\FS25_RealFFB_Setup_$v.exe" "dist\SHA256SUMS.txt"
+            "dist\FS25_RealFFB_Setup_$v.exe" "dist\FS25_RealFFB_Compilar_no_PC_$v.zip" "dist\SHA256SUMS.txt"
