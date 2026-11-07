@@ -1,6 +1,8 @@
 # Histórico de versões
 
-## [1.0.0] - 2026-11-07
+## [0.5.0] - 2026-11-07 (beta)
+Primeira versão pública, em teste.
+
 - Primeiro instalador oficial (Inno Setup): verificação do sistema, deteção do FS25 em todas as bibliotecas Steam, deteção da Fanatec, instalação do HidHide oficial com verificação de assinatura, configuração do HidHide só para a base escolhida, ajuste do `game.xml` com cópia de segurança, verificação final.
 - Desinstalação pelas Definições do Windows: repõe o HidHide e o `game.xml` como estavam; o HidHide não é desinstalado; perfis mantidos se o utilizador quiser.
 - Definições passam para `%APPDATA%\FS25 RealFFB` (sobrevivem a atualizações).
