@@ -99,6 +99,12 @@ namespace FS25RealFFB
         private bool pinned;
         private Rectangle normalBounds;
         private double lastLiveMs;
+        private readonly System.Collections.Generic.Dictionary<string, NoWheelTrackBar> sliders = new System.Collections.Generic.Dictionary<string, NoWheelTrackBar>();
+        private bool loadingProfile, profileDirty;
+        private string profileVehicle = "";
+        private double lastProfileSaveMs;
+        private Label profileLabel;
+        private CheckBox perVehBox;
 
         public MainForm()
         {
@@ -186,6 +192,17 @@ namespace FS25RealFFB
             updateBtn.Click += delegate { InstallUpdate(); };
             flow.Controls.Add(updateBtn);
 
+            flow.Controls.Add(Theme.Section("Perfil do veiculo", W));
+            perVehBox = Theme.Check("Afinacoes proprias para cada veiculo", settings.PerVehicle, W);
+            perVehBox.CheckedChanged += delegate { TogglePerVehicle(); };
+            flow.Controls.Add(perVehBox);
+            profileLabel = new Label(); profileLabel.Width = W; profileLabel.Height = 38; profileLabel.ForeColor = Theme.Muted;
+            flow.Controls.Add(profileLabel);
+            Button profDel = Theme.Btn("Apagar o perfil deste veiculo (volta ao padrao)", W, 30, false);
+            profDel.Click += delegate { DeleteProfile(); };
+            flow.Controls.Add(profDel);
+            UpdateProfileLabel();
+
             flow.Controls.Add(Theme.Section("Forca", W));
             flow.Controls.Add(Slider("Forca maxima", 5, (int)(settings.BaseNm * 10), (int)(settings.MaxNm * 10),
                 delegate(int v) { settings.MaxNm = v / 10.0; }, delegate(int v) { return (v / 10.0).ToString("0.0") + " Nm"; }));
@@ -206,7 +223,7 @@ namespace FS25RealFFB
             flow.Controls.Add(Slider("Vibracao do motor", 0, 100, (int)(settings.Engine * 100),
                 delegate(int v) { settings.Engine = v / 100.0; }, Pct));
             invertBox = Theme.Check("Inverter sentido das pancadas", settings.InvertBumps, W);
-            invertBox.CheckedChanged += delegate { settings.InvertBumps = invertBox.Checked; };
+            invertBox.CheckedChanged += delegate { settings.InvertBumps = invertBox.Checked; if (!loadingProfile) TuningChanged(); };
             flow.Controls.Add(invertBox);
 
             flow.Controls.Add(Theme.Section("Direcao e pedais", W));
@@ -280,7 +297,7 @@ namespace FS25RealFFB
             save.Margin = new Padding(0, 12, 0, 4);
             save.Click += delegate
             {
-                try { settings.Save(); Log("Configuracao guardada."); }
+                try { FlushProfile(); settings.Save(); Log("Configuracao guardada."); }
                 catch (Exception ex) { Log("Erro ao guardar: " + ex.Message); }
             };
             flow.Controls.Add(save);
@@ -385,6 +402,97 @@ namespace FS25RealFFB
             Log(pinned ? "Janela fixada no topo (modo compacto)." : "Janela normal.");
         }
 
+        // ------------------------------------------------------------------ perfis por veiculo
+        private bool ProfileActive { get { return settings.PerVehicle && profileVehicle.Length > 0; } }
+
+        private void TuningChanged()
+        {
+            if (ProfileActive) { profileDirty = true; UpdateProfileLabel(); }
+        }
+
+        private void FlushProfile()
+        {
+            if (!profileDirty || !ProfileActive) { profileDirty = false; return; }
+            profileDirty = false;
+            try { VehicleProfiles.Save(profileVehicle, settings.GetTuning()); }
+            catch (Exception ex) { Log("Perfil: erro ao guardar (" + ex.Message + ")"); }
+            UpdateProfileLabel();
+        }
+
+        private void SwitchVehicle(string vehicle)
+        {
+            FlushProfile();
+            profileVehicle = vehicle;
+            if (!settings.PerVehicle) { UpdateProfileLabel(); return; }
+            if (settings.GlobalTuning == null) settings.GlobalTuning = settings.GetTuning();
+            bool own = VehicleProfiles.Exists(vehicle);
+            double[] t = own ? VehicleProfiles.Load(vehicle, settings.GlobalTuning) : null;
+            ApplyTuning(t ?? settings.GlobalTuning);
+            Log("Perfil: " + vehicle + (own && t != null ? " (afinacoes proprias)" : " (padrao)"));
+        }
+
+        private void ApplyTuning(double[] t)
+        {
+            loadingProfile = true;
+            try
+            {
+                settings.SetTuning(t);
+                SetSlider("Forca maxima", (int)Math.Round(settings.MaxNm * 10));
+                SetSlider("Centragem / alinhamento", (int)Math.Round(settings.Center * 100));
+                SetSlider("Amortecimento", (int)Math.Round(settings.Damping * 100));
+                SetSlider("Peso parado (atrito)", (int)Math.Round(settings.Friction * 100));
+                SetSlider("Velocidade de referencia", (int)Math.Round(settings.RefSpeedKmh));
+                SetSlider("Pancadas da suspensao", (int)Math.Round(settings.Bumps * 100));
+                SetSlider("Textura do terreno", (int)Math.Round(settings.Texture * 100));
+                SetSlider("Vibracao do motor", (int)Math.Round(settings.Engine * 100));
+                invertBox.Checked = settings.InvertBumps;
+            }
+            finally { loadingProfile = false; }
+            UpdateProfileLabel();
+        }
+
+        private void SetSlider(string title, int value)
+        {
+            NoWheelTrackBar t;
+            if (!sliders.TryGetValue(title, out t)) return;
+            t.Value = Math.Max(t.Minimum, Math.Min(t.Maximum, value));
+        }
+
+        private void TogglePerVehicle()
+        {
+            FlushProfile();
+            settings.PerVehicle = perVehBox.Checked;
+            if (!settings.PerVehicle)
+            {
+                if (settings.GlobalTuning != null) { double[] g = settings.GlobalTuning; settings.GlobalTuning = null; ApplyTuning(g); }
+            }
+            else if (profileVehicle.Length > 0)
+            {
+                string v = profileVehicle; profileVehicle = ""; SwitchVehicle(v);
+            }
+            try { settings.Save(); } catch { }
+            UpdateProfileLabel();
+        }
+
+        private void DeleteProfile()
+        {
+            if (!ProfileActive) { Log("Perfil: nenhum veiculo ativo."); return; }
+            profileDirty = false;
+            VehicleProfiles.Delete(profileVehicle);
+            ApplyTuning(settings.GlobalTuning ?? settings.GetTuning());
+            Log("Perfil de " + profileVehicle + " apagado: usa as afinacoes padrao.");
+        }
+
+        private void UpdateProfileLabel()
+        {
+            if (profileLabel == null) return;
+            if (!settings.PerVehicle) profileLabel.Text = "Desligado: as mesmas afinacoes para todos os veiculos.";
+            else if (profileVehicle.Length == 0) profileLabel.Text = "Sem veiculo no jogo: as alteracoes mudam o padrao. " + VehicleProfiles.Count() + " perfil(is) guardado(s).";
+            else if (VehicleProfiles.Exists(profileVehicle) || profileDirty) profileLabel.Text = profileVehicle + ": afinacoes proprias (guardadas sozinhas).";
+            else profileLabel.Text = profileVehicle + ": usa o padrao. Mexa num controlo para criar o perfil deste veiculo.";
+            profileLabel.ForeColor = ProfileActive ? Theme.Yellow : Theme.Muted;
+        }
+
         private delegate void IntAction(int v);
         private delegate string IntFormat(int v);
 
@@ -402,7 +510,8 @@ namespace FS25RealFFB
             t.LargeChange = Math.Max(1, (max - min) / 20);
             l.Text = title;
             v.Text = fmt(t.Value);
-            t.ValueChanged += delegate { onChange(t.Value); v.Text = fmt(t.Value); };
+            t.ValueChanged += delegate { onChange(t.Value); v.Text = fmt(t.Value); if (!loadingProfile) TuningChanged(); };
+            sliders[title] = t;
             p.Controls.Add(l); p.Controls.Add(v); p.Controls.Add(t);
             return p;
         }
@@ -596,6 +705,8 @@ namespace FS25RealFFB
             }
 
             if (now - lastLiveMs >= 33) { lastLiveMs = now; UpdateLive(f); }
+            if (f != null && f.Active && telemetry.Connected && !string.IsNullOrEmpty(f.Vehicle) && f.Vehicle != profileVehicle) SwitchVehicle(f.Vehicle);
+            if (profileDirty && now - lastProfileSaveMs > 1000) { lastProfileSaveMs = now; FlushProfile(); }
 
             if (now - hzStartMs >= 1000)
             {
@@ -776,6 +887,7 @@ namespace FS25RealFFB
 
         private void Shutdown()
         {
+            try { FlushProfile(); } catch { }
             if (loopTimer != null) loopTimer.Stop();
             if (telemetry != null) telemetry.Stop();
             if (bridge != null) { bridge.Publish(false, 0, 0, 0, 0); bridge.Stop(); }
