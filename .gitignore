@@ -1,0 +1,8 @@
+*.exe
+*.tmp
+*_log.txt
+build_log.txt
+RealFFB.ini
+RealFFB_comandos.txt
+RealFFB_crash.txt
+TesteA_resultado.txt
