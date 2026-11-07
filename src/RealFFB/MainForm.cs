@@ -90,65 +90,103 @@ namespace FS25RealFFB
             try { MessageBox.Show(text, "FS25 Real FFB - erro"); } catch { }
         }
 
+        private const int W = 360;           // largura dos controlos do painel de definicoes
+        private LiveView live;
+        private StatusChip chipBase, chipTel, chipBridge;
+        private Panel leftPanel, rightPanel;
+        private Button pinBtn;
+        private Control chipsBox;
+        private bool pinned;
+        private Rectangle normalBounds;
+        private double lastLiveMs;
+
         public MainForm()
         {
             Text = "FS25 RealFFB  v" + AppInfo.Version;
             try { Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
-            Width = 1100; Height = 720;
+            Width = 1180; Height = 780;
+            MinimumSize = new Size(640, 400);
             StartPosition = FormStartPosition.CenterScreen;
             KeyPreview = true;
-            BackColor = Color.FromArgb(24, 24, 24);
-            ForeColor = Color.Gainsboro;
-            Font = new Font("Segoe UI", 9.5f);
+            BackColor = Theme.Bg;
+            ForeColor = Theme.Text;
+            Font = Theme.UI(9.5f);
 
-            Panel left = new Panel();
-            left.Dock = DockStyle.Left; left.Width = 380; left.Padding = new Padding(12); left.AutoScroll = true;
+            // ---------------------------------------------------------- cabecalho
+            Panel header = new Panel();
+            header.Dock = DockStyle.Top; header.Height = 78; header.BackColor = Theme.Bg;
+            Panel accent = new Panel();
+            accent.Dock = DockStyle.Top; accent.Height = 2; accent.BackColor = Theme.Yellow;
+
+            PictureBox logo = new PictureBox();
+            logo.Image = Theme.Logo(); logo.SizeMode = PictureBoxSizeMode.Zoom;
+            logo.SetBounds(12, 6, 96, 66);
+            header.Controls.Add(logo);
+
+            Label title = new Label();
+            title.Text = "FS25 RealFFB"; title.Font = Theme.Bold(17f); title.ForeColor = Theme.Text;
+            title.AutoSize = true; title.Location = new Point(114, 10);
+            header.Controls.Add(title);
+            Label sub = new Label();
+            sub.Text = "by OptimusZuka   |   v" + AppInfo.Version; sub.Font = Theme.UI(9f); sub.ForeColor = Theme.Yellow;
+            sub.AutoSize = true; sub.Location = new Point(117, 46);
+            header.Controls.Add(sub);
+
+            FlowLayoutPanel chips = new FlowLayoutPanel();
+            chips.FlowDirection = FlowDirection.TopDown; chips.WrapContents = false;
+            chips.SetBounds(330, 6, 170, 70); chips.BackColor = Theme.Bg;
+            chipBase = new StatusChip("Base"); chipTel = new StatusChip("Telemetria"); chipBridge = new StatusChip("Ponte");
+            chipBase.Margin = chipTel.Margin = chipBridge.Margin = new Padding(0);
+            chipBase.Height = chipTel.Height = chipBridge.Height = 22; chipBase.Width = chipTel.Width = chipBridge.Width = 170;
+            chips.Controls.Add(chipBase); chips.Controls.Add(chipTel); chips.Controls.Add(chipBridge);
+            header.Controls.Add(chips);
+            chipsBox = chips;
+
+            FlowLayoutPanel actions = new FlowLayoutPanel();
+            actions.Dock = DockStyle.Right; actions.Width = 470; actions.FlowDirection = FlowDirection.RightToLeft;
+            actions.WrapContents = false; actions.Padding = new Padding(0, 18, 12, 0); actions.BackColor = Theme.Bg;
+
+            Button stop = Theme.Btn("PARAR (Esc)", 120, 40, false);
+            stop.BackColor = Color.FromArgb(180, 28, 28); stop.FlatAppearance.BorderColor = Color.FromArgb(180, 28, 28);
+            stop.FlatAppearance.MouseOverBackColor = Color.FromArgb(210, 40, 40);
+            stop.Margin = new Padding(8, 0, 0, 0);
+            stop.Click += delegate { Panic("botao PARAR"); };
+
+            enableBox = new CheckBox();
+            enableBox.Appearance = Appearance.Button; enableBox.FlatStyle = FlatStyle.Flat;
+            enableBox.Width = 140; enableBox.Height = 40; enableBox.TextAlign = ContentAlignment.MiddleCenter;
+            enableBox.Font = Theme.Bold(10.5f); enableBox.Cursor = Cursors.Hand;
+            enableBox.Margin = new Padding(8, 0, 0, 0);
+            StyleToggle();
+            enableBox.CheckedChanged += delegate { StyleToggle(); Log(enableBox.Checked ? "FFB ligado." : "FFB desligado."); };
+
+            pinBtn = Theme.Btn("Fixar no topo", 120, 40, false);
+            pinBtn.Margin = new Padding(8, 0, 0, 0);
+            pinBtn.Click += delegate { TogglePin(); };
+
+            Button play = Theme.Btn("Abrir FS25", 80, 40, false);
+            play.Margin = new Padding(8, 0, 0, 0);
+            play.Click += delegate { LaunchGame(); };
+
+            actions.Controls.Add(stop); actions.Controls.Add(enableBox); actions.Controls.Add(pinBtn); actions.Controls.Add(play);
+            header.Controls.Add(actions);
+
+            // ---------------------------------------------------------- definicoes (coluna esquerda)
+            leftPanel = new Panel();
+            leftPanel.Dock = DockStyle.Left; leftPanel.Width = W + 44; leftPanel.BackColor = Theme.Panel;
+            Panel sep = new Panel(); sep.Dock = DockStyle.Left; sep.Width = 1; sep.BackColor = Theme.Line;
 
             FlowLayoutPanel flow = new FlowLayoutPanel();
             flow.FlowDirection = FlowDirection.TopDown; flow.WrapContents = false;
             flow.Dock = DockStyle.Fill; flow.AutoScroll = true;
+            flow.Padding = new Padding(16, 4, 8, 16); flow.BackColor = Theme.Panel;
 
-            enableBox = new CheckBox();
-            enableBox.Text = "FFB ativo"; enableBox.AutoSize = true;
-            enableBox.Font = new Font("Segoe UI", 12f, FontStyle.Bold);
-            enableBox.ForeColor = Color.FromArgb(245, 197, 24);
-            enableBox.CheckedChanged += delegate { Log(enableBox.Checked ? "FFB ligado." : "FFB desligado."); };
-
-            Button stop = new Button();
-            stop.Text = "PARAR  (Esc)"; stop.Width = 340; stop.Height = 38;
-            stop.BackColor = Color.FromArgb(190, 30, 30); stop.ForeColor = Color.White;
-            stop.FlatStyle = FlatStyle.Flat; stop.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
-            stop.Click += delegate { Panic("botao PARAR"); };
-
-            flow.Controls.Add(enableBox);
-
-            Button play = new Button();
-            play.Text = "Abrir o Farming Simulator 25"; play.Width = 340; play.Height = 32; play.FlatStyle = FlatStyle.Flat;
-            play.Click += delegate { LaunchGame(); };
-            flow.Controls.Add(play);
-
-            updateBtn = new Button();
-            updateBtn.Width = 340; updateBtn.Height = 34; updateBtn.FlatStyle = FlatStyle.Flat; updateBtn.Visible = false;
-            updateBtn.BackColor = Color.FromArgb(245, 197, 24); updateBtn.ForeColor = Color.Black;
+            updateBtn = Theme.Btn("", W, 36, true);
+            updateBtn.Visible = false;
             updateBtn.Click += delegate { InstallUpdate(); };
             flow.Controls.Add(updateBtn);
 
-            Button diag = new Button();
-            diag.Text = "Gerar relatorio de diagnostico"; diag.Width = 340; diag.Height = 30; diag.FlatStyle = FlatStyle.Flat;
-            diag.Click += delegate { RunDiagnostics(); };
-            flow.Controls.Add(diag);
-
-            Button lnk = new Button();
-            lnk.Text = "Criar atalho no ambiente de trabalho"; lnk.Width = 340; lnk.Height = 30; lnk.FlatStyle = FlatStyle.Flat;
-            lnk.Click += delegate { CreateShortcut(); };
-            flow.Controls.Add(lnk);
-
-            CheckBox autoFfb = new CheckBox();
-            autoFfb.Text = "Ligar o FFB automaticamente ao abrir a app"; autoFfb.AutoSize = true;
-            autoFfb.Checked = settings.AutoFfb;
-            autoFfb.CheckedChanged += delegate { settings.AutoFfb = autoFfb.Checked; try { settings.Save(); } catch { } };
-            flow.Controls.Add(autoFfb);
-            flow.Controls.Add(stop);
+            flow.Controls.Add(Theme.Section("Forca", W));
             flow.Controls.Add(Slider("Forca maxima", 5, (int)(settings.BaseNm * 10), (int)(settings.MaxNm * 10),
                 delegate(int v) { settings.MaxNm = v / 10.0; }, delegate(int v) { return (v / 10.0).ToString("0.0") + " Nm"; }));
             flow.Controls.Add(Slider("Centragem / alinhamento", 0, 100, (int)(settings.Center * 100),
@@ -157,97 +195,76 @@ namespace FS25RealFFB
                 delegate(int v) { settings.Damping = v / 100.0; }, Pct));
             flow.Controls.Add(Slider("Peso parado (atrito)", 0, 100, (int)(settings.Friction * 100),
                 delegate(int v) { settings.Friction = v / 100.0; }, Pct));
+            flow.Controls.Add(Slider("Velocidade de referencia", 5, 80, (int)settings.RefSpeedKmh,
+                delegate(int v) { settings.RefSpeedKmh = v; }, delegate(int v) { return v + " km/h"; }));
+
+            flow.Controls.Add(Theme.Section("Terreno e motor", W));
             flow.Controls.Add(Slider("Pancadas da suspensao", 0, 100, (int)(settings.Bumps * 100),
                 delegate(int v) { settings.Bumps = v / 100.0; }, Pct));
             flow.Controls.Add(Slider("Textura do terreno", 0, 100, (int)(settings.Texture * 100),
                 delegate(int v) { settings.Texture = v / 100.0; }, Pct));
             flow.Controls.Add(Slider("Vibracao do motor", 0, 100, (int)(settings.Engine * 100),
                 delegate(int v) { settings.Engine = v / 100.0; }, Pct));
-            flow.Controls.Add(Slider("Velocidade de referencia", 5, 80, (int)settings.RefSpeedKmh,
-                delegate(int v) { settings.RefSpeedKmh = v; }, delegate(int v) { return v + " km/h"; }));
-
-            invertBox = new CheckBox();
-            invertBox.Text = "Inverter sentido das pancadas"; invertBox.AutoSize = true;
-            invertBox.Checked = settings.InvertBumps;
+            invertBox = Theme.Check("Inverter sentido das pancadas", settings.InvertBumps, W);
             invertBox.CheckedChanged += delegate { settings.InvertBumps = invertBox.Checked; };
             flow.Controls.Add(invertBox);
 
-            CheckBox altBox = new CheckBox();
-            altBox.Text = "Usar a 2.a interface da base"; altBox.AutoSize = true;
-            altBox.Checked = settings.AltInterface;
-            altBox.CheckedChanged += delegate { settings.AltInterface = altBox.Checked; Log("Interface da base: " + (altBox.Checked ? "2" : "1")); };
-            flow.Controls.Add(altBox);
-
-            Label sect = new Label();
-            sect.Text = "Direcao e pedais (ponte para o jogo)"; sect.AutoSize = true;
-            sect.Font = new Font("Segoe UI", 10f, FontStyle.Bold); sect.Padding = new Padding(0, 10, 0, 2);
-            flow.Controls.Add(sect);
-
-            CheckBox bridgeBox = new CheckBox();
-            bridgeBox.Text = "Enviar volante e pedais ao FS25"; bridgeBox.AutoSize = true;
-            bridgeBox.Checked = settings.BridgeOn;
+            flow.Controls.Add(Theme.Section("Direcao e pedais", W));
+            CheckBox bridgeBox = Theme.Check("Enviar volante e pedais ao FS25", settings.BridgeOn, W);
             bridgeBox.CheckedChanged += delegate { settings.BridgeOn = bridgeBox.Checked; };
             flow.Controls.Add(bridgeBox);
-
             flow.Controls.Add(Slider("Sensibilidade da direcao", 50, 400, (int)(settings.SteerSens * 100),
                 delegate(int v) { settings.SteerSens = v / 100.0; }, Pct));
-
-            CheckBox steerInv = new CheckBox();
-            steerInv.Text = "Inverter direcao"; steerInv.AutoSize = true;
-            steerInv.Checked = settings.SteerInvert;
+            CheckBox steerInv = Theme.Check("Inverter direcao", settings.SteerInvert, W);
             steerInv.CheckedChanged += delegate { settings.SteerInvert = steerInv.Checked; };
             flow.Controls.Add(steerInv);
-
             for (int i = 0; i < 3; i++)
             {
                 int idx = i;
                 FlowLayoutPanel row = new FlowLayoutPanel();
-                row.FlowDirection = FlowDirection.LeftToRight; row.Width = 340; row.Height = 34; row.WrapContents = false;
-                Button det = new Button();
-                det.Text = "Detetar " + PedalNames[i]; det.Width = 150; det.Height = 28; det.FlatStyle = FlatStyle.Flat;
+                row.FlowDirection = FlowDirection.LeftToRight; row.Width = W; row.Height = 38; row.WrapContents = false;
+                row.Margin = new Padding(0);
+                Button det = Theme.Btn("Detetar " + PedalNames[i], 170, 30, false);
                 det.Click += delegate { StartDetect(idx); };
-                Label lab = new Label(); lab.AutoSize = true; lab.Padding = new Padding(4, 7, 0, 0);
+                Label lab = new Label(); lab.AutoSize = true; lab.Padding = new Padding(8, 10, 0, 0); lab.ForeColor = Theme.Muted;
                 pedalLabels[i] = lab;
                 row.Controls.Add(det); row.Controls.Add(lab);
                 flow.Controls.Add(row);
             }
             UpdatePedalLabels();
 
-            Label sectB = new Label();
-            sectB.Text = "Comandos -> teclas (ButtonBox, TCA, A320, aro)"; sectB.AutoSize = true;
-            sectB.Font = new Font("Segoe UI", 10f, FontStyle.Bold); sectB.Padding = new Padding(0, 10, 0, 2);
-            flow.Controls.Add(sectB);
+            flow.Controls.Add(Theme.Section("Comandos -> teclas (opcional)", W));
             Label hint = new Label();
-            hint.Text = "Adicionar -> carregue no botao do comando -> carregue na tecla que o FS25 usa para essa funcao.";
-            hint.Width = 340; hint.Height = 34;
+            hint.Text = "So e preciso sem HidHide. Adicionar -> carregue no botao do comando -> carregue na tecla do FS25.";
+            hint.Width = W; hint.Height = 36; hint.ForeColor = Theme.Muted;
             flow.Controls.Add(hint);
-            CheckBox keysBox = new CheckBox();
-            keysBox.Text = "Ativar (desligado com HidHide: o FS25 le os comandos)"; keysBox.AutoSize = true;
-            keysBox.Checked = settings.KeysOn;
+            CheckBox keysBox = Theme.Check("Ativar traducao de botoes em teclas", settings.KeysOn, W);
             keysBox.CheckedChanged += delegate { settings.KeysOn = keysBox.Checked; if (mapper != null && !keysBox.Checked) mapper.ReleaseAll(); try { settings.Save(); } catch { } };
             flow.Controls.Add(keysBox);
             FlowLayoutPanel brow = new FlowLayoutPanel();
-            brow.FlowDirection = FlowDirection.LeftToRight; brow.Width = 340; brow.Height = 34; brow.WrapContents = false;
-            Button addB = new Button(); addB.Text = "Adicionar botao"; addB.Width = 160; addB.Height = 28; addB.FlatStyle = FlatStyle.Flat;
+            brow.FlowDirection = FlowDirection.LeftToRight; brow.Width = W; brow.Height = 38; brow.WrapContents = false; brow.Margin = new Padding(0);
+            Button addB = Theme.Btn("Adicionar botao", 176, 30, false);
+            addB.Margin = new Padding(0, 3, 8, 3);
             addB.Click += delegate { if (mapper != null) mapper.StartLearn(); };
-            Button delB = new Button(); delB.Text = "Remover selecionado"; delB.Width = 170; delB.Height = 28; delB.FlatStyle = FlatStyle.Flat;
+            Button delB = Theme.Btn("Remover selecionado", 176, 30, false);
             delB.Click += delegate
             {
                 if (mapper != null && mapList.SelectedItem != null) { mapper.Remove(mapList.SelectedItem as ButtonMapper.Mapping); RefreshMappings(); }
             };
             brow.Controls.Add(addB); brow.Controls.Add(delB);
             flow.Controls.Add(brow);
-            Button impB = new Button(); impB.Text = "Importar tudo do FS25 (inputBinding.xml)"; impB.Width = 340; impB.Height = 30; impB.FlatStyle = FlatStyle.Flat;
+            Button impB = Theme.Btn("Importar tudo do FS25 (inputBinding.xml)", W, 30, false);
             impB.Click += delegate { if (mapper != null) { mapper.ImportFromGame(); RefreshMappings(); } };
             flow.Controls.Add(impB);
-            mapList = new ListBox(); mapList.Width = 340; mapList.Height = 140;
-            mapList.BackColor = Color.FromArgb(16, 16, 16); mapList.ForeColor = Color.Gainsboro;
+            mapList = new ListBox(); mapList.Width = W; mapList.Height = 120;
+            mapList.BackColor = Theme.Card; mapList.ForeColor = Theme.Text; mapList.BorderStyle = BorderStyle.None;
             flow.Controls.Add(mapList);
 
-            CheckBox hideBox = new CheckBox();
-            hideBox.Text = "Gerir o HidHide sozinha (esconder a Fanatec so com a app aberta)"; hideBox.AutoSize = true;
-            hideBox.MaximumSize = new Size(340, 0);
-            hideBox.Checked = settings.AutoHide;
+            flow.Controls.Add(Theme.Section("Sistema", W));
+            CheckBox autoFfb = Theme.Check("Ligar o FFB automaticamente ao abrir a app", settings.AutoFfb, W);
+            autoFfb.CheckedChanged += delegate { settings.AutoFfb = autoFfb.Checked; try { settings.Save(); } catch { } };
+            flow.Controls.Add(autoFfb);
+            CheckBox hideBox = Theme.Check("Gerir o HidHide sozinha (Fanatec escondida so com a app aberta)", settings.AutoHide, W);
             hideBox.CheckedChanged += delegate
             {
                 settings.AutoHide = hideBox.Checked;
@@ -255,35 +272,58 @@ namespace FS25RealFFB
                 try { settings.Save(); } catch { }
             };
             flow.Controls.Add(hideBox);
+            CheckBox altBox = Theme.Check("Usar a 2.a interface da base", settings.AltInterface, W);
+            altBox.CheckedChanged += delegate { settings.AltInterface = altBox.Checked; Log("Interface da base: " + (altBox.Checked ? "2" : "1")); };
+            flow.Controls.Add(altBox);
 
-            Button save = new Button();
-            save.Text = "Guardar configuracao"; save.Width = 340; save.Height = 32; save.FlatStyle = FlatStyle.Flat;
+            Button save = Theme.Btn("Guardar configuracao", W, 38, true);
+            save.Margin = new Padding(0, 12, 0, 4);
             save.Click += delegate
             {
                 try { settings.Save(); Log("Configuracao guardada."); }
                 catch (Exception ex) { Log("Erro ao guardar: " + ex.Message); }
             };
             flow.Controls.Add(save);
-            left.Controls.Add(flow);
+            Button diag = Theme.Btn("Gerar relatorio de diagnostico", W, 30, false);
+            diag.Click += delegate { RunDiagnostics(); };
+            flow.Controls.Add(diag);
+            Button lnk = Theme.Btn("Criar atalho no ambiente de trabalho", W, 30, false);
+            lnk.Click += delegate { CreateShortcut(); };
+            flow.Controls.Add(lnk);
+
+            leftPanel.Controls.Add(flow);
+            leftPanel.Controls.Add(sep);
+
+            // ---------------------------------------------------------- ao vivo (coluna direita)
+            live = new LiveView();
+            live.Dock = DockStyle.Top; live.Height = 300;
 
             monitor = new Label();
-            monitor.Dock = DockStyle.Top; monitor.Height = 230;
-            monitor.Font = new Font("Consolas", 10f);
-            monitor.Padding = new Padding(10);
-            monitor.BackColor = Color.FromArgb(16, 16, 16);
+            monitor.Dock = DockStyle.Top; monitor.Height = 150;
+            monitor.Font = new Font("Consolas", 8.5f);
+            monitor.Padding = new Padding(14, 8, 8, 8);
+            monitor.BackColor = Theme.Bg; monitor.ForeColor = Theme.Muted;
+
+            Label logTitle = Theme.Section("Registo", 300);
+            logTitle.Dock = DockStyle.Top; logTitle.Height = 26; logTitle.Padding = new Padding(12, 0, 0, 0);
+            logTitle.BackColor = Theme.Bg;
 
             logBox = new TextBox();
             logBox.Multiline = true; logBox.ReadOnly = true; logBox.ScrollBars = ScrollBars.Vertical;
             logBox.Dock = DockStyle.Fill; logBox.Font = new Font("Consolas", 9f);
-            logBox.BackColor = Color.FromArgb(12, 12, 12); logBox.ForeColor = Color.Silver;
+            logBox.BackColor = Theme.Bg; logBox.ForeColor = Color.Silver;
             logBox.BorderStyle = BorderStyle.None;
 
-            Panel right = new Panel(); right.Dock = DockStyle.Fill;
-            right.Controls.Add(logBox);
-            right.Controls.Add(monitor);
+            rightPanel = new Panel(); rightPanel.Dock = DockStyle.Fill; rightPanel.BackColor = Theme.Bg;
+            rightPanel.Controls.Add(logBox);
+            rightPanel.Controls.Add(logTitle);
+            rightPanel.Controls.Add(monitor);
+            rightPanel.Controls.Add(live);
 
-            Controls.Add(right);
-            Controls.Add(left);
+            Controls.Add(rightPanel);
+            Controls.Add(leftPanel);
+            Controls.Add(accent);
+            Controls.Add(header);
 
             KeyDown += delegate(object s, KeyEventArgs e)
             {
@@ -306,6 +346,45 @@ namespace FS25RealFFB
             };
         }
 
+        private void StyleToggle()
+        {
+            bool on = enableBox.Checked;
+            enableBox.Text = on ? "FFB ATIVO" : "FFB DESLIGADO";
+            enableBox.BackColor = on ? Theme.Yellow : Theme.Card;
+            enableBox.ForeColor = on ? Color.Black : Theme.Text;
+            enableBox.FlatAppearance.BorderColor = on ? Theme.Yellow : Theme.Line;
+            enableBox.FlatAppearance.CheckedBackColor = Theme.Yellow;
+        }
+
+        // Fixar: janela sempre por cima, so com o painel ao vivo (para ver os comandos enquanto joga).
+        private void TogglePin()
+        {
+            pinned = !pinned;
+            if (pinned)
+            {
+                normalBounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
+                WindowState = FormWindowState.Normal;
+                leftPanel.Visible = false;
+                monitor.Visible = false;
+                chipsBox.Visible = false;
+                TopMost = true;
+                Size = new Size(920, 450);
+                pinBtn.Text = "Desafixar";
+                pinBtn.BackColor = Theme.Yellow; pinBtn.ForeColor = Color.Black;
+            }
+            else
+            {
+                TopMost = false;
+                leftPanel.Visible = true;
+                monitor.Visible = true;
+                chipsBox.Visible = true;
+                if (normalBounds.Width > 0) Bounds = normalBounds;
+                pinBtn.Text = "Fixar no topo";
+                pinBtn.BackColor = Theme.Card; pinBtn.ForeColor = Theme.Text;
+            }
+            Log(pinned ? "Janela fixada no topo (modo compacto)." : "Janela normal.");
+        }
+
         private delegate void IntAction(int v);
         private delegate string IntFormat(int v);
 
@@ -313,14 +392,18 @@ namespace FS25RealFFB
 
         private Control Slider(string title, int min, int max, int value, IntAction onChange, IntFormat fmt)
         {
-            Panel p = new Panel(); p.Width = 340; p.Height = 62;
-            Label l = new Label(); l.AutoSize = false; l.Width = 340; l.Height = 20; l.Top = 0;
-            TrackBar t = new TrackBar();
+            Panel p = new Panel(); p.Width = W; p.Height = 56; p.Margin = new Padding(0, 2, 0, 2);
+            Label l = new Label(); l.AutoSize = false; l.Width = W - 90; l.Height = 20; l.Top = 2; l.ForeColor = Theme.Text;
+            Label v = new Label(); v.AutoSize = false; v.Width = 90; v.Height = 20; v.Left = W - 90; v.Top = 2;
+            v.TextAlign = ContentAlignment.TopRight; v.ForeColor = Theme.Yellow; v.Font = Theme.Bold(9.5f);
+            NoWheelTrackBar t = new NoWheelTrackBar();
             t.Minimum = min; t.Maximum = max; t.Value = Math.Max(min, Math.Min(max, value));
-            t.TickStyle = TickStyle.None; t.Width = 340; t.Top = 22;
-            l.Text = title + ":  " + fmt(t.Value);
-            t.ValueChanged += delegate { onChange(t.Value); l.Text = title + ":  " + fmt(t.Value); };
-            p.Controls.Add(l); p.Controls.Add(t);
+            t.TickStyle = TickStyle.None; t.Width = W; t.Top = 22; t.BackColor = Theme.Panel;
+            t.LargeChange = Math.Max(1, (max - min) / 20);
+            l.Text = title;
+            v.Text = fmt(t.Value);
+            t.ValueChanged += delegate { onChange(t.Value); v.Text = fmt(t.Value); };
+            p.Controls.Add(l); p.Controls.Add(v); p.Controls.Add(t);
             return p;
         }
 
@@ -512,6 +595,8 @@ namespace FS25RealFFB
                 device.Commit();
             }
 
+            if (now - lastLiveMs >= 33) { lastLiveMs = now; UpdateLive(f); }
+
             if (now - hzStartMs >= 1000)
             {
                 long served = bridge.Served;
@@ -622,8 +707,33 @@ namespace FS25RealFFB
                     pedalLabels[i].Text = settings.PedalAxis[i] < 0 ? "(nao definido)" : "eixo " + FfbDevice.AxisNames[settings.PedalAxis[i]];
         }
 
+        private void UpdateLive(TelemetryFrame f)
+        {
+            if (live == null) return;
+            live.Steer = steerOut; live.Throttle = thrOut; live.Brake = brkOut; live.Clutch = cluOut;
+            live.BridgeOn = settings.BridgeOn;
+            live.Spring = lastOut.SpringNm; live.Damper = lastOut.DamperNm; live.Friction = lastOut.FrictionNm;
+            live.Bump = lastOut.BumpNm; live.Texture = lastOut.TextureNm; live.Engine = lastOut.EngineNm;
+            live.Gain = lastOut.Gain; live.MaxNm = settings.MaxNm;
+            live.Active = f != null && f.Active && telemetry.Connected;
+            if (live.Active)
+            {
+                live.Speed = f.SpeedKmh; live.Mass = f.MassT;
+                live.Vehicle = f.Vehicle ?? "-"; live.Surface = "piso " + f.Surface;
+            }
+            else live.Speed = 0;
+            live.Invalidate();
+        }
+
         private void UpdateMonitor(TelemetryFrame f, double age)
         {
+            if (chipBase != null)
+            {
+                chipBase.Set(device.IsOpen, device.IsOpen ? "Base ligada" : "Base nao aberta");
+                bool tel = telemetry.Connected && f != null;
+                chipTel.Set(tel, tel ? string.Format(CultureInfo.InvariantCulture, "Telemetria {0:0} Hz", telemetryHz) : "Sem telemetria");
+                chipBridge.Set(settings.BridgeOn && bridgeRate > 1, settings.BridgeOn ? string.Format(CultureInfo.InvariantCulture, "Ponte {0:0}/s", bridgeRate) : "Ponte desligada");
+            }
             CultureInfo c = CultureInfo.InvariantCulture;
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("Base:        " + (device.IsOpen ? device.DeviceName : "NAO ABERTA"));
