@@ -688,8 +688,7 @@ begin
     Txt := FmtMessage(CustomMessage('UnHidText'), [GetIniString('r', 'hidhide_version', '', Ini)]);
     if GetIniString('r', 'preexisting', '0', Ini) = '1' then Txt := Txt + CustomMessage('UnHidPre');
     // default button = "No, keep HidHide installed"
-    if TaskDialogMsgBox(CustomMessage('UnHidInstr'), Txt, mbConfirmation, MB_YESNO or MB_DEFBUTTON2,
-         [CustomMessage('UnHidYes'), CustomMessage('UnHidNo')], 0) = IDYES then
+    if TaskDialogMsgBox(CustomMessage('UnHidInstr'), Txt, mbConfirmation, MB_YESNO or MB_DEFBUTTON2, [CustomMessage('UnHidYes'), CustomMessage('UnHidNo')], 0) = IDYES then
       RemoveHidHide := MsgBox(CustomMessage('UnHidConfirm'), mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
   end;
 end;
