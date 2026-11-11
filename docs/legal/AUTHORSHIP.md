@@ -7,7 +7,7 @@ This is not legal advice. Copyright normally exists automatically from creation,
 - **Git history**: every commit since 2026-11-07 is authored by `OptimusZuka`, with timestamps. The history was never rewritten.
   - The first commit (`3008a93`) contains FS25 Real FFB v0.17.
   - The following commits show the installer, interface, profiles, Logitech support and translations.
-- **Releases** on GitHub (v0.5.0 to v0.6.0), with dates, files and SHA-256 checksums.
+- **Releases** on GitHub (from v0.5.0 onwards), with dates, files and SHA-256 checksums.
 - **Development before Git**: the original working folder on the author's PC and the development conversations.
 
 The commits carry a `Co-Authored-By: Claude` line because the development was AI-assisted. In some jurisdictions only human creative contribution is protected by copyright. The author's design decisions, direction, testing, tuning, visual identity and selection should therefore be documented, as these notes and the history already do.

@@ -3,7 +3,7 @@
 ## 1. Download
 
 Download the installer **only** from the official Releases page:
-`https://github.com/OptimusZuka/FS25-RealFFB/releases` → `FS25_RealFFB_Setup_x.y.z.exe`
+`https://github.com/OptimusZuka/fs25-realffb/releases` → `FS25_RealFFB_Setup_x.y.z.exe`
 
 ## Verify the file
 
@@ -39,7 +39,7 @@ The installer starts in English. You can choose Português, Español or Françai
 |---|---|---|
 | 1. System | checks for 64-bit Windows 10/11 | no |
 | 2. FS25 | searches every Steam library (all drives) and the usual folders of other stores; asks for the folder if not found | no |
-| 3. Wheel | lists the supported wheels that are connected | no |
+| 3. Wheel | lists the connected Fanatec and Logitech wheels (other brands: see below) | no |
 | 4. HidHide | if missing or outdated, downloads the official installer from `github.com/nefarius/HidHide`, checks Nefarius' digital signature and the SHA-256 published by GitHub, and runs it unmodified (UAC) | installs the driver |
 | 5. Devices | shows exactly what will change in HidHide and applies it only when you click **Apply** | allows RealFFB.exe, hides only the chosen wheel, adjusts `game.xml` (with a backup) |
 | 6. RealFFB | copies the app, the helper and the mod | files |
@@ -48,11 +48,22 @@ The installer starts in English. You can choose Português, Español or Françai
 - **If a restart is needed** after HidHide, the installer tells you, and step 5 opens by itself after the restart.
 - **If the wheel is not connected**, you can still finish. Later, plug it in and use **Start → FS25 RealFFB - Configure devices**.
 
+## Other wheel brands
+
+The app itself works with any DirectInput force feedback wheel (see the [compatibility matrix](dev/COMPATIBILITY-MATRIX.md)), but the installer's automatic HidHide setup currently recognises **Fanatec and Logitech** wheels only. With another brand (Thrustmaster, MOZA, Simucube, Simagic, ...), finish the installer, then once:
+
+1. Open **HidHide Configuration Client** (Start menu).
+2. **Applications** tab: add `RealFFB.exe` from the FS25 RealFFB install folder (normally `%LOCALAPPDATA%\Programs\FS25 RealFFB`).
+3. **Devices** tab: tick **only your wheel base** (not pedals or other controllers) and make sure **Enable device hiding** is on.
+4. Open FS25 RealFFB. In **Hardware**, check that your wheel is detected, set its peak torque with **Calibrate force** and run **Test my wheel**.
+
+Please send the compatibility report from the Hardware page in an [issue](https://github.com/OptimusZuka/fs25-realffb/issues): it helps add your wheel to the automatic setup.
+
 ## 4. First use
 
 1. Open **FS25 RealFFB** (desktop shortcut). The app starts FS25 through Steam.
 2. In the game, under *Mods*, enable **Real FFB Telemetry** for your savegame.
-3. In the app, check steering and pedals (use the *Detect* buttons) and tune the force.
+3. In the app, check steering and pedals (use the *Detect* buttons) and tune the force. Optional: turn on **Realistic centering** on the first page.
 4. Logitech: turn off the centering spring in G HUB.
 
 ## Updating

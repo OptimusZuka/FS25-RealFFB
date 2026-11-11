@@ -1,5 +1,5 @@
 # UI screenshot for the README: push to the 'screenshot' branch. Builds the app, opens it (no wheel),
-# captures the window and attaches it to a temporary pre-release named 'ui-screenshot'.
+# captures the window and commits it to the 'screenshot' branch as docs/screenshot-app.png (no release is created).
 name: screenshot
 
 on:
@@ -35,7 +35,7 @@ jobs:
           Start-Sleep -Seconds 10
           $p.Refresh()
           $h = $p.MainWindowHandle
-          [W]::MoveWindow($h, 0, 0, 1180, 780, $true) | Out-Null
+          [W]::MoveWindow($h, 0, 0, 1280, 820, $true) | Out-Null
           Start-Sleep -Seconds 3
           $r = New-Object W+R
           [W]::GetWindowRect($h, [ref]$r) | Out-Null
@@ -46,10 +46,12 @@ jobs:
           $g.ReleaseHdc($dc)
           $bmp.Save("ui-screenshot.png", [System.Drawing.Imaging.ImageFormat]::Png)
           Stop-Process -Id $p.Id -Force
-      - name: Attach to a temporary pre-release
+      - name: Commit the screenshot to the 'screenshot' branch
         shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete ui-screenshot --yes --cleanup-tag 2>$null
-          gh release create ui-screenshot ui-screenshot.png --prerelease --target "${{ github.sha }}" --title "UI screenshot (temporary)" --notes "Temporary, for the README."
+          Copy-Item ui-screenshot.png docs\screenshot-app.png -Force
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshot-app.png
+          git commit -m "UI screenshot from CI"
+          git push origin HEAD:screenshot
