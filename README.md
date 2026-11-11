@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>⬇ Download the latest version</b></a> ·
+  <a href="../../releases"><b>⬇ Download the latest version</b></a> ·
   <a href="docs/INSTALL.md">Installation guide</a> ·
   <a href="docs/dev/COMPATIBILITY-MATRIX.md">Supported wheels</a> ·
   <a href="docs/TROUBLESHOOTING.md">Troubleshooting</a>
