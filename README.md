@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/tag/v0.13.1"><b>⬇ Download v0.13.1 (beta)</b></a> ·
+  <a href="../../releases/tag/v0.14.0"><b>⬇ Download v0.14.0 (beta)</b></a> ·
   <a href="docs/INSTALL.md">Installation guide</a> ·
   <a href="docs/dev/COMPATIBILITY-MATRIX.md">Supported wheels</a> ·
   <a href="docs/TROUBLESHOOTING.md">Troubleshooting</a>
@@ -29,8 +29,8 @@ Farming Simulator 25 supports steering wheels, but its force feedback is almost 
 **FS25 RealFFB** creates the force feedback outside the game. A small mod reads what your vehicle is doing every frame, and a Windows app turns that into real forces at your wheel, the way racing sims and truck simulators do it.
 
 <p align="center">
-  <img src="docs/screenshot-app.png" alt="FS25 RealFFB v0.13.1: settings, live commands and forces" width="900">
-  <br><sub>Real screenshot of v0.13.1: settings on the left, live commands and forces on the right. Captured automatically on GitHub's build server, with no wheel and no game, which is why it shows "HidHide is not installed" and "NOT OPEN".</sub>
+  <img src="docs/screenshot-app.png" alt="FS25 RealFFB v0.14.0: settings, live commands and forces" width="900">
+  <br><sub>Real screenshot of v0.14.0: settings on the left, live commands and forces on the right. Captured automatically on GitHub's build server, with no wheel and no game, which is why it shows "HidHide is not installed" and "NOT OPEN".</sub>
 </p>
 
 ## What you feel
@@ -73,21 +73,21 @@ FS25 RealFFB talks to the wheel through standard **DirectInput** force feedback,
 
 Full details, notes per model and how levels are decided: **[Compatibility matrix](docs/dev/COMPATIBILITY-MATRIX.md)**.
 
-> **Installer note:** the installer sets up HidHide automatically for **Fanatec and Logitech** wheels only. Other brands are driven by the app, but for now they must be hidden from the game once by hand: see [INSTALL.md](docs/INSTALL.md#other-wheel-brands).
+> **Installer:** HidHide is set up automatically for any wheel that Windows reports with force feedback, of any brand. See [how the wheel is set up](docs/INSTALL.md#how-the-wheel-is-set-up-in-hidhide).
 
 Own a wheel that is not confirmed yet? Open the app → **Hardware** → **Test my wheel**, drive a few minutes, then **Export compatibility report** and attach it to an [issue](../../issues). That is how a wheel becomes confirmed.
 
 ## Install
 
-1. Open the **[latest release (v0.13.1)](../../releases/tag/v0.13.1)** and download `FS25_RealFFB_Setup_0.13.1.exe`.
-2. Run it and follow the steps. The installer finds the game and installs HidHide by itself, and sets up Fanatec and Logitech wheels automatically ([other brands](docs/INSTALL.md#other-wheel-brands)).
+1. Open the **[latest release (v0.14.0)](../../releases/tag/v0.14.0)** and download `FS25_RealFFB_Setup_0.14.0.exe`.
+2. Run it and follow the steps. The installer finds the game, installs HidHide and sets up your wheel by itself. Then unplug and replug the wheel's USB cable once.
 3. Open the **FS25 RealFFB** shortcut. It starts the app and the game.
 4. In the game, enable the **Real FFB Telemetry** mod in your savegame.
 
 Nothing to compile, no Python, no Visual Studio. The installer:
 - needs administrator rights only for HidHide, which is a driver;
 - backs up everything it changes;
-- leaves your PC as it was when you uninstall.
+- leaves your PC as it was when you uninstall, and asks whether to remove HidHide too.
 
 > **About the Windows warning:** the installer is **not digitally signed yet**.
 > - **SmartScreen** may show "Windows protected your PC". Click "More info" → "Run anyway".

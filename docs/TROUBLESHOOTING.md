@@ -6,12 +6,15 @@ Logs are in `%APPDATA%\FS25 RealFFB\` (`RealFFB_log.txt`, `setup_log.txt`). Back
 
 | Symptom / diagnostic line | Likely cause | What to do |
 |---|---|---|
-| `[ERROR] HidHide: not installed` | HidHide installation cancelled or failed | run the RealFFB installer again |
-| `HidHide driver ... not responding` | the driver has not loaded yet, or the *HidHide Configuration Client* is open | restart Windows; close the Configuration Client |
-| `RealFFB allowed in HidHide: ERROR` | the app was moved or reinstalled in another folder | Start → *Configure devices* |
-| `Wheel hidden from the game: ERROR` | setup not applied or cancelled | Start → *Configure devices* |
-| `Wheel: no supported wheel connected` | wheel off, in compatibility mode, or missing its driver | Fanatec: PC mode (red LED) + Fanatec driver. Logitech: G HUB installed. Other brands: the installer does not recognise them yet, see [INSTALL.md](INSTALL.md#other-wheel-brands) |
-| `Other controllers hidden: WARN` | HidHide entries that are not the wheel (RealFFB never creates them) | review them in the *HidHide Configuration Client* |
+| `HidHide installed: ERROR` | HidHide installation cancelled or failed | run the RealFFB installer again |
+| `HidHide driver: ERROR ... not responding` | the driver has not loaded yet, or the *HidHide Configuration Client* is open | restart Windows; close the Configuration Client |
+| `Device hiding: DISABLED` | normal while FS25 RealFFB is closed | nothing: the app enables it when it opens |
+| `FS25 RealFFB whitelist: ERROR` | configuration problem: RealFFB.exe not allowed (e.g. moved to another folder) | Start → *Configure devices* |
+| `Steering wheel detected: ERROR ... hardware/driver problem` | Windows sees no force feedback wheel: off, unplugged, compatibility mode or missing driver | switch the base on, check USB and power. Fanatec: PC mode (red LED) + Fanatec driver. Logitech: G HUB. MOZA: Pit House. Thrustmaster: its driver package |
+| `Steering wheel selected for hiding: ERROR` | configuration problem: the wheel is not in the HidHide list | Start → *Configure devices*, then unplug and replug the wheel |
+| `FS25 RealFFB device access: WARN` | the app does not see force feedback on the wheel | close the manufacturer's software if it holds the wheel; replug it |
+| `HidHide configuration: INCOMPLETE` | one of the lines above failed; the line also shows the last setup result | follow that line |
+| `Other HidHide entries` | entries set by you or another program | nothing: FS25 RealFFB never changes them |
 | `Farming Simulator 25: not found` | installed outside Steam in an unusual folder | run the installer and choose the folder |
 | `Mod RealFFB: installed in the wrong folder` | the zip was copied by hand somewhere else | delete that copy; run the installer |
 | `game.xml: invalid settings` | the game or another program reset `game.xml` | close FS25 and use *Configure devices* |
@@ -24,6 +27,7 @@ Logs are in `%APPDATA%\FS25 RealFFB\` (`RealFFB_log.txt`, `setup_log.txt`). Back
   - the *Real FFB Telemetry* mod is active in the savegame;
   - the app shows telemetry arriving;
   - FS25 was started **after** the app.
+- **Force feedback works for a moment and then stops / fights with the game.** FS25 still sees the wheel. Use *Configure devices*, unplug and replug the wheel, then restart the game.
 - **The wheel does not steer in the game.** Either the command bridge is off or FS25 still sees the wheel. Use *Configure devices* and restart the game.
 - **The wheel does not work in other games.** Close RealFFB; hiding turns off when the app closes. If the app crashed, open and close it again.
 - **Logitech wheel pulls to centre on its own.** Turn off the centering spring in Logitech G HUB.

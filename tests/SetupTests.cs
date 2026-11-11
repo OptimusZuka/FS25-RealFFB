@@ -67,31 +67,64 @@ namespace RealFFBSetupTests
             Eq("cli: saida UTF-16", list, HidHide.Decode(utf16));
             Eq("cli: saida UTF-8", list, HidHide.Decode(System.Text.Encoding.UTF8.GetBytes(list)));
 
-            // --- Fanatec: agrupamento e exclusao de outros controladores
-            List<string> ids = new List<string>();
-            ids.Add(@"HID\VID_0EB7&PID_0020&COL01\7&2A3C1B&0&0000");
-            ids.Add(@"HID\VID_0EB7&PID_0020&COL02\7&2A3C1B&0&0001");
-            ids.Add(@"HID\VID_0EB7&PID_6204\7&99&0&0000");          // pedais USB: nao e base
-            List<string> other = new List<string>();
-            List<FanatecBase> b = Fanatec.Group(ids, other);
-            Eq("fan: uma base", 1, b.Count);
-            Eq("fan: duas coleccoes", 2, b.Count > 0 ? b[0].InstanceIds.Count : 0);
-            Eq("fan: pedais fora", 1, other.Count);
-            ids.Add(@"HID\VID_0EB7&PID_0020&COL01\7&FFFF&0&0000");
-            Eq("fan: duas bases iguais distinguidas", 2, Fanatec.Group(ids, null).Count);
+            // --- 0.14: deteccao universal (agrupamento por dispositivo fisico, qualquer fabricante)
+            List<HidHide.GamingDevice> fan = new List<HidHide.GamingDevice>();
+            fan.Add(Dev(@"HID\VID_0EB7&PID_0020&COL01\7&2A3C1B&0&0000", @"USB\VID_0EB7&PID_0020\SERIAL1", 2));
+            fan.Add(Dev(@"HID\VID_0EB7&PID_0020&COL02\7&2A3C1B&0&0001", @"USB\VID_0EB7&PID_0020\SERIAL1", 2));
+            fan.Add(Dev(@"HID\VID_0EB7&PID_6204\7&99&0&0000", @"USB\VID_0EB7&PID_6204\P", 1));          // pedais USB
+            fan.Add(Dev(@"HID\VID_044F&PID_0405\8&1&0&0000", @"USB\VID_044F&PID_0405\X", 1));           // joystick sem FFB
+            List<WheelDevice> oth = new List<WheelDevice>();
+            List<WheelDevice> fw = Wheels.Find(fan, null, null, oth);
+            Eq("fan: uma base (conhecida, sem DirectInput)", 1, fw.Count);
+            Eq("fan: duas coleccoes", 2, fw.Count > 0 ? fw[0].InstanceIds.Count : 0);
+            Eq("fan: pedais e joystick ficam de fora", 2, oth.Count);
+            List<string> fp = fw.Count > 0 ? Wheels.PathsFor(fw[0], fan, null) : new List<string>();
+            Eq("fan: 2 coleccoes + contentor (so do volante)", 3, fp.Count);
+            Eq("fan: nunca outros dispositivos", false, string.Join("|", fp.ToArray()).Contains("6204") || string.Join("|", fp.ToArray()).Contains("044F"));
+            fan.Add(Dev(@"HID\VID_0EB7&PID_0020&COL01\7&FFFF&0&0000", @"USB\VID_0EB7&PID_0020\SERIAL2", 1));
+            Eq("fan: duas bases iguais distinguidas", 2, Wheels.Find(fan, null, null, null).Count);
 
-            // --- HidHide: so caminhos da base escolhida
-            List<HidHide.GamingDevice> g = new List<HidHide.GamingDevice>();
-            g.Add(Dev(@"HID\VID_0EB7&PID_0020&COL01\7&2A3C1B&0&0000", @"USB\VID_0EB7&PID_0020\SERIAL1"));
-            g.Add(Dev(@"HID\VID_0EB7&PID_0020&COL02\7&2A3C1B&0&0001", @"USB\VID_0EB7&PID_0020\SERIAL1"));
-            g.Add(Dev(@"HID\VID_044F&PID_0405\8&1&0&0000", @"USB\VID_044F&PID_0405\X"));
-            g.Add(Dev(@"HID\VID_0EB7&PID_0020&COL01\7&FFFF&0&0000", @"USB\VID_0EB7&PID_0020\SERIAL2"));
-            List<FanatecBase> one = Fanatec.Group(new List<string>(new string[] { @"HID\VID_0EB7&PID_0020&COL01\7&2A3C1B&0&0000" }), null);
-            List<string> paths = Config.PathsFor(one[0], g);
-            Eq("cfg: 2 coleccoes + 1 contentor", 3, paths.Count);
-            bool foreign = false;
-            foreach (string x in paths) if (x.Contains("044F") || x.Contains("FFFF") || x.Contains("SERIAL2")) foreign = true;
-            Eq("cfg: nunca outros dispositivos", false, foreign);
+            // MOZA R5 (o caso do testador): base + stalk + Farming Control System, todos 346E
+            List<HidHide.GamingDevice> moza = new List<HidHide.GamingDevice>();
+            moza.Add(Dev(@"HID\VID_346E&PID_0004&MI_00\8&2B1&0&0000", @"USB\VID_346E&PID_0004\MOZA1", 1));
+            moza.Add(Dev(@"HID\VID_346E&PID_0024\8&3C2&0&0000", @"USB\VID_346E&PID_0024\STALK", 1));
+            moza.Add(Dev(@"HID\VID_346E&PID_0030\8&4D3&0&0000", @"USB\VID_346E&PID_0030\FCS", 1));
+            moza.Add(Dev(@"HID\VID_1532&PID_022B&MI_02\9&5E&0&0000", @"USB\VID_1532&PID_022B\RZ", 4));  // Razer Tartarus
+            List<FfbInfo> di = Wheels.ParseList("346E:0004|1|MOZA R5 Base\r\n346E:0024|0|MOZA Multi-function Stalk\r\n346E:0030|0|MOZA Farming Control System\r\n1532:022B|0|Razer Tartarus V2\r\n");
+            Eq("di: 4 controladores lidos", 4, di.Count);
+            List<WheelDevice> mo = new List<WheelDevice>();
+            List<WheelDevice> mw = Wheels.Find(moza, di, null, mo);
+            Eq("moza: so a base (FFB)", 1, mw.Count);
+            Eq("moza: nome do DirectInput", "MOZA R5 Base (346E:0004)", mw.Count > 0 ? mw[0].Label : null);
+            Eq("moza: stalk, FCS e Razer ficam de fora", 3, mo.Count);
+            List<string> mp = mw.Count > 0 ? Wheels.PathsFor(mw[0], moza, null) : new List<string>();
+            Eq("moza: HID + contentor da base", 2, mp.Count);
+            Eq("moza: nada do stalk/FCS/Razer", false, string.Join("|", mp.ToArray()).Contains("0024") || string.Join("|", mp.ToArray()).Contains("0030") || string.Join("|", mp.ToArray()).Contains("1532"));
+
+            // dispositivo composto: contentor USB partilhado com outras funcoes -> so o HID e escondido
+            List<HidHide.GamingDevice> comp = new List<HidHide.GamingDevice>();
+            comp.Add(Dev(@"HID\VID_044F&PID_B696&MI_00\8&AA&0&0000", @"USB\VID_044F&PID_B696\TM1", 3));
+            List<FfbInfo> tm = Wheels.ParseList("044F:B696|1|Thrustmaster T248\n");
+            List<WheelDevice> tw = Wheels.Find(comp, tm, null, null);
+            Eq("tm: base Thrustmaster pelo FFB", 1, tw.Count);
+            Eq("tm: contentor partilhado nao e escondido", 1, tw.Count > 0 ? Wheels.PathsFor(tw[0], comp, null).Count : 0);
+
+            // XInput: o no xusb tambem e escondido
+            HidHide.GamingDevice xd = Dev(@"HID\VID_046D&PID_C262&IG_00\8&BB&0&0000", @"USB\VID_046D&PID_C262\G920", 1);
+            xd.XusbPath = @"USB\VID_046D&PID_C262&IG_00\9&CC";
+            List<HidHide.GamingDevice> xl = new List<HidHide.GamingDevice>(new HidHide.GamingDevice[] { xd });
+            List<WheelDevice> xw = Wheels.Find(xl, null, null, null);
+            Eq("g920: conhecido", 1, xw.Count);
+            Eq("g920: HID + xusb + contentor", 3, xw.Count > 0 ? Wheels.PathsFor(xw[0], xl, null).Count : 0);
+
+            // pedais ativos com FFB nunca contam como base; base anterior reconhecida para reparar
+            List<HidHide.GamingDevice> pd = new List<HidHide.GamingDevice>();
+            pd.Add(Dev(@"HID\VID_16D0&PID_1111\8&D&0&0000", @"USB\VID_16D0&PID_1111\P", 1));
+            List<FfbInfo> pdi = Wheels.ParseList("16D0:1111|1|Active Pedal\n");
+            Eq("pedal FFB: nao e base", 0, Wheels.Find(pd, pdi, null, null).Count);
+            Eq("reparacao: base anterior", 1, Wheels.Find(pd, null, "16D0:1111|8&D&0", null).Count);
+            Eq("rato Logitech nunca conta", 0, Wheels.Find(new List<HidHide.GamingDevice>(new HidHide.GamingDevice[] { Dev(@"HID\VID_046D&PID_C08B&MI_00\8&11&0&0000", "", 0) }), null, null, null).Count);
+            Eq("bases DI: MOZA", 1, Wheels.FfbBases(di).Count);
 
             // --- HidHide --dev-gaming (JSON)
             string js = "[{\"friendlyName\":\"FANATEC Wheel\",\"devices\":[{\"present\":true,\"deviceInstancePath\":\"HID\\\\VID_0EB7\\u0026PID_0020\\u0026COL01\\\\7\\u00262A3C1B\\u00260\\u00260000\",\"baseContainerDeviceInstancePath\":\"USB\\\\VID_0EB7\\u0026PID_0020\\\\SERIAL1\",\"product\":\"FANATEC Wheel\"}]}]";
@@ -100,7 +133,6 @@ namespace RealFFBSetupTests
             Eq("json: caminho com escapes", @"HID\VID_0EB7&PID_0020&COL01\7&2A3C1B&0&0000", pj.Count > 0 ? pj[0].InstancePath : null);
             Eq("json: contentor", @"USB\VID_0EB7&PID_0020\SERIAL1", pj.Count > 0 ? pj[0].ContainerPath : null);
             Eq("json: nome do grupo", "FANATEC Wheel", pj.Count > 0 ? pj[0].FriendlyName : null);
-
 
             // formato real do HidHideCLI 1.7 (GUIDs entre chavetas dentro de strings, 3 coleccoes)
             string real = " [ { \"friendlyName\" : \"Fanatec Wheel\" , \"devices\" : [\n" +
@@ -111,24 +143,23 @@ namespace RealFFBSetupTests
                 Obj("HID\\\\VID_044F&PID_0405\\\\9&e7c901f&0&0000", "USB\\\\VID_044F&PID_0405\\\\1") + " ] } ] ";
             List<HidHide.GamingDevice> rg = HidHide.ParseGaming(real);
             Eq("json real: 4 dispositivos", 4, rg.Count);
-            List<FanatecBase> wmi = Fanatec.Group(new List<string>(new string[] {
-                @"HID\VID_0EB7&PID_0020&COL03\7&1A020F5&0&0002", @"HID\VID_0EB7&PID_0020&COL02\7&1A020F5&0&0001", @"HID\VID_0EB7&PID_0020&COL01\7&1A020F5&0&0000" }), null);
-            Eq("json real: WMI 1 base", 1, wmi.Count);
-            List<string> rp = wmi.Count == 1 ? Config.PathsFor(wmi[0], rg) : new List<string>();
+            Eq("json real: contagem do contentor", 3, rg.Count > 0 ? rg[0].ContainerCount : -1);
+            List<WheelDevice> rw = Wheels.Find(rg, null, null, null);
+            Eq("json real: 1 base", 1, rw.Count);
+            List<string> rp = rw.Count == 1 ? Wheels.PathsFor(rw[0], rg, null) : new List<string>();
             Eq("json real: 3 coleccoes + contentor", 4, rp.Count);
             Eq("json real: Thrustmaster fora", false, string.Join("|", rp.ToArray()).Contains("044F"));
 
-            // --- Logitech G29 (e um rato Logitech, que nunca pode contar)
-            List<string> lg = new List<string>(new string[] { @"HID\VID_046D&PID_C24F\7&3B2A1&0&0000", @"HID\VID_046D&PID_C08B&MI_00\8&11&0&0000" });
-            List<string> lgOther = new List<string>();
-            List<FanatecBase> lgb = Fanatec.Group(lg, lgOther);
-            Eq("g29: um volante", 1, lgb.Count);
-            Eq("g29: modelo", "Logitech G29", lgb.Count > 0 ? lgb[0].Model : null);
-            Eq("g29: rato ignorado", 0, lgOther.Count);
-            List<HidHide.GamingDevice> lgg = new List<HidHide.GamingDevice>();
-            lgg.Add(Dev(@"HID\VID_046D&PID_C24F\7&3B2A1&0&0000", @"USB\VID_046D&PID_C24F\5&99&0&4"));
-            lgg.Add(Dev(@"HID\VID_044F&PID_0405\9&e7c901f&0&0000", @"USB\VID_044F&PID_0405\1"));
-            Eq("g29: volante + contentor", 2, lgb.Count > 0 ? Config.PathsFor(lgb[0], lgg).Count : 0);
+            // --- desinstalacao oficial do HidHide
+            HidHide.UninstallEntry ue = new HidHide.UninstallEntry();
+            ue.UninstallString = "MsiExec.exe /X{8822CC70-E2A5-4CB7-8F14-E27101150A1D}";
+            string[] uc = HidHide.UninstallCommand(ue);
+            Eq("uninst: msi", "msiexec.exe|/x {8822CC70-E2A5-4CB7-8F14-E27101150A1D} /passive /norestart", uc == null ? null : uc[0] + "|" + uc[1]);
+            ue.UninstallString = "\"C:\\ProgramData\\Package Cache\\{abc}\\HidHide_1.5.230_x64.exe\"  /uninstall";
+            uc = HidHide.UninstallCommand(ue);
+            Eq("uninst: bundle", "C:\\ProgramData\\Package Cache\\{abc}\\HidHide_1.5.230_x64.exe|/uninstall /passive /norestart", uc == null ? null : uc[0] + "|" + uc[1]);
+            ue.UninstallString = "";
+            Eq("uninst: sem entrada", true, HidHide.UninstallCommand(ue) == null);
 
             // --- HidHide /releases/latest (formato real do GitHub: "uploader" aninhado, digest)
             string up = "\"uploader\":{\"login\":\"nefarius\",\"id\":1},";
@@ -168,10 +199,12 @@ namespace RealFFBSetupTests
             catch (HidHide.DownloadException) { Console.WriteLine("ok     " + name); }
         }
 
-        private static HidHide.GamingDevice Dev(string inst, string cont)
+        private static HidHide.GamingDevice Dev(string inst, string cont) { return Dev(inst, cont, 0); }
+
+        private static HidHide.GamingDevice Dev(string inst, string cont, int count)
         {
             HidHide.GamingDevice d = new HidHide.GamingDevice();
-            d.InstancePath = inst; d.ContainerPath = cont;
+            d.InstancePath = inst; d.ContainerPath = cont; d.ContainerCount = count;
             return d;
         }
     }

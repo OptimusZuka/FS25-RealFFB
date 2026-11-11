@@ -39,25 +39,29 @@ The installer starts in English. You can choose Português, Español or Françai
 |---|---|---|
 | 1. System | checks for 64-bit Windows 10/11 | no |
 | 2. FS25 | searches every Steam library (all drives) and the usual folders of other stores; asks for the folder if not found | no |
-| 3. Wheel | lists the connected Fanatec and Logitech wheels (other brands: see below) | no |
+| 3. Wheel | lists the connected wheel bases: every device that Windows reports with force feedback, any brand | no |
 | 4. HidHide | if missing or outdated, downloads the official installer from `github.com/nefarius/HidHide`, checks Nefarius' digital signature and the SHA-256 published by GitHub, and runs it unmodified (UAC) | installs the driver |
-| 5. Devices | shows exactly what will change in HidHide and applies it only when you click **Apply** | allows RealFFB.exe, hides only the chosen wheel, adjusts `game.xml` (with a backup) |
+| 5. Devices | allows RealFFB.exe in HidHide (always), finds the wheel base, shows exactly what will be hidden, applies it when you click **Apply**, then reads HidHide again to check | allows RealFFB.exe, hides only the wheel base, adjusts `game.xml` (with a backup) |
 | 6. RealFFB | copies the app, the helper and the mod | files |
 | 7. Final check | checks files, mod, game.xml, HidHide and the wheel | no |
 
 - **If a restart is needed** after HidHide, the installer tells you, and step 5 opens by itself after the restart.
 - **If the wheel is not connected**, you can still finish. Later, plug it in and use **Start → FS25 RealFFB - Configure devices**.
 
-## Other wheel brands
+## How the wheel is set up in HidHide
 
-The app itself works with any DirectInput force feedback wheel (see the [compatibility matrix](dev/COMPATIBILITY-MATRIX.md)), but the installer's automatic HidHide setup currently recognises **Fanatec and Logitech** wheels only. With another brand (Thrustmaster, MOZA, Simucube, Simagic, ...), finish the installer, then once:
+[HidHide](https://github.com/nefarius/HidHide) hides the wheel from FS25 so that only FS25 RealFFB controls its force feedback. Setup configures it automatically, with the official `HidHideCLI` (no administrator rights needed for this part):
 
-1. Open **HidHide Configuration Client** (Start menu).
-2. **Applications** tab: add `RealFFB.exe` from the FS25 RealFFB install folder (normally `%LOCALAPPDATA%\Programs\FS25 RealFFB`).
-3. **Devices** tab: tick **only your wheel base** (not pedals or other controllers) and make sure **Enable device hiding** is on.
-4. Open FS25 RealFFB. In **Hardware**, check that your wheel is detected, set its peak torque with **Calibrate force** and run **Test my wheel**.
+1. **RealFFB.exe is allowed** to see hidden devices, using the real install folder. This is done every time, even with no wheel connected.
+2. **The wheel base is identified**: the device that Windows (DirectInput) reports **with force feedback**, whatever the brand (Fanatec, Logitech, Thrustmaster, MOZA, Simucube, Simagic, ...). Pedals, shifters, handbrakes, stalks, button boxes and anything without force feedback are never chosen. With several wheels you choose one; if none can be identified safely, you can pick it from the list (with a warning) or cancel, and nothing is hidden.
+3. **Only that wheel is hidden**: its HID entries, plus its USB entry only when that USB device contains nothing else.
+4. **Setup checks** that HidHide really kept the settings and tells you if it did not.
 
-Please send the compatibility report from the Hardware page in an [issue](https://github.com/OptimusZuka/fs25-realffb/issues): it helps add your wheel to the automatic setup.
+Entries of other programs are never removed, and running setup again does not create duplicates. Hiding itself is switched on by the app while it is open and off when it closes, so the wheel keeps working in other games.
+
+**After the setup, unplug the wheel's USB cable and plug it back in (or restart Windows)**: Windows applies HidHide changes when the device reconnects.
+
+If something goes wrong, run **Start → FS25 RealFFB - Configure devices** (it repairs the setup) and, if needed, **Start → FS25 RealFFB - Diagnostic report**.
 
 ## 4. First use
 
@@ -73,6 +77,8 @@ When a new version is out, a yellow button appears in the app. You can also down
 ## Uninstalling
 
 Go to **Settings → Apps → FS25 RealFFB → Uninstall**.
-- `game.xml` and HidHide are restored to how they were.
-- HidHide itself stays installed because other programs may use it. Remove it separately if you want.
 - At the start, the uninstaller asks whether to keep your settings.
+- Then it asks **"Would you also like to uninstall HidHide?"**:
+  - **No, keep HidHide installed** (the default): only the FS25 RealFFB entries are removed from HidHide, so your wheel is no longer hidden. Other programs' entries are not touched.
+  - **Yes, uninstall HidHide**: after a second confirmation (other programs such as DS4Windows or UCR may use HidHide), device hiding is switched off and HidHide is removed with its **official uninstaller** (UAC; Windows may ask for a restart). If HidHide was already installed before FS25 RealFFB, the uninstaller says so and recommends keeping it.
+- `game.xml` is restored to how it was.

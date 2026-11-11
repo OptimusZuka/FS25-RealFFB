@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.14.0] - 2026-11-11 (beta)
+Automatic HidHide setup for every force feedback wheel, and a choice to remove HidHide when uninstalling.
+
+**What was wrong:** the installer only recognised Fanatec and Logitech wheels (by USB vendor ID). With any other wheel, for example the MOZA R5 of a tester, it stopped with "no supported wheel" and changed nothing: RealFFB.exe was not allowed in HidHide and the wheel was not hidden, so FS25 and the app fought over the wheel and force feedback stopped after a moment. `game.xml` was not adjusted either.
+
+### Installer
+- RealFFB.exe is allowed in HidHide **always**, using the real install folder (custom folders too), even with no wheel connected. An old entry of our own from a previous folder is replaced.
+- The wheel base is identified for **any brand**: the device that Windows (DirectInput) reports with force feedback, plus the known Fanatec/Logitech IDs. Pedals, shifters, handbrakes, stalks, button boxes, keyboards, mice and devices without force feedback are never selected. MOZA bases with a stalk or Farming Control System attached: only the base is hidden.
+- Only the wheel's HID entries are hidden; its USB entry only when that USB device contains nothing else, and its XInput entry when there is one (official HidHide guidance for composite devices).
+- Several wheels: you choose. None identified safely: you can pick from the list (with a warning) or cancel, and nothing is hidden.
+- After applying, setup reads HidHide again and reports anything that was not kept.
+- Idempotent: running setup again never duplicates entries, and other programs' entries are never removed.
+- `game.xml` is adjusted even when no wheel is connected.
+- The official HidHide installer gets a time limit (5 minutes silent): if it hangs, setup reports it instead of waiting forever.
+- Reminder to unplug and replug the wheel after setup (Windows applies HidHide changes when the device reconnects).
+- Silent installs (`/VERYSILENT`) never stop on a dialog.
+
+### Uninstaller
+- New question: **"Would you also like to uninstall HidHide?"** with **"Yes, uninstall HidHide"** / **"No, keep HidHide installed"** (default: keep). Yes asks for a second confirmation, explaining that other programs may depend on HidHide; it then switches device hiding off and runs HidHide's **official uninstaller**, checks the result and reports a restart if one is needed. If HidHide was already installed before FS25 RealFFB, the uninstaller says so.
+- Keeping HidHide: only FS25 RealFFB's entries are removed; the wheel is no longer hidden; other programs' entries stay.
+- The Windows start-up entry that un-hides the wheel is removed with the app.
+- Fixed: the original `game.xml` values could be lost from the install state, so uninstalling did not restore them.
+
+### Diagnostics
+- New HidHide section: installed / driver / device hiding / FS25 RealFFB whitelist / steering wheel detected / selected for hiding / device access / configuration COMPLETE or INCOMPLETE, plus the result of the last setup.
+- Separates **configuration problems** (use *Configure devices*) from **hardware or driver problems** (no force feedback wheel seen by Windows).
+- Lists the controllers as seen by HidHide (marked when hidden) and by RealFFB.exe (marked when they have force feedback).
+
+### Tests
+- 59 automated installer tests with simulated devices (Fanatec, Logitech G920 with XInput, MOZA R5 with stalk and Farming Control System, Thrustmaster composite device, active pedals, Razer keypad).
+- New automated install test on a clean Windows machine (GitHub Actions) with the real official HidHide: fresh install, install with HidHide already present and configured, repeated setup, other programs' entries preserved, diagnostics, uninstall keeping HidHide, official HidHide removal. No physical wheel is attached there.
+- **Not tested on physical hardware yet:** the new detection with a real MOZA, Thrustmaster or other non-Fanatec wheel, and the uninstaller's interactive dialogs.
+
 ## [0.13.1] - 2026-11-11 (beta)
 Small fixes after the 0.13.0 release. Forces unchanged.
 - "Realistic centering" card: the explanation was cut off after two lines. The card is taller now.
