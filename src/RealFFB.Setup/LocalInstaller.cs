@@ -161,6 +161,14 @@ namespace RealFFBSetup
                 {
                     Result r = new Result();
                     int c = Program.InstallHidHide(r);
+                    while (c == 4)
+                    {
+                        Out(L.F("Could not get HidHide from GitHub: {0}", r.Get("error")));
+                        if (MessageBox.Show(owner, L.F("Could not get HidHide from GitHub:\n{0}\n\nCheck your internet connection and try again.", r.Get("error")),
+                            "FS25 RealFFB Installer", MessageBoxButtons.RetryCancel, MessageBoxIcon.Warning) != DialogResult.Retry) break;
+                        r = new Result();
+                        c = Program.InstallHidHide(r);
+                    }
                     if (c == 0) { Ok(3); Out(L.T("HidHide installed.")); }
                     else if (c == 3) { Warn(3); reboot = true; Out(L.T("HidHide installed: Windows needs a restart.")); }
                     else { Fail(3); Out(L.F("HidHide failed (code {0}). See the log at %APPDATA%\\FS25 RealFFB\\setup_log.txt.", c)); }

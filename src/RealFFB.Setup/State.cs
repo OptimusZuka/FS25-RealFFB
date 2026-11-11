@@ -76,7 +76,9 @@ namespace RealFFBSetup
     internal sealed class Result
     {
         private readonly StringBuilder sb = new StringBuilder();
-        public void Add(string k, string value) { sb.AppendLine(k + "=" + (value ?? "").Replace("\r", " ").Replace("\n", " ")); }
+        private readonly Dictionary<string, string> values = new Dictionary<string, string>();
+        public void Add(string k, string value) { values[k] = value ?? ""; sb.AppendLine(k + "=" + (value ?? "").Replace("\r", " ").Replace("\n", " ")); }
+        public string Get(string k) { string v; return values.TryGetValue(k, out v) ? v : ""; }
         // Formato .ini (seccao [r]) em UTF-16 com BOM: o Inno Setup le com GetIniString, com acentos.
         public void Write(string path)
         {

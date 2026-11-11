@@ -1,5 +1,7 @@
-﻿// FS25 Real FFB - janela principal: configuracao, monitor e ciclo de atualizacao.
+﻿// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
+// FS25 Real FFB - janela principal: configuracao, monitor e ciclo de atualizacao.
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
@@ -10,13 +12,38 @@ using System.Windows.Forms;
 
 namespace FS25RealFFB
 {
-    internal sealed class MainForm : Form
+    internal sealed partial class MainForm : Form
     {
         [DllImport("winmm.dll")] private static extern int timeBeginPeriod(int ms);
         [DllImport("winmm.dll")] private static extern int timeEndPeriod(int ms);
+        [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+        private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+        private const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10;
+        private readonly ToolTip tips = new ToolTip();
+        private int pinTicks;
+
+        // Explicacao ao passar o rato (chave = titulo em ingles; o texto e traduzido em Lang.cs)
+        private static readonly Dictionary<string, string> Help = new Dictionary<string, string> {
+            { "Wheel torque (peak)", "Real peak torque of your wheel (CSL DD 8 Nm, G29 2.2 Nm). Must match the hardware so the forces come out right." },
+            { "Force multiplier", "Raises or lowers ALL forces in proportion (centering, weight, terrain and engine). The quickest way to make everything lighter or stronger." },
+            { "Maximum force", "Safety limit: the sum of the forces never goes above this value." },
+            { "Centering / self-aligning", "How strongly the wheel returns to centre while moving. Grows with speed; zero at a standstill." },
+            { "Damping", "Resistance to fast wheel movements while driving. Higher = calmer, slower wheel." },
+            { "Standstill weight (friction)", "Weight of the hydraulic steering when stopped or crawling. Fades as speed rises." },
+            { "Reference speed", "Speed at which centering and damping reach full strength." },
+            { "Suspension bumps", "Strength of bumps, potholes and impacts." },
+            { "Terrain texture", "Vibration of the ground: tarmac, dirt, grass and field." },
+            { "Engine vibration", "Engine vibration. Follows RPM and load; stronger at a standstill, softer while driving." },
+            { "Steering sensitivity", "How much the tractor steers per wheel turn. 100% = full lock at the end of the wheel's rotation." },
+        };
 
         private readonly Settings settings = Settings.Load();
-        private readonly FfbEngine engine = new FfbEngine();
+        private readonly FfbEngine engine = new FfbEngine();          // fisica (telemetria -> ForceRequest)
+        private readonly FfbMixer mixer = new FfbMixer();             // 0.13: mistura e limites universais
+        private readonly OscillationGuard oscGuard = new OscillationGuard();
+        private Watchdog watchdog;
+        private IFfbAdapter adapter;                                  // 0.13: traducao para o volante
+        private ForceRequest lastReq = new ForceRequest();
         private IWheelOutput device;
         private TelemetryServer telemetry;
         private readonly Stopwatch clock = Stopwatch.StartNew();
@@ -60,6 +87,15 @@ namespace FS25RealFFB
             bool first;
             using (System.Threading.Mutex single = new System.Threading.Mutex(true, "FS25RealFFB_unica", out first))
             {
+                bool unhide = false;
+                foreach (string arg in Environment.GetCommandLineArgs()) if (arg == "--unhide") unhide = true;
+                if (unhide)
+                {
+                    // Arranque do Windows (0.10.0): se a app nao esta aberta, o volante nao deve ficar escondido
+                    // (fecho a forca, falta de luz ou encerramento do Windows com a app aberta).
+                    if (first) { try { if (HidHideControl.Available) HidHideControl.Off(); } catch { } }
+                    return;
+                }
                 if (!first)
                 {
                     // Ja ha uma RealFFB aberta: duas ao mesmo tempo disputam a base e a telemetria.
@@ -91,30 +127,49 @@ namespace FS25RealFFB
         }
 
         private const int W = 360;           // largura dos controlos do painel de definicoes
+        private const int NavW = 190;        // largura do menu lateral
         private LiveView live;
+        private TractorView tractor;
+        private readonly ToolTip helpTip = new ToolTip();
+        private int lastCollLogged = -1;
         private StatusChip chipBase, chipTel, chipBridge;
         private Panel leftPanel, rightPanel;
         private Button pinBtn;
         private Control chipsBox;
-        private bool pinned;
+        private bool pinned, vehPinned;
+        private Button pinVehBtn;
+        private Panel headerPanel, accentPanel;
+        private Label logTitleLbl, unpinBtn;
+        private Form helpPop; private int helpClosedAt;
         private Rectangle normalBounds;
         private double lastLiveMs;
         private readonly System.Collections.Generic.Dictionary<string, NoWheelTrackBar> sliders = new System.Collections.Generic.Dictionary<string, NoWheelTrackBar>();
         private bool loadingProfile, profileDirty;
         private string profileVehicle = "";
+        // 0.12: centragem realista
+        private CheckBox realCenterBox;
+        private ComboBox centerModeBox;
+        private Label centerInfo;
+        private Panel centerCard;
+        private Label centerRealLbl, centerWhyLbl, centerNowLbl;
+        private string centerNote = "";   // texto curto para o painel ao vivo
+        private string centerVeh = null, centerKey = null;
+        private SteerKind centerKind = SteerKind.Unknown;
+        private bool fillingCenter;
         private double lastProfileSaveMs;
         private Label profileLabel;
         private CheckBox perVehBox;
         private ComboBox wheelBox;
         private Label wheelInfo;
         private bool fillingWheels;
+        private bool hidHideMissing;
 
         public MainForm()
         {
             L.Set(settings.Language.Length > 0 ? settings.Language : (ReadState("Lang") ?? "en"));
             Text = "FS25 RealFFB  v" + AppInfo.Version;
             try { Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
-            Width = 1180; Height = 780;
+            Width = 1320; Height = 800;
             MinimumSize = new Size(640, 400);
             StartPosition = FormStartPosition.CenterScreen;
             KeyPreview = true;
@@ -124,30 +179,31 @@ namespace FS25RealFFB
 
             // ---------------------------------------------------------- cabecalho
             Panel header = new Panel();
-            header.Dock = DockStyle.Top; header.Height = 78; header.BackColor = Theme.Bg;
+            header.Dock = DockStyle.Top; header.Height = 60; header.BackColor = Theme.Header;
             Panel accent = new Panel();
-            accent.Dock = DockStyle.Top; accent.Height = 2; accent.BackColor = Theme.Yellow;
+            accent.Dock = DockStyle.Top; accent.Height = 1; accent.BackColor = Theme.Line;
 
             PictureBox logo = new PictureBox();
             logo.Image = Theme.Logo(); logo.SizeMode = PictureBoxSizeMode.Zoom;
-            logo.SetBounds(12, 6, 96, 66);
+            logo.SetBounds(14, 10, 56, 40);
             header.Controls.Add(logo);
 
             Label title = new Label();
-            title.Text = "FS25 RealFFB"; title.Font = Theme.Bold(17f); title.ForeColor = Theme.Text;
-            title.AutoSize = true; title.Location = new Point(114, 10);
+            title.Text = "FS25 RealFFB"; title.Font = Theme.Bold(12.5f); title.ForeColor = Theme.Text;
+            title.AutoSize = true; title.Location = new Point(76, 10);
             header.Controls.Add(title);
             Label sub = new Label();
-            sub.Text = "by OptimusZuka   |   v" + AppInfo.Version; sub.Font = Theme.UI(9f); sub.ForeColor = Theme.Yellow;
-            sub.AutoSize = true; sub.Location = new Point(117, 46);
+            sub.Text = "v" + AppInfo.Version + "  ·  OptimusZuka"; sub.Font = Theme.UI(8.5f); sub.ForeColor = Theme.Muted;
+            sub.AutoSize = true; sub.Location = new Point(78, 34);
             header.Controls.Add(sub);
 
             FlowLayoutPanel chips = new FlowLayoutPanel();
-            chips.FlowDirection = FlowDirection.TopDown; chips.WrapContents = false;
-            chips.SetBounds(330, 6, 170, 70); chips.BackColor = Theme.Bg;
+            chips.FlowDirection = FlowDirection.LeftToRight; chips.WrapContents = false;
+            chips.SetBounds(250, 18, 560, 26); chips.BackColor = Theme.Header;
             chipBase = new StatusChip(L.T("Wheel")); chipTel = new StatusChip(L.T("No telemetry")); chipBridge = new StatusChip(L.T("Bridge off"));
-            chipBase.Margin = chipTel.Margin = chipBridge.Margin = new Padding(0);
-            chipBase.Height = chipTel.Height = chipBridge.Height = 22; chipBase.Width = chipTel.Width = chipBridge.Width = 170;
+            chipBase.Margin = chipTel.Margin = chipBridge.Margin = new Padding(0, 0, 14, 0);
+            chipBase.Height = chipTel.Height = chipBridge.Height = 24; chipBase.Width = 220; chipTel.Width = 160; chipBridge.Width = 150;
+            chipBase.BackColor = chipTel.BackColor = chipBridge.BackColor = Theme.Header;
             chips.Controls.Add(chipBase); chips.Controls.Add(chipTel); chips.Controls.Add(chipBridge);
             header.Controls.Add(chips);
             chipsBox = chips;
@@ -155,58 +211,167 @@ namespace FS25RealFFB
             FlowLayoutPanel actions = new FlowLayoutPanel();
             actions.Dock = DockStyle.Right; actions.AutoSize = true; actions.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             actions.FlowDirection = FlowDirection.RightToLeft;
-            actions.WrapContents = false; actions.Padding = new Padding(0, 18, 12, 0); actions.BackColor = Theme.Bg;
+            actions.WrapContents = false; actions.Padding = new Padding(0, 12, 14, 0); actions.BackColor = Theme.Header;
 
-            Button stop = Theme.Btn(L.T("STOP (Esc)"), 120, 40, false);
-            stop.BackColor = Color.FromArgb(180, 28, 28); stop.FlatAppearance.BorderColor = Color.FromArgb(180, 28, 28);
-            stop.FlatAppearance.MouseOverBackColor = Color.FromArgb(210, 40, 40);
+            Button stop = Theme.Btn(L.T("STOP (Esc)"), 110, 36, false);
+            stop.BackColor = Theme.Stop; stop.FlatAppearance.BorderColor = Theme.Stop; stop.ForeColor = Color.White;
+            stop.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 95, 100);
             stop.Margin = new Padding(8, 0, 0, 0);
             stop.Click += delegate { Panic("STOP button"); };
 
             enableBox = new CheckBox();
             enableBox.Appearance = Appearance.Button; enableBox.FlatStyle = FlatStyle.Flat;
-            enableBox.Width = 140; enableBox.Height = 40; enableBox.TextAlign = ContentAlignment.MiddleCenter;
+            enableBox.Width = 120; enableBox.Height = 36; enableBox.TextAlign = ContentAlignment.MiddleCenter;
             enableBox.Font = Theme.Bold(10.5f); enableBox.Cursor = Cursors.Hand;
             enableBox.Margin = new Padding(8, 0, 0, 0);
             StyleToggle();
             enableBox.CheckedChanged += delegate { StyleToggle(); Log(enableBox.Checked ? "FFB on." : "FFB off."); };
 
-            pinBtn = Theme.Btn(L.T("Pin on top"), 120, 40, false);
+            pinBtn = Theme.Btn(L.T("Pin on top"), 110, 36, false);
             pinBtn.Margin = new Padding(8, 0, 0, 0);
             pinBtn.Click += delegate { TogglePin(); };
+            pinVehBtn = Theme.Btn(L.T("Pin vehicle"), 120, 36, false);
+            pinVehBtn.Margin = new Padding(8, 0, 0, 0);
+            pinVehBtn.Click += delegate { ToggleVehPin(); };
 
-            Button play = Theme.Btn(L.T("Open FS25"), 104, 40, false);
+            Button play = Theme.Btn(L.T("Open FS25"), 100, 36, false);
             play.Margin = new Padding(8, 0, 0, 0);
             play.Click += delegate { LaunchGame(); };
 
-            actions.Controls.Add(stop); actions.Controls.Add(enableBox); actions.Controls.Add(pinBtn); actions.Controls.Add(play);
+            actions.Controls.Add(stop); actions.Controls.Add(enableBox); actions.Controls.Add(pinBtn); actions.Controls.Add(pinVehBtn); actions.Controls.Add(play);
+            tips.AutoPopDelay = 15000; tips.InitialDelay = 400; tips.ReshowDelay = 100;
+            tips.SetToolTip(stop, L.T("Stops all forces immediately."));
+            tips.SetToolTip(enableBox, L.T("Turns force feedback on or off."));
+            tips.SetToolTip(pinBtn, L.T("Compact window always on top of the game. FS25 must be in borderless or windowed mode: in exclusive fullscreen Windows draws the game above every window."));
+            tips.SetToolTip(pinVehBtn, L.T("Small window always on top of the game with only the vehicle drawing and the force bars. Click the x in its corner to go back."));
+            tips.SetToolTip(play, L.T("Starts Farming Simulator 25."));
             header.Controls.Add(actions);
+            // 0.10.0: numa janela estreita os indicadores (chips) ficavam por cima dos botoes e tapavam o
+            // "Abrir FS25" (relatado num G29). Os chips encolhem/escondem-se e os botoes ficam sempre por cima.
+            header.Resize += delegate { FitHeader(actions); };
+            actions.SizeChanged += delegate { FitHeader(actions); };
 
             // ---------------------------------------------------------- definicoes (coluna esquerda)
+            // Layout "Cockpit": menu lateral + uma pagina de definicoes por secao + painel ao vivo.
             leftPanel = new Panel();
-            leftPanel.Dock = DockStyle.Left; leftPanel.Width = W + 44; leftPanel.BackColor = Theme.Panel;
+            leftPanel.Dock = DockStyle.Left; leftPanel.Width = NavW + W + 46; leftPanel.BackColor = Theme.Panel;
             Panel sep = new Panel(); sep.Dock = DockStyle.Left; sep.Width = 1; sep.BackColor = Theme.Line;
 
-            FlowLayoutPanel flow = new FlowLayoutPanel();
-            flow.FlowDirection = FlowDirection.TopDown; flow.WrapContents = false;
-            flow.Dock = DockStyle.Fill; flow.AutoScroll = true;
-            flow.Padding = new Padding(16, 4, 8, 16); flow.BackColor = Theme.Panel;
+            FlowLayoutPanel nav = new FlowLayoutPanel();
+            nav.Dock = DockStyle.Left; nav.Width = NavW; nav.FlowDirection = FlowDirection.TopDown; nav.WrapContents = false;
+            nav.Padding = new Padding(10, 14, 10, 10); nav.BackColor = Theme.Nav;
+            Panel navSep = new Panel(); navSep.Dock = DockStyle.Left; navSep.Width = 1; navSep.BackColor = Theme.Line;
+
+            Panel pageHost = new Panel(); pageHost.Dock = DockStyle.Fill; pageHost.BackColor = Theme.Panel;
+            string[] pageNames = { "Force feedback", "Steering and pedals", "Vehicle profile", "Buttons", "System", "Hardware" };
+            FlowLayoutPanel[] pages = new FlowLayoutPanel[pageNames.Length];
+            Button[] navBtns = new Button[pageNames.Length];
+            for (int i = 0; i < pages.Length; i++)
+            {
+                FlowLayoutPanel pg = new FlowLayoutPanel();
+                pg.FlowDirection = FlowDirection.TopDown; pg.WrapContents = false;
+                pg.Dock = DockStyle.Fill; pg.AutoScroll = true;
+                pg.Padding = new Padding(18, 6, 10, 16); pg.BackColor = Theme.Panel;
+                pg.Visible = i == 0;
+                pages[i] = pg;
+                Button nb = Theme.NavBtn(L.T(pageNames[i]), NavW - 20);
+                int idx = i;
+                nb.Click += delegate
+                {
+                    // clicar na secao aberta recolhe a coluna de definicoes (janela estreita sem perder o painel ao vivo)
+                    if (pages[idx].Visible && pageHost.Visible)
+                    {
+                        pageHost.Visible = false; leftPanel.Width = NavW + 2;
+                        Theme.NavActive(navBtns[idx], false);
+                        return;
+                    }
+                    pageHost.Visible = true; leftPanel.Width = NavW + W + 46;
+                    for (int k = 0; k < pages.Length; k++) { pages[k].Visible = k == idx; Theme.NavActive(navBtns[k], k == idx); }
+                };
+                navBtns[i] = nb;
+                Theme.NavActive(nb, i == 0);
+                nav.Controls.Add(nb);
+            }
 
             updateBtn = Theme.Btn("", W, 36, true);
             updateBtn.Visible = false;
+            updateBtn.Dock = DockStyle.Top;
             updateBtn.Click += delegate { InstallUpdate(); };
-            flow.Controls.Add(updateBtn);
 
+            // rodape fixo: guardar sempre a vista, em qualquer pagina
+            FlowLayoutPanel foot = new FlowLayoutPanel();
+            foot.Dock = DockStyle.Bottom; foot.Height = 58; foot.FlowDirection = FlowDirection.LeftToRight; foot.WrapContents = false;
+            foot.Padding = new Padding(18, 10, 10, 10); foot.BackColor = Theme.Nav;
+
+            FlowLayoutPanel flow = pages[2];
             flow.Controls.Add(Theme.Section(L.T("Vehicle profile"), W));
             perVehBox = Theme.Check(L.T("Separate settings for each vehicle"), settings.PerVehicle, W);
             perVehBox.CheckedChanged += delegate { TogglePerVehicle(); };
             flow.Controls.Add(perVehBox);
+            tips.SetToolTip(perVehBox, L.T("Each tractor or machine keeps its own force settings, loaded automatically."));
             profileLabel = new Label(); profileLabel.Width = W; profileLabel.Height = 38; profileLabel.ForeColor = Theme.Muted;
             flow.Controls.Add(profileLabel);
             Button profDel = Theme.Btn(L.T("Delete this vehicle's profile (back to default)"), W, 30, false);
             profDel.Click += delegate { DeleteProfile(); };
             flow.Controls.Add(profDel);
+            Button profDef = Theme.Btn(L.T("Set as default"), W, 30, false);
+            profDef.Click += delegate { SetAsDefault(); };
+            tips.SetToolTip(profDef, L.T("The current settings become the default, used by every vehicle that has no profile of its own."));
+            flow.Controls.Add(profDef);
+            Button profAll = Theme.Btn(L.T("Save for all vehicles"), W, 30, false);
+            profAll.Click += delegate { ApplyToAllVehicles(); };
+            tips.SetToolTip(profAll, L.T("The current settings are used by every vehicle. Existing vehicle profiles are moved to a backup folder, not deleted."));
+            flow.Controls.Add(profAll);
             UpdateProfileLabel();
+
+            flow = pages[0];
+            // 0.12: centragem realista (primeira coisa da pagina inicial)
+            flow.Controls.Add(Theme.Section(L.T("Realistic centering"), W));
+            realCenterBox = Theme.Check(L.T("Realistic centering for vehicles"), settings.RealisticCentering, W);
+            realCenterBox.CheckedChanged += delegate
+            {
+                settings.RealisticCentering = realCenterBox.Checked;
+                try { settings.Save(); } catch { }
+                centerKey = null;   // refazer o texto
+                Log("Realistic centering: " + (settings.RealisticCentering ? "on" : "off"));
+            };
+            flow.Controls.Add(realCenterBox);
+            tips.SetToolTip(realCenterBox, L.T("In real life only vehicles with mechanical steering (cars, pickups, trucks) bring the wheel back to the center. Tractors, combines, loaders, telehandlers and forklifts use hydrostatic steering: the wheel stays where you leave it. With this on, those vehicles get no centering spring."));
+            // Cartao: "na vida real centra / nao centra" + porque + o que o volante faz agora
+            centerCard = new Panel(); centerCard.Width = W; centerCard.Height = 112; centerCard.BackColor = Theme.Card;
+            centerCard.Margin = new Padding(0, 6, 0, 6);
+            Panel stripe = new Panel(); stripe.Dock = DockStyle.Left; stripe.Width = 4; stripe.BackColor = Theme.Line;
+            centerCard.Controls.Add(stripe);
+            centerRealLbl = new Label(); centerRealLbl.AutoSize = false; centerRealLbl.SetBounds(14, 8, W - 22, 24);
+            centerRealLbl.Font = Theme.Bold(11f); centerRealLbl.ForeColor = Theme.Text; centerRealLbl.BackColor = Theme.Card;
+            centerWhyLbl = new Label(); centerWhyLbl.AutoSize = false; centerWhyLbl.SetBounds(14, 34, W - 22, 48);
+            centerWhyLbl.ForeColor = Theme.Soft; centerWhyLbl.BackColor = Theme.Card;
+            centerNowLbl = new Label(); centerNowLbl.AutoSize = false; centerNowLbl.SetBounds(14, 84, W - 22, 22);
+            centerNowLbl.Font = Theme.Bold(9.5f); centerNowLbl.ForeColor = Theme.Muted; centerNowLbl.BackColor = Theme.Card;
+            centerCard.Controls.Add(centerRealLbl); centerCard.Controls.Add(centerWhyLbl); centerCard.Controls.Add(centerNowLbl);
+            centerCard.Tag = stripe;
+            centerRealLbl.Text = L.T("Get in a vehicle to see if it centers in real life.");
+            flow.Controls.Add(centerCard);
+            Label cmT = new Label(); cmT.Width = W; cmT.Height = 20; cmT.ForeColor = Theme.Soft; cmT.Text = L.T("Centering for this vehicle");
+            flow.Controls.Add(cmT);
+            centerModeBox = new ComboBox();
+            centerModeBox.DropDownStyle = ComboBoxStyle.DropDownList; centerModeBox.Width = W;
+            centerModeBox.FlatStyle = FlatStyle.Flat; centerModeBox.BackColor = Theme.Card; centerModeBox.ForeColor = Theme.Text;
+            centerModeBox.Items.Add(L.T("Automatic (by vehicle type)"));
+            centerModeBox.Items.Add(L.T("On: always centers"));
+            centerModeBox.Items.Add(L.T("Off: never centers"));
+            centerModeBox.SelectedIndex = 0;
+            centerModeBox.Enabled = false;
+            centerModeBox.SelectedIndexChanged += delegate
+            {
+                if (fillingCenter || string.IsNullOrEmpty(centerVeh)) return;
+                try { CenteringOverrides.Set(centerVeh, centerModeBox.SelectedIndex); }
+                catch (Exception ex) { Log("Centering: could not save (" + ex.Message + ")"); }
+                centerKey = null;
+                Log("Centering for " + centerVeh + ": " + (centerModeBox.SelectedIndex == 1 ? "always" : centerModeBox.SelectedIndex == 2 ? "never" : "automatic"));
+            };
+            flow.Controls.Add(centerModeBox);
+            centerInfo = new Label(); centerInfo.Width = W; centerInfo.Height = 4;   // (texto passou para o cartao)
 
             flow.Controls.Add(Theme.Section(L.T("Wheel"), W));
             wheelBox = new ComboBox();
@@ -221,7 +386,9 @@ namespace FS25RealFFB
 
             flow.Controls.Add(Theme.Section(L.T("Force"), W));
             flow.Controls.Add(Slider("Wheel torque (peak)", 10, 250, (int)Math.Round(settings.BaseNm * 10),
-                delegate(int v) { settings.BaseNm = v / 10.0; UpdateMaxSlider(); }, delegate(int v) { return (v / 10.0).ToString("0.0") + " Nm"; }));
+                delegate(int v) { settings.BaseNm = v / 10.0; settings.TorqueSource = "user"; UpdateMaxSlider(); }, delegate(int v) { return (v / 10.0).ToString("0.0") + " Nm"; }));
+            flow.Controls.Add(Slider("Force multiplier", 25, 400, (int)Math.Round(settings.ForceScale * 100),
+                delegate(int v) { settings.ForceScale = v / 100.0; }, Pct));
             flow.Controls.Add(Slider("Maximum force", 5, (int)(settings.BaseNm * 10), (int)(settings.MaxNm * 10),
                 delegate(int v) { settings.MaxNm = v / 10.0; }, delegate(int v) { return (v / 10.0).ToString("0.0") + " Nm"; }));
             flow.Controls.Add(Slider("Centering / self-aligning", 0, 100, (int)(settings.Center * 100),
@@ -243,16 +410,23 @@ namespace FS25RealFFB
             invertBox = Theme.Check(L.T("Invert bump direction"), settings.InvertBumps, W);
             invertBox.CheckedChanged += delegate { settings.InvertBumps = invertBox.Checked; if (!loadingProfile) TuningChanged(); };
             flow.Controls.Add(invertBox);
+            tips.SetToolTip(invertBox, L.T("Use it if bumps push the wheel the wrong way."));
 
+            flow = pages[1];
             flow.Controls.Add(Theme.Section(L.T("Steering and pedals"), W));
             CheckBox bridgeBox = Theme.Check(L.T("Send wheel and pedals to FS25"), settings.BridgeOn, W);
             bridgeBox.CheckedChanged += delegate { settings.BridgeOn = bridgeBox.Checked; };
             flow.Controls.Add(bridgeBox);
+            tips.SetToolTip(bridgeBox, L.T("Passes steering and pedals to FS25 through the mod. Needed while HidHide hides the wheel from the game."));
             flow.Controls.Add(Slider("Steering sensitivity", 50, 400, (int)(settings.SteerSens * 100),
                 delegate(int v) { settings.SteerSens = v / 100.0; }, Pct));
             CheckBox steerInv = Theme.Check(L.T("Invert steering"), settings.SteerInvert, W);
             steerInv.CheckedChanged += delegate { settings.SteerInvert = steerInv.Checked; };
             flow.Controls.Add(steerInv);
+            CheckBox followBox = Theme.Check(L.T("Wheel follows AI workers and GPS steering"), settings.FollowAuto, W);
+            followBox.CheckedChanged += delegate { settings.FollowAuto = followBox.Checked; try { settings.Save(); } catch { } };
+            flow.Controls.Add(followBox);
+            tips.SetToolTip(followBox, L.T("When an AI worker or the game's GPS steering drives, the wheel turns by itself. Hold or turn the wheel firmly to take control: the AI worker is dismissed and the GPS switched off."));
             for (int i = 0; i < 3; i++)
             {
                 int idx = i;
@@ -268,6 +442,7 @@ namespace FS25RealFFB
             }
             UpdatePedalLabels();
 
+            flow = pages[3];
             flow.Controls.Add(Theme.Section(L.T("Buttons -> keys (optional)"), W));
             Label hint = new Label();
             hint.Text = L.T("Only needed without HidHide. Add -> press the controller button -> press the FS25 key.");
@@ -295,6 +470,9 @@ namespace FS25RealFFB
             mapList.BackColor = Theme.Card; mapList.ForeColor = Theme.Text; mapList.BorderStyle = BorderStyle.None;
             flow.Controls.Add(mapList);
 
+            BuildHardwarePage(pages[5]);   // 0.13
+
+            flow = pages[4];
             flow.Controls.Add(Theme.Section(L.T("System"), W));
             Label langLab = new Label(); langLab.Text = L.T("Language"); langLab.Width = W; langLab.Height = 20; langLab.ForeColor = Theme.Text;
             flow.Controls.Add(langLab);
@@ -322,22 +500,37 @@ namespace FS25RealFFB
             hideBox.CheckedChanged += delegate
             {
                 settings.AutoHide = hideBox.Checked;
-                if (HidHideControl.Available) Log("HidHide: " + (hideBox.Checked ? HidHideControl.On() : HidHideControl.Off()));
+                if (HidHideControl.Available)
+                {
+                    // 0.12.1: em segundo plano (o HidHideCLI pode levar ate 5 s, 15 s com as tentativas)
+                    bool on = hideBox.Checked; string exe = Application.ExecutablePath;
+                    System.Threading.Thread t = new System.Threading.Thread(delegate()
+                    {
+                        Log("HidHide: " + (on ? HidHideControl.On() : HidHideControl.Off()));
+                        Log("HidHide: show the wheel at Windows start-up -> " + HidHideControl.SetStartupUnhide(on, exe));
+                    });
+                    t.IsBackground = true;
+                    t.Start();
+                }
                 try { settings.Save(); } catch { }
             };
             flow.Controls.Add(hideBox);
-            CheckBox altBox = Theme.Check(L.T("Use the wheel's 2nd interface"), settings.AltInterface, W);
-            altBox.CheckedChanged += delegate { settings.AltInterface = altBox.Checked; Log("Wheel interface: " + (altBox.Checked ? "2" : "1")); };
-            flow.Controls.Add(altBox);
+            tips.SetToolTip(hideBox, L.T("Hides the wheel from FS25 while the app is open, so the game cannot block force feedback."));
 
-            Button save = Theme.Btn(L.T("Save settings"), W, 38, true);
-            save.Margin = new Padding(0, 12, 0, 4);
+            Button reset = Theme.Btn(L.T("Restore default settings"), (W - 10) / 2, 38, false);
+            reset.Margin = new Padding(0, 0, 10, 0);
+            reset.Click += delegate { RestoreDefaults(); };
+            tips.SetToolTip(reset, L.T("Puts every force slider and the force multiplier back to the recommended values for your wheel. Vehicle profiles are moved to a backup folder, not deleted."));
+            foot.Controls.Add(reset);
+
+            Button save = Theme.Btn(L.T("Save settings"), (W - 10) / 2, 38, true);
+            save.Margin = new Padding(0);
             save.Click += delegate
             {
                 try { FlushProfile(); settings.Save(); Log("Settings saved."); }
                 catch (Exception ex) { Log("Could not save: " + ex.Message); }
             };
-            flow.Controls.Add(save);
+            foot.Controls.Add(save);
             Button diag = Theme.Btn(L.T("Create diagnostic report"), W, 30, false);
             diag.Click += delegate { RunDiagnostics(); };
             flow.Controls.Add(diag);
@@ -345,39 +538,68 @@ namespace FS25RealFFB
             lnk.Click += delegate { CreateShortcut(); };
             flow.Controls.Add(lnk);
 
-            leftPanel.Controls.Add(flow);
+            for (int i = pages.Length - 1; i >= 0; i--) pageHost.Controls.Add(pages[i]);
+            pageHost.Controls.Add(updateBtn);
+            pageHost.Controls.Add(foot);
+            leftPanel.Controls.Add(pageHost);
+            leftPanel.Controls.Add(navSep);
+            leftPanel.Controls.Add(nav);
             leftPanel.Controls.Add(sep);
 
             // ---------------------------------------------------------- ao vivo (coluna direita)
             live = new LiveView();
-            live.Dock = DockStyle.Top; live.Height = 300;
+            live.Dock = DockStyle.Top; live.Height = 330;
+            tractor = new TractorView();
+            tractor.Dock = DockStyle.Top; tractor.Height = 260;
+            // botao "?" no canto do desenho: explica cada cor (passar o rato ou clicar)
+            Label helpBtn = new Label();
+            helpBtn.Text = "?"; helpBtn.Font = Theme.Bold(10f); helpBtn.TextAlign = ContentAlignment.MiddleCenter;
+            helpBtn.Size = new Size(22, 22); helpBtn.Location = new Point(8, 6);
+            helpBtn.BackColor = Theme.Line; helpBtn.ForeColor = Theme.Yellow; helpBtn.Cursor = Cursors.Hand;
+            string helpText = L.T("TRACTOR_HELP");
+            if (helpText == "TRACTOR_HELP") helpText = "The vehicle is seen from above, front at the top. Each colour is one source of force in your wheel:\n\nBLUE - steering: the outline of the wheels that steer lights up with the centering force (how hard the wheel pulls back to the centre).\n\nORANGE - suspension: the bar beside each wheel is that wheel's shock absorber. The higher it fills, the harder that wheel was hit (holes, kerbs, ruts). You see exactly which wheel: front or rear, left or right.\n\nGREEN - ground: glow under the wheels touching the ground, grows with the surface texture (gravel, field, tarmac).\n\nRED - engine: engine vibration (RPM and load).\n\nIMPACT - a collision (tree, wall, another vehicle), shown at the point of the vehicle that was hit. Braking does not count.\n\nThe bars at the bottom show the current level of each source. The lines on the ground move with your speed.";
+            helpTip.SetToolTip(helpBtn, L.T("How to read the drawing"));
+            helpBtn.Click += (hbS, hbE) => ToggleHelp(helpBtn, helpText);
+            tractor.Controls.Add(helpBtn);
+            // "x" para sair do modo "Fixar veiculo" (so visivel nesse modo)
+            unpinBtn = new Label();
+            unpinBtn.Text = "\u00D7"; unpinBtn.Font = Theme.Bold(12f); unpinBtn.TextAlign = ContentAlignment.MiddleCenter;
+            unpinBtn.Size = new Size(22, 22); unpinBtn.BackColor = Theme.Line; unpinBtn.ForeColor = Theme.Text; unpinBtn.Cursor = Cursors.Hand;
+            unpinBtn.Visible = false;
+            unpinBtn.Click += delegate { if (vehPinned) ToggleVehPin(); };
+            helpTip.SetToolTip(unpinBtn, L.T("Unpin"));
+            tractor.Controls.Add(unpinBtn);
+            tractor.Resize += delegate { unpinBtn.Location = new Point(tractor.ClientSize.Width - 30, 6); };
 
             monitor = new Label();
             monitor.Dock = DockStyle.Top; monitor.Height = 150;
             monitor.Font = new Font("Consolas", 8.5f);
             monitor.Padding = new Padding(14, 8, 8, 8);
-            monitor.BackColor = Theme.Bg; monitor.ForeColor = Theme.Muted;
+            monitor.BackColor = Theme.Bg; monitor.ForeColor = Theme.Muted; monitor.Padding = new Padding(18, 10, 10, 8);
 
             Label logTitle = Theme.Section(L.T("Log"), 300);
+            logTitleLbl = logTitle;
             logTitle.Dock = DockStyle.Top; logTitle.Height = 26; logTitle.Padding = new Padding(12, 0, 0, 0);
             logTitle.BackColor = Theme.Bg;
 
             logBox = new TextBox();
             logBox.Multiline = true; logBox.ReadOnly = true; logBox.ScrollBars = ScrollBars.Vertical;
-            logBox.Dock = DockStyle.Fill; logBox.Font = new Font("Consolas", 9f);
-            logBox.BackColor = Theme.Bg; logBox.ForeColor = Color.Silver;
+            logBox.Dock = DockStyle.Top; logBox.Height = 180; logBox.Font = new Font("Consolas", 9f);
+            logBox.BackColor = Theme.Bg; logBox.ForeColor = Theme.Muted;
             logBox.BorderStyle = BorderStyle.None;
 
-            rightPanel = new Panel(); rightPanel.Dock = DockStyle.Fill; rightPanel.BackColor = Theme.Bg;
+            rightPanel = new Panel(); rightPanel.Dock = DockStyle.Fill; rightPanel.BackColor = Theme.Bg; rightPanel.AutoScroll = true;
             rightPanel.Controls.Add(logBox);
             rightPanel.Controls.Add(logTitle);
             rightPanel.Controls.Add(monitor);
             rightPanel.Controls.Add(live);
+            rightPanel.Controls.Add(tractor);
 
             Controls.Add(rightPanel);
             Controls.Add(leftPanel);
             Controls.Add(accent);
             Controls.Add(header);
+            headerPanel = header; accentPanel = accent;
 
             KeyDown += delegate(object s, KeyEventArgs e)
             {
@@ -400,6 +622,15 @@ namespace FS25RealFFB
             };
         }
 
+        private void FitHeader(Control actions)
+        {
+            if (chipsBox == null) return;
+            int room = actions.Left - chipsBox.Left - 12;
+            chipsBox.Width = Math.Max(0, Math.Min(560, room));
+            chipsBox.Visible = !pinned && room >= 170;
+            actions.BringToFront();
+        }
+
         private void StyleToggle()
         {
             bool on = enableBox.Checked;
@@ -410,41 +641,40 @@ namespace FS25RealFFB
             enableBox.FlatAppearance.CheckedBackColor = Theme.Yellow;
         }
 
-        // Fixar: janela sempre por cima, so com o painel ao vivo (para ver os comandos enquanto joga).
-        private void TogglePin()
-        {
-            pinned = !pinned;
-            if (pinned)
-            {
-                normalBounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
-                WindowState = FormWindowState.Normal;
-                leftPanel.Visible = false;
-                monitor.Visible = false;
-                chipsBox.Visible = false;
-                TopMost = true;
-                Size = new Size(920, 450);
-                pinBtn.Text = L.T("Unpin");
-                pinBtn.BackColor = Theme.Yellow; pinBtn.ForeColor = Color.Black;
-            }
-            else
-            {
-                TopMost = false;
-                leftPanel.Visible = true;
-                monitor.Visible = true;
-                chipsBox.Visible = true;
-                if (normalBounds.Width > 0) Bounds = normalBounds;
-                pinBtn.Text = L.T("Pin on top");
-                pinBtn.BackColor = Theme.Card; pinBtn.ForeColor = Theme.Text;
-            }
-            Log(pinned ? "Window pinned on top (compact mode)." : "Normal window.");
-        }
-
         // ------------------------------------------------------------------ perfis por veiculo
         private bool ProfileActive { get { return settings.PerVehicle && profileVehicle.Length > 0; } }
 
         private void TuningChanged()
         {
             if (ProfileActive) { profileDirty = true; UpdateProfileLabel(); }
+            // fora de um veiculo os controlos editam o padrao: manter a copia do padrao em dia
+            // (antes, o ficheiro gravava a copia antiga e a alteracao perdia-se)
+            else if (settings.PerVehicle && settings.GlobalTuning != null) settings.GlobalTuning = settings.GetTuning();
+        }
+
+        // Os valores atuais passam a ser o padrao (veiculos sem perfil proprio usam-nos).
+        private void SetAsDefault()
+        {
+            if (settings.PerVehicle) settings.GlobalTuning = settings.GetTuning();
+            try { settings.Save(); } catch (Exception ex) { Log("Could not save: " + ex.Message); return; }
+            UpdateProfileLabel();
+            Log("Current settings saved as the default (vehicles without their own profile use them).");
+        }
+
+        // Os valores atuais passam a valer para TODOS os veiculos: padrao novo e perfis proprios
+        // movidos para uma pasta de copia (nada e apagado).
+        private void ApplyToAllVehicles()
+        {
+            if (MessageBox.Show(this, L.T("Use the current settings for every vehicle? Vehicle profiles are moved to a backup folder."),
+                    "FS25 RealFFB", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            double[] cur = settings.GetTuning();
+            profileDirty = false;
+            string backup;
+            int moved = VehicleProfiles.MoveAllToBackup(out backup);
+            if (settings.PerVehicle) settings.GlobalTuning = (double[])cur.Clone();
+            try { settings.Save(); } catch (Exception ex) { Log("Could not save: " + ex.Message); }
+            UpdateProfileLabel();
+            Log("Current settings applied to every vehicle." + (moved > 0 ? " " + moved + " vehicle profile(s) moved to " + backup : ""));
         }
 
         private void FlushProfile()
@@ -493,14 +723,33 @@ namespace FS25RealFFB
         {
             if (wheel == null || !wheel.IsOpen) return;
             string id = wheel.OpenVid.ToString("X4") + ":" + wheel.OpenPid.ToString("X4");
-            if (settings.BaseDevice == id) return;
-            double nm = FfbDevice.KnownNm(wheel.OpenVid, wheel.OpenPid);
-            settings.BaseNm = nm > 0 ? nm : 3;
+            WheelInfo info = WheelCatalog.Find(wheel.OpenVid, wheel.OpenPid, wheel.OpenProduct);
+            settings.GearDriven = info.GearProfile;
+            wheel.GearBoost = info.Drive == WheelDrive.Gear;   // reforco da mola so para engrenagens (G29 igual a antes)
+            Log("Profile: " + (info.Model.Length > 0 ? info.Model : "unknown wheel") + " - "
+                + (info.Drive == WheelDrive.Gear ? "gear-driven" : info.Drive == WheelDrive.Belt ? "belt-driven" : "direct drive")
+                + (info.GearProfile ? " (profile with internal friction: standstill weight, smoother terrain, faster centering)" : " (direct drive profile)")
+                + (info.Known ? "" : " - not validated on this wheel"));
+            if (settings.BaseDevice == id)
+            {
+                // instalacoes anteriores a 0.6.1 nao tinham o multiplicador: valor inicial por marca
+                if (settings.ForceScaleSaved == false) settings.ForceScale = 1.0;
+                return;
+            }
+            double nm = info.Known ? info.PeakNm : 0;
+            // Desconhecido: assumir uma base forte. As forcas sao percentagem deste valor, por isso o motor
+            // recebe pouco (antes 3 Nm assumidos = 100% do motor numa base de 15-25 Nm).
+            settings.BaseNm = nm > 0 ? nm : WheelCatalog.UnknownNm;
             settings.BaseDevice = id;
+            // Volantes Logitech (engrenagens/correia) tem atrito interno: forcas pequenas perdem-se.
+            // Comecar com o dobro da forca; o utilizador ajusta em "Force multiplier". Fanatec: 100 %.
+            settings.ForceScale = 1.0;
+            SetSlider("Force multiplier", (int)Math.Round(settings.ForceScale * 100));
             SetSlider("Wheel torque (peak)", (int)Math.Round(settings.BaseNm * 10));
             UpdateMaxSlider();
+            settings.TorqueSource = nm > 0 ? "catalog" : "assumed";
             Log(nm > 0 ? string.Format(CultureInfo.InvariantCulture, "Wheel {0}: peak torque {1:0.0} Nm (adjust 'Wheel torque' if yours differs).", id, nm)
-                       : "Unknown wheel " + id + ": assuming 3 Nm. Set 'Wheel torque' to the manufacturer value.");
+                       : string.Format(CultureInfo.InvariantCulture, "WARNING: unknown wheel {0}: assuming {1:0} Nm so the forces start low. Set 'Wheel torque (peak)' to the manufacturer value of YOUR base.", id, WheelCatalog.UnknownNm));
             try { settings.Save(); } catch { }
         }
 
@@ -515,7 +764,7 @@ namespace FS25RealFFB
             foreach (string[] a in wheel.Available)
             {
                 wheelBox.Items.Add(a[1]);
-                if (a[0] == settings.PreferredWheel) sel = wheelBox.Items.Count - 1;
+                if (a[0] == settings.PreferredWheel && (settings.PreferredInstance.Length == 0 || a[2] == settings.PreferredInstance || sel == 0)) sel = wheelBox.Items.Count - 1;
             }
             if (settings.PreferredWheel.Length > 0 && sel == 0) wheelBox.Items.Add(L.F("{0} (chosen, not connected)", settings.PreferredWheel));
             wheelBox.SelectedIndex = settings.PreferredWheel.Length > 0 && sel == 0 ? wheelBox.Items.Count - 1 : sel;
@@ -530,8 +779,10 @@ namespace FS25RealFFB
             if (fillingWheels || wheel == null) return;
             int i = wheelBox.SelectedIndex;
             string id = i <= 0 ? "" : (i - 1 < wheel.Available.Count ? wheel.Available[i - 1][0] : settings.PreferredWheel);
-            if (id == settings.PreferredWheel) return;
+            string inst = i <= 0 ? "" : (i - 1 < wheel.Available.Count ? wheel.Available[i - 1][2] : settings.PreferredInstance);
+            if (id == settings.PreferredWheel && inst == settings.PreferredInstance) return;
             settings.PreferredWheel = id;
+            settings.PreferredInstance = inst;
             try { settings.Save(); } catch { }
             wheelInfo.Text = L.T("Choice saved. Close and reopen RealFFB to switch wheels.");
             wheelInfo.ForeColor = Theme.Yellow;
@@ -571,6 +822,28 @@ namespace FS25RealFFB
             UpdateProfileLabel();
         }
 
+        // Repor as definicoes de forca recomendadas (volante, pedais, botoes e idioma ficam como estao).
+        private void RestoreDefaults()
+        {
+            if (MessageBox.Show(this, L.T("Restore all force settings to the recommended values? Vehicle profiles are moved to a backup folder."),
+                    "FS25 RealFFB", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            profileDirty = false;
+            string backup;
+            int moved = VehicleProfiles.MoveAllToBackup(out backup);
+            Settings def = new Settings();
+            def.BaseNm = settings.BaseNm;
+            double[] t = def.GetTuning();
+            settings.GlobalTuning = (double[])t.Clone();
+            ApplyTuning(t);
+            settings.ForceScale = 1.0;
+            loadingProfile = true;
+            try { SetSlider("Force multiplier", 100); } finally { loadingProfile = false; }
+            UpdateMaxSlider();
+            try { settings.Save(); } catch { }
+            UpdateProfileLabel();
+            Log("Default settings restored." + (moved > 0 ? " " + moved + " vehicle profile(s) moved to " + backup : ""));
+        }
+
         private void DeleteProfile()
         {
             if (!ProfileActive) { Log("Profile: no active vehicle."); return; }
@@ -578,6 +851,60 @@ namespace FS25RealFFB
             VehicleProfiles.Delete(profileVehicle);
             ApplyTuning(settings.GlobalTuning ?? settings.GetTuning());
             Log("Profile of " + profileVehicle + " deleted: using the default settings.");
+        }
+
+        // ------------------------------------------------------------------ 0.12: centragem realista
+        // 1 = o volante centra; 0 = nao centra. Por veiculo: automatico (tipo do veiculo + opcao geral),
+        // sempre ou nunca.
+        private double CenteringNow(TelemetryFrame f, double age)
+        {
+            bool inVeh = f != null && f.Active && age < 300 && !string.IsNullOrEmpty(f.Vehicle);
+            string veh = inVeh ? f.Vehicle : "";
+            if (inVeh && veh != centerVeh)
+            {
+                centerKind = CenteringRules.Classify(f.VehicleType, f.Category, f.Articulated, f.Crawler);
+                Log("Centering: " + veh + " [" + f.VehicleType + "/" + f.Category + (f.Articulated ? "/articulated" : "") + (f.Crawler ? "/tracks" : "") + "] -> " + centerKind);
+            }
+            if (inVeh || centerVeh == null) centerVeh = veh;   // ao sair do veiculo mantem-se o ultimo (pausa, menus)
+            int mode = CenteringOverrides.Get(centerVeh);
+            bool centers = mode == 1 || (mode == 0 && (!settings.RealisticCentering || CenteringRules.CentersInRealLife(centerKind)));
+            string key = centerVeh + "|" + mode + "|" + centerKind + "|" + settings.RealisticCentering + "|" + L.Current;
+            if (key != centerKey && centerCard != null)
+            {
+                centerKey = key;
+                fillingCenter = true;
+                try { centerModeBox.SelectedIndex = mode; } finally { fillingCenter = false; }
+                centerModeBox.Enabled = centerVeh.Length > 0;
+                Panel stripe = centerCard.Tag as Panel;
+                if (centerVeh.Length == 0)
+                {
+                    centerRealLbl.Text = L.T("Get in a vehicle to see if it centers in real life.");
+                    centerRealLbl.ForeColor = Theme.Muted;
+                    centerWhyLbl.Text = L.T("Cars, pickups and trucks center. Tractors, combines, loaders and other machines with hydrostatic steering do not.");
+                    centerNowLbl.Text = "";
+                    if (stripe != null) stripe.BackColor = Theme.Line;
+                    centerNote = "";
+                }
+                else
+                {
+                    bool real = CenteringRules.CentersInRealLife(centerKind);
+                    bool unknown = centerKind == SteerKind.Unknown;
+                    centerRealLbl.Text = unknown ? L.F("{0}: type not recognised", centerVeh)
+                        : (real ? "\u2714  " + L.F("{0}: CENTERS in real life", centerVeh) : "\u2716  " + L.F("{0}: does NOT center in real life", centerVeh));
+                    centerRealLbl.ForeColor = unknown ? Theme.Muted : (real ? Theme.Good : Theme.Yellow);
+                    centerWhyLbl.Text = CenteringRules.KindDetail(centerKind);
+                    string now;
+                    if (mode == 1) now = L.T("Your wheel now: WITH centering (you chose: always)");
+                    else if (mode == 2) now = L.T("Your wheel now: NO centering (you chose: never)");
+                    else if (!settings.RealisticCentering) now = L.T("Your wheel now: WITH centering (realistic centering is off)");
+                    else now = centers ? L.T("Your wheel now: WITH centering, like the real one") : L.T("Your wheel now: NO centering, like the real one");
+                    centerNowLbl.Text = now;
+                    centerNowLbl.ForeColor = centers ? Theme.Text : Theme.Yellow;
+                    if (stripe != null) stripe.BackColor = unknown ? Theme.Line : (real ? Theme.Good : Theme.Yellow);
+                    centerNote = centers ? "" : L.T("OFF: no centering");
+                }
+            }
+            return centers ? 1.0 : 0.0;
         }
 
         private void UpdateProfileLabel()
@@ -598,9 +925,9 @@ namespace FS25RealFFB
         private Control Slider(string title, int min, int max, int value, IntAction onChange, IntFormat fmt)
         {
             Panel p = new Panel(); p.Width = W; p.Height = 56; p.Margin = new Padding(0, 2, 0, 2);
-            Label l = new Label(); l.AutoSize = false; l.Width = W - 90; l.Height = 20; l.Top = 2; l.ForeColor = Theme.Text;
+            Label l = new Label(); l.AutoSize = false; l.Width = W - 90; l.Height = 20; l.Top = 2; l.ForeColor = Theme.Soft;
             Label v = new Label(); v.AutoSize = false; v.Width = 90; v.Height = 20; v.Left = W - 90; v.Top = 2;
-            v.TextAlign = ContentAlignment.TopRight; v.ForeColor = Theme.Yellow; v.Font = Theme.Bold(9.5f);
+            v.TextAlign = ContentAlignment.TopRight; v.ForeColor = Theme.Text; v.Font = Theme.Mono(9.5f);
             NoWheelTrackBar t = new NoWheelTrackBar();
             t.Minimum = min; t.Maximum = max; t.Value = Math.Max(min, Math.Min(max, value));
             t.TickStyle = TickStyle.None; t.Width = W; t.Top = 22; t.BackColor = Theme.Panel;
@@ -609,11 +936,14 @@ namespace FS25RealFFB
             v.Text = fmt(t.Value);
             t.ValueChanged += delegate { onChange(t.Value); v.Text = fmt(t.Value); if (!loadingProfile) TuningChanged(); };
             sliders[title] = t;
+            string help;
+            if (Help.TryGetValue(title, out help)) { help = L.T(help); tips.SetToolTip(p, help); tips.SetToolTip(l, help); tips.SetToolTip(v, help); tips.SetToolTip(t, help); }
             p.Controls.Add(l); p.Controls.Add(v); p.Controls.Add(t);
             return p;
         }
 
         // ------------------------------------------------------------------ log
+        private int logLinesSinceCheck = 200;
         private void Log(string s)
         {
             if (InvokeRequired)
@@ -622,10 +952,34 @@ namespace FS25RealFFB
                 return;
             }
             string line = DateTime.Now.ToString("HH:mm:ss.fff") + "  " + s;
+            // 0.12.1: a caixa do registo crescia sem limite (horas de jogo = MBs de texto e AppendText cada vez
+            // mais lento no ciclo do FFB). Fica com as ultimas ~60 000 letras.
+            if (logBox.TextLength > 120000)
+            {
+                string keep = logBox.Text.Substring(logBox.TextLength - 60000);
+                int nl = keep.IndexOf('\n');
+                logBox.Text = nl >= 0 ? keep.Substring(nl + 1) : keep;
+            }
             logBox.AppendText(line + Environment.NewLine);
             lock (logLock)
             {
-                try { File.AppendAllText(logPath, line + Environment.NewLine, Encoding.UTF8); } catch { }
+                try
+                {
+                    // e o ficheiro tambem: passa a RealFFB_log.old.txt aos 5 MB (antes crescia para sempre)
+                    if (++logLinesSinceCheck >= 200)
+                    {
+                        logLinesSinceCheck = 0;
+                        FileInfo fi = new FileInfo(logPath);
+                        if (fi.Exists && fi.Length > 5L * 1024 * 1024)
+                        {
+                            string old = AppInfo.DataFile("RealFFB_log.old.txt");
+                            if (File.Exists(old)) File.Delete(old);
+                            File.Move(logPath, old);
+                        }
+                    }
+                    File.AppendAllText(logPath, line + Environment.NewLine, Encoding.UTF8);
+                }
+                catch { }
             }
         }
 
@@ -634,14 +988,38 @@ namespace FS25RealFFB
         {
             Log("==================== FS25 RealFFB v" + AppInfo.Version + " - " + DateTime.Now.ToString("yyyy-MM-dd HH:mm") + " ====================");
             timeBeginPeriod(1);
-            if (settings.AutoHide)
+            Log("Windows " + Environment.OSVersion.Version + (Environment.Is64BitOperatingSystem ? " x64" : " x86") + " | language " + L.Current);
+            hidHideMissing = !HidHideControl.Available;
+            if (hidHideMissing)
+                Log("WARNING: HidHide is not installed. FS25 will take control of the wheel, so only the game's (or G HUB's) own centering is felt. Run the FS25 RealFFB installer again to install HidHide.");
+            else if (settings.AutoHide)
             {
-                if (HidHideControl.Available) Log("HidHide: wheel hidden from FS25 -> " + HidHideControl.On());
-                else Log("HidHide not found: automatic management is off.");
+                Log("HidHide: wheel hidden from FS25 -> " + HidHideControl.On());
+                // rede de seguranca: no proximo arranque do Windows o volante volta a ficar visivel, mesmo que a
+                // app nao tenha fechado bem (o log de 2026-11-08 mostrou o "desligar" a falhar no encerramento)
+                Log("HidHide: show the wheel at Windows start-up -> " + HidHideControl.SetStartupUnhide(true, Application.ExecutablePath));
+                Microsoft.Win32.SystemEvents.SessionEnding += delegate { ReleaseHidHide("Windows is shutting down"); };
             }
+            else Log("HidHide: installed, automatic management off (the wheel is hidden only if set up by hand).");
             device = OpenOutput();
             ApplyDeviceTorque();
+            // 0.13: watchdog - se este ciclo parar mais de 150 ms com o FFB ligado, as forcas param
+            watchdog = new Watchdog(delegate
+            {
+                if (device != null) device.EmergencyStop();
+                int n = watchdog != null ? watchdog.Trips : 0;
+                if (n <= 5 || n % 50 == 0)
+                    Log("SAFETY: the FFB loop stopped for more than 150 ms (window busy?) - forces stopped by the watchdog. They come back on the next cycle." + (n > 1 ? " (" + n + "x)" : ""));
+            });
+            watchdog.Start();
+            UpdateHardwareInfo();
+            RefreshDeviceList();
             FillWheelList();
+            if (hidHideMissing && wheelInfo != null)
+            {
+                wheelInfo.Text = L.T("HidHide is not installed: FS25 will take the wheel. Run the installer again.");
+                wheelInfo.ForeColor = Theme.Bad;
+            }
             if (!device.IsOpen) Log("The wheel did not open. Close games/programs using it and restart the app.");
 
             for (int q = 1; q < 3; q++)
@@ -671,7 +1049,11 @@ namespace FS25RealFFB
             if (settings.AutoFfb && device.IsOpen) enableBox.Checked = true;
             // (o atalho com o icone do FS25 e criado pelo instalador; o botao continua disponivel)
             updater = new Updater(Log);
-            updater.CheckAsync(delegate(Updater.Release r) { BeginInvoke(new Action<Updater.Release>(ShowUpdate), r); });
+            updater.CheckAsync(delegate(Updater.Release r)
+            {
+                // 0.12.1: se a janela ja fechou, BeginInvoke lancava uma excecao nesta thread -> janela de erro
+                try { if (!IsDisposed && IsHandleCreated) BeginInvoke(new Action<Updater.Release>(ShowUpdate), r); } catch { }
+            });
             foreach (string a in Environment.GetCommandLineArgs())
                 if (a == "--jogar") LaunchGame();
         }
@@ -734,6 +1116,9 @@ namespace FS25RealFFB
                 L.F("Install version v{0}?\n\nYour settings, pedals and buttons are kept.\nRelease notes: {1}", pendingUpdate.Version, pendingUpdate.PageUrl),
                 L.T("Update FS25 RealFFB"), MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
             if (d != DialogResult.OK) return;
+            // 0.12.1: o download corre neste ciclo e a app fica parada uns segundos: antes as forcas ficavam
+            // presas no ultimo valor durante esse tempo. Agora param primeiro.
+            Panic("installing update");
             try { if (updater.DownloadAndRun(pendingUpdate)) Close(); }
             catch (Exception ex) { Log("Update failed: " + ex.Message); }
         }
@@ -746,9 +1131,20 @@ namespace FS25RealFFB
                 string report = AppInfo.DataFile("diagnostico.txt");
                 ProcessStartInfo psi = new ProcessStartInfo(AppInfo.SetupHelper, "diagnose --quiet --report \"" + report + "\"");
                 psi.UseShellExecute = false; psi.CreateNoWindow = true;
-                using (Process p = Process.Start(psi)) p.WaitForExit(30000);
-                Log("Diagnostic report saved to " + report + " (attach it to a GitHub issue).");
-                Process.Start("notepad.exe", "\"" + report + "\"");
+                Log("Diagnostics: creating the report...");
+                // 0.12.1: em segundo plano. Antes a app esperava ate 30 s aqui, com o FFB parado no ultimo valor.
+                System.Threading.Thread t = new System.Threading.Thread(delegate()
+                {
+                    try
+                    {
+                        using (Process p = Process.Start(psi)) p.WaitForExit(30000);
+                        Log("Diagnostic report saved to " + report + " (send this file when asking for help).");
+                        Process.Start("notepad.exe", "\"" + report + "\"");
+                    }
+                    catch (Exception ex) { Log("Diagnostics failed: " + ex.Message); }
+                });
+                t.IsBackground = true;
+                t.Start();
             }
             catch (Exception ex) { Log("Diagnostics failed: " + ex.Message); }
         }
@@ -766,11 +1162,31 @@ namespace FS25RealFFB
         {
             FfbDevice d = new FfbDevice(Log);
             d.Preferred = settings.PreferredWheel;
+            d.PreferredInstance = settings.PreferredInstance;
             d.Open(Handle);
             wheel = d;
             if (d.IsOpen) Log("Force output: DirectInput (FS25 must not be using the wheel).");
+            adapter = ChooseAdapter(d);
             return d;
         }
+
+        // 0.13: escolha do adaptador. "auto": efeitos de condicao se a base os tiver a funcionar (o modo validado);
+        // se faltarem, binario calculado (experimental). O utilizador pode forcar um dos dois na pagina Hardware.
+        private IFfbAdapter ChooseAdapter(FfbDevice d)
+        {
+            if (d == null || !d.IsOpen) return null;
+            string why;
+            bool torque;
+            if (settings.OutputMode == "torque") { torque = true; why = "chosen in the Hardware page"; }
+            else if (settings.OutputMode == "conditions") { torque = false; why = "chosen in the Hardware page"; }
+            else if (d.Caps.ConditionsUsable) { torque = false; why = "the wheel has working spring and damper effects"; }
+            else { torque = true; why = "spring/damper effects are missing or not playing on this wheel"; }
+            IFfbAdapter a = torque ? (IFfbAdapter)new DiTorqueAdapter(d) : new DiConditionAdapter(d);
+            Log("FFB adapter: " + a.Name + " v" + a.Version + " (" + why + ")");
+            return a;
+        }
+
+        private int lastAuto; private bool lastFollowing;   // 0.11: registo de seguir IA/GPS
 
         private void Tick()
         {
@@ -778,6 +1194,7 @@ namespace FS25RealFFB
             double dt = (now - lastTickMs) / 1000.0;
             lastTickMs = now;
             if (dt <= 0 || dt > 0.2) dt = 0.016;
+            if ((pinned || vehPinned) && ++pinTicks >= 100) { pinTicks = 0; KeepOnTop(); }   // ~0,5 s
 
             UpdateInputs(now);
             if (mapper != null)
@@ -789,20 +1206,33 @@ namespace FS25RealFFB
             double age;
             TelemetryFrame f = telemetry.GetLatest(out age);
             engine.SentSteer = steerOut;
-            FfbOutput o = engine.Update(f, age, enableBox.Checked && device.IsOpen, dt, settings);
-            lastOut = o;
-
-            if (device.IsOpen)
+            engine.BrakeInput = brkOut;
+            engine.WheelPos = (wheel != null && wheel.IsOpen) ? wheel.Axes[0] / 10000.0 : double.NaN;
+            engine.CenterFactor = CenteringNow(f, age);
+            ForceRequest req = engine.Update(f, age, enableBox.Checked && device.IsOpen, dt, settings);
+            req = mixer.Finish(req, settings, dt);
+            oscGuard.Apply(req, engine.WheelPos, dt);
+            if (oscGuard.Trips != lastOscTrips) { lastOscTrips = oscGuard.Trips; Log("SAFETY: wheel oscillation detected - centering halved and damping raised for 2 s."); }
+            lastReq = req;
+            int autoNow = (f != null && f.Active && age < 300) ? f.Auto : 0;
+            if (autoNow != lastAuto || engine.Following != lastFollowing)
             {
-                if (wheel != null) wheel.SetSpring(o.SpringCoef, o.SpringSat, o.SpringOffset);
-                else device.SetSpring(o.SpringCoef, o.SpringSat);
-                device.SetDamper(o.DamperCoef, o.DamperSat);
-                device.SetFriction(o.FrictionCoef, o.FrictionSat);
-                device.SetConstant(o.ConstMag);
-                device.SetSine(o.SineMag, o.SinePeriodUs);
-                if (wheel != null) wheel.SetEngine(o.EngineMag, o.EnginePeriodUs);
-                device.Commit();
+                Log(string.Format("Auto steering: {0} | wheel follows: {1}{2}",
+                    autoNow == 1 ? "AI worker" : (autoNow == 2 ? "GPS" : "off"), engine.Following ? "yes" : "no",
+                    autoNow != 0 && !engine.Following ? (settings.FollowAuto ? " (driver took over: asking the game to stop the AI/GPS)" : " (option off)") : ""));
+                lastAuto = autoNow; lastFollowing = engine.Following;
             }
+
+            // 0.12.1: com o FFB desligado deixa de se enviar (depois de um ultimo frame a zero). Antes o ciclo
+            // reiniciava os efeitos logo a seguir ao STOP (SetSpring -> StartAll).
+            bool sendFfb = enableBox.Checked || req.Gain > 0 || lastSentGain > 0;
+            lastSentGain = req.Gain;
+            FfbOutput o;
+            if (device.IsOpen && sendFfb && adapter != null) o = adapter.Apply(req, engine.WheelPos, dt, settings);
+            else { o = new FfbOutput(); o.CopyInfo(req); }
+            lastOut = o;
+            if (watchdog != null) watchdog.Beat(enableBox.Checked && device.IsOpen);
+            Trace(f, o);
 
             if (now - lastLiveMs >= 33) { lastLiveMs = now; UpdateLive(f); }
             if (f != null && f.Active && telemetry.Connected && !string.IsNullOrEmpty(f.Vehicle) && f.Vehicle != profileVehicle) SwitchVehicle(f.Vehicle);
@@ -826,6 +1256,7 @@ namespace FS25RealFFB
             if (now - lastStatusCheckMs >= 1000)
             {
                 lastStatusCheckMs = now;
+                if (hwInfo != null && hwInfo.Visible) UpdateHardwareInfo();
                 string st = device.DeviceName;
                 if (st != lastStatus) { lastStatus = st; Log("Status: " + st); }
             }
@@ -834,9 +1265,11 @@ namespace FS25RealFFB
             {
                 nextStatsLogMs = now + 5000;
                 Log(string.Format(CultureInfo.InvariantCulture,
-                    "[stats] bridge {16:0}/s steer {17:+0.00;-0.00} thr {18:0.00} brk {19:0.00} | {0:0} Hz | {1:0.0} km/h | {2:0.0} t | surface {3} | wheels {4}/{5} | steer {6:0.00} | vAcc {7:0.0} | rollAcc {8:0.0} | susp {9:0.00} || spring {10:0.00} Nm | damper {11:0.00} | friction {12:0.00} | bump {13:+0.00;-0.00} | texture {14:0.00} | gain {15:0%}",
+                    "[stats] {20} | bridge {16:0}/s steer {17:+0.00;-0.00} thr {18:0.00} brk {19:0.00} | {0:0} Hz | {1:0.0} km/h | {2:0.0} t | surface {3} | wheels {4}/{5} | steer {6:0.00} | vAcc {7:0.0} | rollAcc {8:0.0} | susp {9:0.00} || spring {10:0.00} Nm | damper {11:0.00} | friction {12:0.00} | bump {13:+0.00;-0.00} | texture {14:0.00} | gain {15:0%} | springK {21} dampK {22} off {23} pos {24:+0.000;-0.000}",
                     telemetryHz, f.SpeedKmh, f.MassT, f.Surface, f.Contacts, f.Wheels, f.Steer, f.VertAcc, f.RollAcc, f.SuspSpreadRate,
-                    o.SpringNm, o.DamperNm, o.FrictionNm, o.BumpNm, o.TextureNm, o.Gain, bridgeRate, steerOut, thrOut, brkOut));
+                    o.SpringNm, o.DamperNm, o.FrictionNm, o.BumpNm, o.TextureNm, o.Gain, bridgeRate, steerOut, thrOut, brkOut,
+                    wheel != null ? wheel.Health : "no wheel", o.SpringCoef, o.DamperCoef, o.SpringOffset,
+                    (wheel != null && wheel.IsOpen) ? wheel.Axes[0] / 10000.0 : 0.0));
             }
         }
 
@@ -870,7 +1303,7 @@ namespace FS25RealFFB
             for (int k = 1; k < FfbDevice.AxisCount; k++) if (wheel.Axes[k] != 0) pedalsDead = false;
             if (pedalsDead) { thrOut = brkOut = cluOut = 0; }
             else { thrOut = Pedal(0); brkOut = Pedal(1); cluOut = Pedal(2); }
-            bridge.Publish(settings.BridgeOn, steerOut, thrOut, brkOut, cluOut);
+            bridge.Publish(settings.BridgeOn, steerOut, thrOut, brkOut, cluOut, engine.Following, engine.TakeOver);
 
             if (detectPedal >= 0)
             {
@@ -930,6 +1363,7 @@ namespace FS25RealFFB
             live.Spring = lastOut.SpringNm; live.Damper = lastOut.DamperNm; live.Friction = lastOut.FrictionNm;
             live.Bump = lastOut.BumpNm; live.Texture = lastOut.TextureNm; live.Engine = lastOut.EngineNm;
             live.Gain = lastOut.Gain; live.MaxNm = settings.MaxNm;
+            live.CenterNote = centerNote;
             live.Active = f != null && f.Active && telemetry.Connected;
             if (live.Active)
             {
@@ -938,13 +1372,33 @@ namespace FS25RealFFB
             }
             else live.Speed = 0;
             live.Invalidate();
+            if (tractor != null)
+            {
+                // centragem real aproximada: forca maxima x quanto o volante esta fora do centro
+                double wp = (wheel != null && wheel.IsOpen) ? Math.Abs(wheel.Axes[0] / 10000.0) : 0;
+                tractor.Steer = lastOut.SpringNm * Math.Min(1.0, wp / 0.08);
+                tractor.Weight = 0;
+                tractor.Bump = lastOut.BumpNm; tractor.Texture = lastOut.TextureNm; tractor.Engine = lastOut.EngineNm;
+                tractor.Active = live.Active && lastOut.Gain > 0;
+                tractor.Frame = f;
+                if (lastOut.CollCount != lastCollLogged)
+                {
+                    if (lastCollLogged >= 0 && lastOut.CollCount > lastCollLogged)
+                        Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Impacto: -{0:0.0} km/h em ~0,1 s, travao {1:0}%", lastOut.CollDv * 3.6, brkOut * 100));
+                    lastCollLogged = lastOut.CollCount;
+                }
+                tractor.CollCount = lastOut.CollCount; tractor.CollLevel = lastOut.CollLevel; tractor.CollX = lastOut.CollX; tractor.CollZ = lastOut.CollZ;
+                tractor.Invalidate();
+            }
         }
 
         private void UpdateMonitor(TelemetryFrame f, double age)
         {
             if (chipBase != null)
             {
-                chipBase.Set(device.IsOpen, device.IsOpen ? L.T("Wheel connected") : L.T("Wheel not open"));
+                // 0.10.0: "conectado" so se o volante responde de facto aos efeitos
+                bool responding = device.IsOpen && (wheel == null || wheel.Responding);
+                chipBase.Set(responding, !device.IsOpen ? L.T("Wheel not open") : responding ? L.T("Wheel connected") : L.T("Wheel not responding"));
                 bool tel = telemetry.Connected && f != null;
                 chipTel.Set(tel, tel ? L.F("Telemetry {0:0} Hz", telemetryHz) : L.T("No telemetry"));
                 chipBridge.Set(settings.BridgeOn && bridgeRate > 1, settings.BridgeOn ? L.F("Bridge {0:0}/s", bridgeRate) : L.T("Bridge off"));
@@ -982,27 +1436,47 @@ namespace FS25RealFFB
             monitor.Text = sb.ToString();
         }
 
+        private double lastSentGain;
+        private int lastOscTrips;
+
         private void Panic(string why)
         {
             enableBox.Checked = false;
+            engine.Halt();
+            mixer.Reset();
+            oscGuard.Reset();
+            lastSentGain = 0;
+            if (adapter != null) adapter.Stop();
             if (device != null) device.EmergencyStop();
             Log("EMERGENCY STOP (" + why + ")");
         }
 
+        // Volta a mostrar o volante aos outros programas (uma so vez: fecho normal ou encerramento do Windows).
+        private bool hidHideReleased;
+        private void ReleaseHidHide(string why)
+        {
+            if (hidHideReleased || !settings.AutoHide || !HidHideControl.Available) return;
+            hidHideReleased = true;
+            string r = HidHideControl.Off();
+            lock (logLock) { try { File.AppendAllText(logPath, "HidHide: wheel visible to other games again (" + why + ") -> " + r + Environment.NewLine, Encoding.UTF8); } catch { } }
+        }
+
+        private bool shutDown;
         private void Shutdown()
         {
+            if (shutDown) return;   // o log mostrava o encerramento a correr duas vezes
+            shutDown = true;
+            if (traceW != null) { try { traceW.Dispose(); } catch { } traceW = null; }
             try { FlushProfile(); } catch { }
             if (loopTimer != null) loopTimer.Stop();
             if (telemetry != null) telemetry.Stop();
             if (bridge != null) { bridge.Publish(false, 0, 0, 0, 0); bridge.Stop(); }
             if (mapper != null) mapper.Dispose();
+            if (watchdog != null) watchdog.Dispose();
+            if (adapter != null) { try { adapter.Stop(); adapter.Dispose(); } catch { } }
             if (device != null) device.Dispose();
             timeEndPeriod(1);
-            if (settings.AutoHide && HidHideControl.Available)
-            {
-                string r = HidHideControl.Off();
-                lock (logLock) { try { File.AppendAllText(logPath, "HidHide: wheel visible to other games again -> " + r + Environment.NewLine, Encoding.UTF8); } catch { } }
-            }
+            ReleaseHidHide("app closed");
             lock (logLock)
             {
                 try { File.AppendAllText(logPath, "---- app closed, forces stopped ----" + Environment.NewLine, Encoding.UTF8); } catch { }

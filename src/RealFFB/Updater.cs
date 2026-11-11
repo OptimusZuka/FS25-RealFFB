@@ -1,3 +1,4 @@
+// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
 // FS25 Real FFB - verificacao de atualizacoes no GitHub Releases.
 // So informa; descarregar e instalar e sempre uma decisao do utilizador.
 // O instalador descarregado e verificado contra o SHA256SUMS.txt publicado na mesma versao.

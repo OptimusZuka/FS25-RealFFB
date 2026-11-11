@@ -1,4 +1,5 @@
-﻿// FS25 Real FFB - interop DirectInput 8 (escrito para este projeto)
+﻿// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
+// FS25 Real FFB - interop DirectInput 8 (escrito para este projeto)
 using System;
 using System.Runtime.InteropServices;
 

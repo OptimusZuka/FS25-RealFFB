@@ -98,6 +98,8 @@ namespace RealFFBSetup
             "FS25 RealFFB uninstalled.", "FS25 RealFFB desinstalado.", "FS25 RealFFB desinstalado.", "FS25 RealFFB désinstallé.",
             "FS25 RealFFB utility.\nUse the 'Configure devices' shortcut or the diagnostics button in the app.", "Utilitário do FS25 RealFFB.\nUse o atalho 'Configure devices' ou o botão de diagnóstico do app.", "Utilidad de FS25 RealFFB.\nUsa el acceso directo 'Configure devices' o el botón de diagnóstico de la app.", "Utilitaire FS25 RealFFB.\nUtilisez le raccourci 'Configure devices' ou le bouton de diagnostic de l'app.",
             "Language", "Idioma", "Idioma", "Langue",
+            "Could not get HidHide from GitHub: {0}", "Não foi possível obter o HidHide do GitHub: {0}", "No se pudo obtener HidHide de GitHub: {0}", "Impossible d'obtenir HidHide depuis GitHub : {0}",
+            "Could not get HidHide from GitHub:\n{0}\n\nCheck your internet connection and try again.", "Não foi possível obter o HidHide do GitHub:\n{0}\n\nVerifique a ligação à internet e tente de novo.", "No se pudo obtener HidHide de GitHub:\n{0}\n\nComprueba la conexión a internet y vuelve a intentarlo.", "Impossible d'obtenir HidHide depuis GitHub :\n{0}\n\nVérifiez la connexion internet et réessayez.",
         };
     }
 }

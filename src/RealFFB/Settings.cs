@@ -1,4 +1,5 @@
-﻿// FS25 Real FFB - configuracoes (guardadas em RealFFB.ini ao lado do exe).
+﻿// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
+// FS25 Real FFB - configuracoes (guardadas em RealFFB.ini ao lado do exe).
 using System;
 using System.Globalization;
 using System.IO;
@@ -11,9 +12,16 @@ namespace FS25RealFFB
         public double BaseNm = 8.0;        // torque de pico do volante (definido pelo modelo detetado; ajustavel)
         public string BaseDevice = "";
         public string PreferredWheel = "";
+        public string PreferredInstance = "";   // 0.13: GUID de instancia do volante escolhido (duas bases iguais)
+        public double VendorFfPercent = 100;    // 0.13: "FF %" no software/menu do fabricante (calibracao)
+        public string TorqueSource = "";        // 0.13: de onde vem BaseNm: catalog | user | assumed
+        public string OutputMode = "auto";      // 0.13: auto | conditions | torque (torque = experimental)
         public string Language = "";        // en, pt, es, fr ("" = o escolhido no instalador, senao ingles)  // VID:PID escolhido ("" = automatico)    // VID:PID do volante a que BaseNm diz respeito
-        public double MaxNm = 3.0;         // limite de seguranca da app
-        public const int Version = 4;      // ao subir, as afinacoes antigas sao repostas
+        public double MaxNm = 3.0;
+        public double ForceScale = 1.0;    // multiplicador geral de forca (1 = como afinado)
+        public bool ForceScaleSaved;       // o ficheiro ja tinha ForceScale
+        public bool GearDriven;            // volante com engrenagens/correia (Logitech): definido ao abrir, nao gravado         // limite de seguranca da app
+        public const int Version = 6;      // ao subir, as afinacoes antigas sao repostas
         public double Center = 0.45;
         public double Damping = 0.08;
         public double Friction = 0.10;
@@ -32,16 +40,25 @@ namespace FS25RealFFB
         public bool AutoFfb = true;    // FFB ativo logo ao abrir a app   // liga o HidHide ao abrir a app e desliga ao fechar   // comandos -> teclas (so sem HidHide)
         public double SteerSens = 1.0;     // 1.0 = rotacao total da base = esbarro total do trator
         public bool SteerInvert = false;
+        public bool FollowAuto = true;     // 0.11: o volante segue a IA / o GPS do jogo
+        public bool RealisticCentering = false;   // 0.12: sem centragem nos veiculos que na vida real nao centram
         public int[] PedalAxis = { -1, -1, -1 };       // acelerador, travao, embraiagem (-1 = nenhum)
         public int[] PedalRel = { 0, 0, 0 };           // valor com o pedal solto
         public int[] PedalFull = { 10000, 10000, 10000 }; // valor com o pedal a fundo
 
+        // 0.13: teto fisico = min("Maximum force", pico do volante)
+        public double ForceCapNm { get { return Math.Min(MaxNm, BaseNm); } }
+
+        // 0.13: pico efetivo = pico do volante x "FF %" do fabricante (se o menu da base estiver a 50 %, um pedido
+        // de 1 Nm tem de usar o dobro da escala). Com 100 % e igual a antes.
+        public double EffectivePeakNm { get { return Math.Max(0.5, BaseNm * Math.Max(10, Math.Min(100, VendorFfPercent)) / 100.0); } }
+
         public int ToMag(double nm)
         {
-            double cap = Math.Min(MaxNm, BaseNm);
+            double cap = ForceCapNm;
             if (nm < 0) nm = 0;
             if (nm > cap) nm = cap;
-            return (int)Math.Round(nm / BaseNm * 10000.0);
+            return (int)Math.Min(10000, Math.Round(nm / EffectivePeakNm * 10000.0));
         }
 
         public int ToSignedMag(double nm)
@@ -103,8 +120,13 @@ namespace FS25RealFFB
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("SettingsVersion=" + Version);
             sb.AppendLine("BaseNm=" + BaseNm.ToString(c));
+            sb.AppendLine("ForceScale=" + ForceScale.ToString(c));
             sb.AppendLine("BaseDevice=" + BaseDevice);
             sb.AppendLine("PreferredWheel=" + PreferredWheel);
+            sb.AppendLine("PreferredInstance=" + PreferredInstance);
+            sb.AppendLine("VendorFfPercent=" + VendorFfPercent.ToString(c));
+            sb.AppendLine("TorqueSource=" + TorqueSource);
+            sb.AppendLine("OutputMode=" + OutputMode);
             sb.AppendLine("Language=" + Language);
             double[] tu = GlobalTuning ?? GetTuning();
             sb.AppendLine("MaxNm=" + tu[0].ToString(c));
@@ -124,6 +146,8 @@ namespace FS25RealFFB
             sb.AppendLine("PerVehicle=" + (PerVehicle ? "1" : "0"));
             sb.AppendLine("SteerSens=" + SteerSens.ToString(c));
             sb.AppendLine("SteerInvert=" + (SteerInvert ? "1" : "0"));
+            sb.AppendLine("FollowAuto=" + (FollowAuto ? "1" : "0"));
+            sb.AppendLine("RealisticCentering=" + (RealisticCentering ? "1" : "0"));
             for (int i = 0; i < 3; i++)
                 sb.AppendLine("Pedal" + i + "=" + PedalAxis[i] + ";" + PedalRel[i] + ";" + PedalFull[i]);
             File.WriteAllText(FilePath, sb.ToString());
@@ -149,7 +173,12 @@ namespace FS25RealFFB
                         case "SettingsVersion": sawVersion = isNum && (int)d == Version; break;
                         case "BaseNm": if (isNum) s.BaseNm = Math.Max(1, Math.Min(25, d)); break;
                         case "BaseDevice": s.BaseDevice = v; break;
+                        case "ForceScale": if (isNum) { s.ForceScale = Math.Max(0.25, Math.Min(4, d)); s.ForceScaleSaved = true; } break;
                         case "PreferredWheel": s.PreferredWheel = v; break;
+                        case "PreferredInstance": s.PreferredInstance = v; break;
+                        case "VendorFfPercent": if (isNum) s.VendorFfPercent = Math.Max(10, Math.Min(100, d)); break;
+                        case "TorqueSource": s.TorqueSource = v; break;
+                        case "OutputMode": s.OutputMode = (v == "conditions" || v == "torque") ? v : "auto"; break;
                         case "Language": s.Language = v; break;
                         case "MaxNm": if (isNum) s.MaxNm = Math.Max(0.5, Math.Min(s.BaseNm, d)); break;
                         case "Center": if (isNum) s.Center = Clamp01(d); break;
@@ -168,6 +197,8 @@ namespace FS25RealFFB
                         case "PerVehicle": s.PerVehicle = v == "1"; break;
                         case "SteerSens": if (isNum) s.SteerSens = Math.Max(0.5, Math.Min(4, d)); break;
                         case "SteerInvert": s.SteerInvert = v == "1"; break;
+                        case "FollowAuto": s.FollowAuto = v == "1"; break;
+                        case "RealisticCentering": s.RealisticCentering = v == "1"; break;
                         case "Pedal0": case "Pedal1": case "Pedal2":
                             {
                                 int idx = k[5] - '0';
@@ -185,6 +216,7 @@ namespace FS25RealFFB
             {   // afinacoes de uma versao antiga: repor os novos valores, mantendo pedais e direcao
                 Settings def = new Settings();
                 s.Center = def.Center; s.Damping = def.Damping; s.Friction = def.Friction; s.Bumps = def.Bumps; s.Texture = def.Texture;
+                s.Engine = def.Engine; s.ForceScale = 1.0;   // 0.7: modelo de forcas novo, partir dos valores recomendados
             }
             return s;
         }

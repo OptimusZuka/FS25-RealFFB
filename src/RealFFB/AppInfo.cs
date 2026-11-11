@@ -1,3 +1,4 @@
+// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
 // FS25 Real FFB - versao e pastas da aplicacao.
 using System;
 using System.IO;

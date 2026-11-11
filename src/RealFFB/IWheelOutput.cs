@@ -1,4 +1,5 @@
-﻿// FS25 Real FFB - interface comum das saidas de forca (WGI ou DirectInput).
+﻿// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
+// FS25 Real FFB - interface comum das saidas de forca (WGI ou DirectInput).
 using System;
 
 namespace FS25RealFFB
