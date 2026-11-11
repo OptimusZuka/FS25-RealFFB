@@ -29,6 +29,79 @@ namespace RealFFBSetup
             return null;
         }
 
+        // Entrada de desinstalacao do HidHide no Windows (a visivel em "Aplicacoes", nao os MSI internos).
+        public sealed class UninstallEntry { public string Name, Version, UninstallString, QuietUninstallString, KeyName; }
+
+        public static UninstallEntry FindUninstall()
+        {
+            string[] roots = { @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall", @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall" };
+            UninstallEntry hidden = null;
+            foreach (string r in roots)
+            {
+                try
+                {
+                    using (RegistryKey k = Registry.LocalMachine.OpenSubKey(r))
+                    {
+                        if (k == null) continue;
+                        foreach (string sub in k.GetSubKeyNames())
+                            using (RegistryKey s = k.OpenSubKey(sub))
+                            {
+                                string name = s == null ? null : s.GetValue("DisplayName") as string;
+                                if (name == null || name.IndexOf("HidHide", StringComparison.OrdinalIgnoreCase) < 0) continue;
+                                UninstallEntry e = new UninstallEntry();
+                                e.Name = name; e.KeyName = sub;
+                                e.Version = s.GetValue("DisplayVersion") as string;
+                                e.UninstallString = s.GetValue("UninstallString") as string;
+                                e.QuietUninstallString = s.GetValue("QuietUninstallString") as string;
+                                object sc = s.GetValue("SystemComponent");
+                                bool sys = sc is int && (int)sc == 1;
+                                if (!sys && !string.IsNullOrEmpty(e.UninstallString)) return e;
+                                if (hidden == null && !string.IsNullOrEmpty(e.UninstallString)) hidden = e;
+                            }
+                    }
+                }
+                catch { }
+            }
+            return hidden;
+        }
+
+        // Comando oficial de desinstalacao (o do proprio HidHide), em modo com progresso e sem reiniciar sozinho.
+        // Devolve ficheiro e argumentos; null se nao houver.
+        public static string[] UninstallCommand(UninstallEntry e)
+        {
+            if (e == null || string.IsNullOrEmpty(e.UninstallString)) return null;
+            Match msi = Regex.Match(e.UninstallString, "msiexec(\\.exe)?\\s+/[IX]\\s*(\\{[0-9A-Fa-f-]{36}\\})", RegexOptions.IgnoreCase);
+            if (msi.Success) return new string[] { "msiexec.exe", "/x " + msi.Groups[2].Value + " /passive /norestart" };
+            string cmd = e.UninstallString.Trim();
+            string file, args;
+            if (cmd.StartsWith("\""))
+            {
+                int q = cmd.IndexOf('"', 1);
+                if (q < 0) return null;
+                file = cmd.Substring(1, q - 1); args = cmd.Substring(q + 1).Trim();
+            }
+            else
+            {
+                int ex = cmd.IndexOf(".exe", StringComparison.OrdinalIgnoreCase);
+                if (ex < 0) return null;
+                file = cmd.Substring(0, ex + 4); args = cmd.Substring(ex + 4).Trim();
+            }
+            // instalador WiX (Burn): /uninstall com /passive mostra o progresso sem perguntas
+            if (args.IndexOf("/uninstall", StringComparison.OrdinalIgnoreCase) >= 0 && args.IndexOf("/passive", StringComparison.OrdinalIgnoreCase) < 0 && args.IndexOf("/quiet", StringComparison.OrdinalIgnoreCase) < 0)
+                args += " /passive /norestart";
+            return new string[] { file, args };
+        }
+
+        // Executa a desinstalacao oficial com elevacao (UAC). Devolve o codigo de saida.
+        public static int RunUninstall(string[] cmd)
+        {
+            ProcessStartInfo psi = new ProcessStartInfo(cmd[0], cmd[1]);
+            psi.UseShellExecute = true;
+            psi.Verb = "runas";
+            try { using (Process p = Process.Start(psi)) { if (!p.WaitForExit(10 * 60 * 1000)) return TimedOut; return p.ExitCode; } }
+            catch (Win32Exception ex) { if (ex.NativeErrorCode == 1223) return 1223; throw; }
+        }
+
         // Versao instalada (entrada de desinstalacao do Windows), ou null.
         public static string InstalledVersion()
         {
@@ -112,8 +185,9 @@ namespace RealFFBSetup
 
         public sealed class GamingDevice
         {
-            public string FriendlyName, Product, Vendor, InstancePath, ContainerPath;
+            public string FriendlyName, Product, Vendor, InstancePath, ContainerPath, XusbPath;
             public int Vid, Pid;
+            public int ContainerCount;   // baseContainerDeviceCount: funcoes que partilham o contentor (0 = nao indicado)
         }
 
         // --dev-gaming: JSON com os dispositivos de jogo. Le-se cada objeto que tenha deviceInstancePath,
@@ -154,6 +228,9 @@ namespace RealFFBSetup
                     g.InstancePath = Field(obj, "deviceInstancePath");
                     if (string.IsNullOrEmpty(g.InstancePath)) continue;
                     g.ContainerPath = Field(obj, "baseContainerDeviceInstancePath");
+                    g.XusbPath = Field(obj, "xusbDeviceInstancePath");
+                    Match cc = Regex.Match(obj, "\"baseContainerDeviceCount\"\\s*:\\s*(\\d+)");
+                    if (cc.Success) int.TryParse(cc.Groups[1].Value, out g.ContainerCount);
                     g.Product = Field(obj, "product");
                     g.Vendor = Field(obj, "vendor");
                     g.FriendlyName = Field(obj, "friendlyName");
@@ -360,9 +437,17 @@ namespace RealFFBSetup
             psi.Verb = "runas";
             try
             {
-                using (Process p = Process.Start(psi)) { p.WaitForExit(); return p.ExitCode; }
+                // 0.14: nunca esperar para sempre (num teste o instalador oficial ficou parado >20 min em modo
+                // silencioso). O processo nao e terminado a forca: a meio da instalacao de um driver isso seria pior.
+                using (Process p = Process.Start(psi))
+                {
+                    if (!p.WaitForExit((silent ? 5 : 20) * 60 * 1000)) return TimedOut;
+                    return p.ExitCode;
+                }
             }
             catch (Win32Exception ex) { if (ex.NativeErrorCode == 1223) return 1223; throw; }   // 1223 = UAC recusado
         }
+
+        public const int TimedOut = -2;
     }
 }

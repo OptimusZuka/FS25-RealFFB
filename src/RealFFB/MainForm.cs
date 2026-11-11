@@ -84,6 +84,22 @@ namespace FS25RealFFB
         private static void Main()
         {
             AppDomain.CurrentDomain.UnhandledException += delegate(object s, UnhandledExceptionEventArgs e) { Crash(e.ExceptionObject as Exception); };
+            // 0.14: "--list-wheels <ficheiro>" - usado pelo instalador e pelo diagnostico. A RealFFB.exe esta
+            // autorizada no HidHide, por isso ve o volante mesmo escondido. So enumera (nao adquire nada).
+            string[] cl = Environment.GetCommandLineArgs();
+            for (int i = 1; i + 1 < cl.Length; i++)
+                if (cl[i] == "--list-wheels")
+                {
+                    try
+                    {
+                        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                        foreach (DeviceDescriptor d in DirectInputProvider.Enumerate(null))
+                            sb.AppendLine(d.Vid.ToString("X4") + ":" + d.Pid.ToString("X4") + "|" + (d.HasForceFeedback ? "1" : "0") + "|" + (d.Product ?? "").Replace("|", "/").Replace("\r", " ").Replace("\n", " "));
+                        System.IO.File.WriteAllText(cl[i + 1], sb.ToString(), new System.Text.UTF8Encoding(false));
+                    }
+                    catch { }
+                    return;
+                }
             bool first;
             using (System.Threading.Mutex single = new System.Threading.Mutex(true, "FS25RealFFB_unica", out first))
             {

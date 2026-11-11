@@ -140,9 +140,9 @@ namespace RealFFBSetup
 
             // 3. Fanatec
             Busy(2);
-            List<FanatecBase> bases = new List<FanatecBase>();
-            try { bases = Fanatec.Detect(null); } catch (Exception ex) { Out("Wheel: " + ex.Message); }
-            foreach (FanatecBase b in bases) Out("Wheel: " + b.Label);
+            List<FfbInfo> bases = new List<FfbInfo>();
+            try { bases = Wheels.FfbBases(Wheels.ScanFfb(null, null)); } catch (Exception ex) { Out("Wheel: " + ex.Message); }
+            foreach (FfbInfo b in bases) Out("Wheel: " + Wheels.NameOf(b));
             if (bases.Count == 0) { Warn(2); Out(L.T("No supported wheel connected. You can set it up later (Start > FS25 RealFFB - Configure devices).")); }
             else Ok(2);
 

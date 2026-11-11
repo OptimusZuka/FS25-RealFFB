@@ -98,44 +98,93 @@ namespace RealFFBSetup
                 catch (Exception ex) { r.Add(new Check("game.xml", "ERROR", ex.Message)); }
             }
 
-            // HidHide
-            string ver = HidHide.InstalledVersion();
-            if (ver == null) r.Add(new Check("HidHide", "ERROR", "not installed"));
-            else
-            {
-                bool old = ver != "desconhecida" && HidHide.CompareVersions(ver, HidHide.MinVersion) < 0;
-                r.Add(new Check("HidHide", old ? "WARN" : "OK", "version " + ver + (old ? " (outdated, minimum " + HidHide.MinVersion + ")" : "")));
-                try
-                {
-                    List<string> apps = HidHide.Apps();
-                    List<string> devs = HidHide.HiddenDevices();
-                    r.Add(new Check("HidHide driver", "OK", "responding; hiding " + (HidHide.CloakOn() ? "on" : "off (the app turns it on when it opens)")));
-                    string exe = Path.Combine(appDir, "RealFFB.exe");
-                    r.Add(Config.Contains(apps, exe) ? new Check("RealFFB allowed in HidHide", "OK", "") : new Check("RealFFB allowed in HidHide", "ERROR", "RealFFB.exe is not in the application list"));
-
-                    List<FanatecBase> bases = Fanatec.Detect(null);
-                    int fanHidden = 0; int otherHidden = 0;
-                    foreach (string d in devs)
-                    {
-                        int pid;
-                        if (Fanatec.GroupKey(d, out pid) != null) fanHidden++;
-                        else if (d.StartsWith("HID\\", StringComparison.OrdinalIgnoreCase) && !Fanatec.IsWheelVendor(d)) otherHidden++;
-                    }
-                    if (bases.Count == 0) r.Add(new Check("Wheel", "WARN", "no supported wheel connected"));
-                    else r.Add(new Check("Wheel", "OK", Labels(bases)));
-                    r.Add(fanHidden > 0 ? new Check("Wheel hidden from the game", "OK", fanHidden + " entr(ies)") : new Check("Wheel hidden from the game", "ERROR", "no wheel entry in the HidHide list (use 'Configure devices')"));
-                    if (otherHidden > 0) r.Add(new Check("Other controllers hidden", "WARN", otherHidden + " entr(ies) that are not the wheel (set by you or another program)"));
-                }
-                catch (Exception ex) { r.Add(new Check("HidHide driver", "ERROR", "not responding: " + ex.Message + " (restart Windows if you just installed it)")); }
-            }
+            // HidHide (0.14): estado claro de cada passo, distinguindo erro de configuracao de problema de hardware
+            VerifyHidHide(r, appDir, st);
             return r;
         }
 
-        private static string Labels(List<FanatecBase> l)
+        private static void VerifyHidHide(List<Check> r, string appDir, State st)
         {
-            List<string> s = new List<string>();
-            foreach (FanatecBase b in l) s.Add(b.Label);
-            return string.Join("; ", s.ToArray());
+            string exe = Path.Combine(appDir, "RealFFB.exe");
+            string ver = HidHide.InstalledVersion();
+            if (ver == null) { r.Add(new Check("HidHide installed", "ERROR", "not installed (run the FS25 RealFFB installer again)")); return; }
+            bool old = ver != "desconhecida" && HidHide.CompareVersions(ver, HidHide.MinVersion) < 0;
+            r.Add(new Check("HidHide installed", old ? "WARN" : "OK", "version " + ver + (old ? " (outdated, minimum " + HidHide.MinVersion + ")" : "")));
+
+            List<string> apps, devs; List<HidHide.GamingDevice> gaming; bool cloak;
+            try
+            {
+                apps = HidHide.Apps(); devs = HidHide.HiddenDevices(); cloak = HidHide.CloakOn();
+                gaming = HidHide.GamingDevices();
+                r.Add(new Check("HidHide driver", "OK", "responding"));
+            }
+            catch (Exception ex)
+            {
+                r.Add(new Check("HidHide driver", "ERROR", "not responding: " + ex.Message + " (restart Windows if you just installed it; close the HidHide Configuration Client)"));
+                return;
+            }
+            r.Add(new Check("Device hiding", "OK", cloak ? "ENABLED" : "DISABLED (normal while FS25 RealFFB is closed: the app enables it when it opens)"));
+
+            bool appOk = Config.Contains(apps, exe);
+            string otherReg = null;
+            foreach (string a in apps) if (Path.GetFileName(a).Equals("RealFFB.exe", StringComparison.OrdinalIgnoreCase) && !a.Equals(exe, StringComparison.OrdinalIgnoreCase)) otherReg = a;
+            r.Add(appOk ? new Check("FS25 RealFFB whitelist", "OK", exe)
+                        : new Check("FS25 RealFFB whitelist", "ERROR", "RealFFB.exe is not in the application list" + (otherReg != null ? " (an entry exists for another folder: " + otherReg + ")" : "") + " -> configuration problem: use 'FS25 RealFFB - Configure devices'"));
+
+            List<FfbInfo> ffb = Wheels.ScanFfb(File.Exists(exe) ? exe : null, null);
+            List<WheelDevice> others = new List<WheelDevice>();
+            List<WheelDevice> wheels = Wheels.Find(gaming, ffb, st.Get("HH_Base"), others);
+            if (wheels.Count == 0)
+                r.Add(new Check("Steering wheel detected", "ERROR", "no force feedback wheel base found by Windows -> hardware/driver problem: check the USB cable and power, switch the base on, install the manufacturer's driver (Fanatec: PC mode)"));
+            else
+            {
+                List<string> names = new List<string>();
+                foreach (WheelDevice w in wheels) names.Add(w.Label + (w.Reason == "ffb" ? "" : " [" + w.Reason + "]"));
+                r.Add(new Check("Steering wheel detected", "OK", string.Join("; ", names.ToArray())));
+            }
+
+            // volante escolhido: todas as entradas necessarias estao na lista?
+            WheelDevice sel = null;
+            foreach (WheelDevice w in wheels) if (w.Key.Equals(st.Get("HH_Base") ?? "", StringComparison.OrdinalIgnoreCase)) sel = w;
+            if (sel == null)
+                foreach (WheelDevice w in wheels)
+                    foreach (string id in w.InstanceIds) if (Config.Contains(devs, id)) sel = w;
+            bool hiddenOk = false;
+            if (sel != null)
+            {
+                List<string> need = Wheels.PathsFor(sel, gaming, null);
+                List<string> miss = new List<string>();
+                foreach (string n in need) if (!Config.Contains(devs, n)) miss.Add(n);
+                hiddenOk = miss.Count == 0 && need.Count > 0;
+                r.Add(hiddenOk ? new Check("Steering wheel selected for hiding", "OK", sel.Label + " (" + need.Count + " entr(ies))")
+                               : new Check("Steering wheel selected for hiding", "ERROR", sel.Label + ": " + miss.Count + " entr(ies) missing -> configuration problem: use 'FS25 RealFFB - Configure devices'"));
+            }
+            else if (wheels.Count > 0)
+                r.Add(new Check("Steering wheel selected for hiding", "ERROR", "no wheel entry in the HidHide list -> configuration problem: use 'FS25 RealFFB - Configure devices'"));
+            else
+                r.Add(new Check("Steering wheel selected for hiding", "WARN", "no wheel connected, cannot check"));
+
+            // a RealFFB.exe ve a base com force feedback? (perguntado a propria app, que esta autorizada)
+            if (sel != null)
+                r.Add(appOk && Wheels.HasFfb(ffb, sel.Vid, sel.Pid)
+                    ? new Check("FS25 RealFFB device access", "OK", "RealFFB.exe sees " + sel.Label + " with force feedback")
+                    : new Check("FS25 RealFFB device access", appOk ? "WARN" : "ERROR", appOk ? "RealFFB.exe does not report force feedback for " + sel.Label + " (wheel off, or the manufacturer's software is holding it)" : "RealFFB.exe is not allowed in HidHide, so it cannot see the hidden wheel"));
+
+            int otherHidden = 0;
+            foreach (string d in devs)
+            {
+                bool mine = false;
+                foreach (WheelDevice w in wheels) if (Config.Contains(Wheels.PathsFor(w, gaming, null), d)) mine = true;
+                if (!mine && st.GetList("HH_DevAdded").Count > 0 && Config.Contains(st.GetList("HH_DevAdded"), d)) mine = true;
+                if (!mine) otherHidden++;
+            }
+            if (otherHidden > 0) r.Add(new Check("Other HidHide entries", "OK", otherHidden + " entr(ies) set by you or another program (left untouched)"));
+
+            bool complete = appOk && hiddenOk;
+            string last = st.Get("HH_LastResult");
+            string lastTxt = last == null ? "" : " | last setup: " + last + " (" + (st.Get("HH_LastTime") ?? "") + ")" + (st.Get("HH_LastError") != null ? ": " + st.Get("HH_LastError") : "");
+            r.Add(complete ? new Check("HidHide configuration", "OK", "COMPLETE" + lastTxt)
+                           : new Check("HidHide configuration", wheels.Count == 0 && appOk ? "WARN" : "ERROR", "INCOMPLETE" + lastTxt));
         }
 
         private static string FindModElsewhere(string profile)
@@ -174,15 +223,20 @@ namespace RealFFBSetup
             sb.AppendLine("== Game controllers (vendor/product only) ==");
             try
             {
+                List<string> hiddenNow = HidHide.HiddenDevices();
                 foreach (HidHide.GamingDevice g in HidHide.GamingDevices())
-                    sb.AppendLine(g.Vid.ToString("X4") + ":" + g.Pid.ToString("X4") + "  " + (g.Product ?? g.FriendlyName));
+                    sb.AppendLine(g.Vid.ToString("X4") + ":" + g.Pid.ToString("X4") + "  " + (g.Product ?? g.FriendlyName) + (Config.Contains(hiddenNow, g.InstancePath) ? "  [hidden]" : ""));
+                sb.AppendLine("-- DirectInput (seen by RealFFB.exe) --");
+                string exe2 = Path.Combine(appDir, "RealFFB.exe");
+                foreach (FfbInfo f in Wheels.ScanFfb(File.Exists(exe2) ? exe2 : null, null))
+                    sb.AppendLine(f.Tag + "  " + f.Product + (f.Ffb ? "  [force feedback]" : ""));
             }
             catch (Exception ex) { sb.AppendLine("(unavailable: " + ex.Message + ")"); }
 
             sb.AppendLine();
             sb.AppendLine("== Installation state ==");
             State st = State.Load();
-            foreach (string k in new string[] { "Version", "GameDir", "ModsDir", "HH_BaseLabel", "GX_Patched", "PendingResume" })
+            foreach (string k in new string[] { "Version", "GameDir", "ModsDir", "HH_BaseLabel", "HH_LastResult", "HH_LastTime", "HH_InstalledByUs", "HH_Preexisting", "GX_Patched", "PendingResume" })
                 sb.AppendLine(k + "=" + (st.Get(k) ?? ""));
 
             sb.AppendLine();

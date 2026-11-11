@@ -1,5 +1,10 @@
-// Configuracao do HidHide: so a base Fanatec escolhida e escondida, so a RealFFB.exe e autorizada.
-// Tudo o que e acrescentado fica registado no estado para a desinstalacao repor exatamente o anterior.
+// Configuracao do HidHide pelo HidHideCLI oficial (sem administrador, segundo a documentacao da Nefarius).
+// Regras (0.14):
+//   - so se ACRESCENTA as entradas da FS25 RealFFB; as de outros programas nunca sao tocadas;
+//   - acrescentar o que ja existe nao faz nada (idempotente), por isso reinstalar/reparar e seguro;
+//   - cada entrada acrescentada fica registada no estado, para a desinstalacao retirar so essas;
+//   - o esconderijo (cloak) nao e ligado aqui: a app liga-o quando abre e desliga-o quando fecha
+//     (o volante continua a funcionar noutros jogos com a app fechada).
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,28 +14,13 @@ namespace RealFFBSetup
 {
     internal static class Config
     {
-        // Caminhos HidHide (filhos HID + contentor base) da base escolhida, a partir do --dev-gaming.
-        public static List<string> PathsFor(FanatecBase b, List<HidHide.GamingDevice> gaming)
-        {
-            List<string> r = new List<string>();
-            foreach (HidHide.GamingDevice g in gaming)
-            {
-                int pid;
-                string key = Fanatec.GroupKey(g.InstancePath, out pid);
-                if (key == null || !key.Equals(b.Key, StringComparison.OrdinalIgnoreCase)) continue;
-                if (!Contains(r, g.InstancePath)) r.Add(g.InstancePath);
-                if (!string.IsNullOrEmpty(g.ContainerPath) && !Contains(r, g.ContainerPath)) r.Add(g.ContainerPath);
-            }
-            return r;
-        }
-
         public static bool Contains(List<string> l, string s)
         {
             foreach (string x in l) if (string.Equals(x, s, StringComparison.OrdinalIgnoreCase)) return true;
             return false;
         }
 
-        // Guarda uma copia da configuracao atual do HidHide (so na primeira vez).
+        // Guarda uma copia da configuracao atual do HidHide (so na primeira vez), em formato que a CLI aceita.
         public static void BackupOnce(State st, Action<string> log)
         {
             if (st.Get("HH_BackupDone") == "1") return;
@@ -49,39 +39,65 @@ namespace RealFFBSetup
             st.Set("HH_OrigCloak", cloak ? "on" : "off");
             st.Set("HH_BackupFile", f);
             st.Save();
-            log("Copia da configuracao do HidHide: " + f);
+            log("HidHide configuration backup: " + f);
         }
 
-        public static void Apply(State st, FanatecBase b, List<string> paths, string appExe, Action<string> log)
+        // Autoriza a RealFFB.exe (o caminho real da instalacao, inclusive pastas personalizadas).
+        // Se uma instalacao anterior NOSSA estava noutra pasta, essa entrada antiga e retirada.
+        public static void EnsureApp(State st, string appExe, Action<string> log)
         {
-            BackupOnce(st, log);
             List<string> apps = HidHide.Apps();
-            List<string> devs = HidHide.HiddenDevices();
-            List<string> added = st.GetList("HH_DevAdded");
-
+            string prev = st.Get("HH_AppAdded");
+            if (prev != null && !prev.Equals(appExe, StringComparison.OrdinalIgnoreCase) && Contains(apps, prev))
+            {
+                HidHide.Run("--app-unreg \"" + prev + "\"");
+                log("Removed old entry (previous install folder): " + prev);
+                st.Set("HH_AppAdded", null);
+            }
             if (!Contains(apps, appExe))
             {
                 HidHide.Run("--app-reg \"" + appExe + "\"");
                 st.Set("HH_AppAdded", appExe);
-                log("Autorizada: " + appExe);
+                log("Allowed in HidHide: " + appExe);
             }
-            foreach (string p in paths)
-            {
-                if (Contains(devs, p)) continue;
-                HidHide.Run("--dev-hide \"" + p + "\"");
-                if (!Contains(added, p)) added.Add(p);
-                log("Escondido: " + p);
-            }
-            st.SetList("HH_DevAdded", added);
-            st.Set("HH_Base", b.Key);
-            st.Set("HH_BaseLabel", b.Label);
+            else log("Already allowed in HidHide: " + appExe);
             st.Save();
         }
 
-        // Repoe o que o instalador acrescentou. Nao toca no que ja existia antes.
+        public static void HideDevices(State st, WheelDevice w, List<string> paths, Action<string> log)
+        {
+            List<string> devs = HidHide.HiddenDevices();
+            List<string> added = st.GetList("HH_DevAdded");
+            foreach (string p in paths)
+            {
+                if (Contains(devs, p)) { log("Already hidden: " + p); continue; }
+                HidHide.Run("--dev-hide \"" + p + "\"");
+                if (!Contains(added, p)) added.Add(p);
+                log("Hidden from games: " + p);
+            }
+            st.SetList("HH_DevAdded", added);
+            st.Set("HH_Base", w.Key);
+            st.Set("HH_BaseLabel", w.Label);
+            st.Save();
+        }
+
+        // Le de novo as listas do HidHide e confirma que tudo ficou aplicado. Devolve o que falta (vazio = ok).
+        public static List<string> Missing(string appExe, List<string> paths)
+        {
+            List<string> miss = new List<string>();
+            if (appExe != null && !Contains(HidHide.Apps(), appExe)) miss.Add("application: " + appExe);
+            if (paths != null && paths.Count > 0)
+            {
+                List<string> devs = HidHide.HiddenDevices();
+                foreach (string p in paths) if (!Contains(devs, p)) miss.Add("device: " + p);
+            }
+            return miss;
+        }
+
+        // Repoe o que o instalador acrescentou. Nao toca no que ja existia antes nem no de outros programas.
         public static void Restore(State st, Action<string> log)
         {
-            if (HidHide.Cli() == null) { log("HidHide ausente: nada a repor."); return; }
+            if (HidHide.Cli() == null) { log("HidHide not present: nothing to restore."); return; }
             string app = st.Get("HH_AppAdded");
             if (app != null) { Try("--app-unreg \"" + app + "\"", log); st.Set("HH_AppAdded", null); }
             foreach (string d in st.GetList("HH_DevAdded")) Try("--dev-unhide \"" + d + "\"", log);
@@ -96,7 +112,7 @@ namespace RealFFBSetup
         private static void Try(string args, Action<string> log)
         {
             try { HidHide.Run(args); log("HidHide " + args); }
-            catch (Exception ex) { log("Falhou HidHide " + args + ": " + ex.Message); }
+            catch (Exception ex) { log("HidHide " + args + " failed: " + ex.Message); }
         }
     }
 }

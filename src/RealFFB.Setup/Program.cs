@@ -3,11 +3,14 @@
 //
 //   detect            estado do sistema, FS25, Fanatec, HidHide
 //   hidhide-install   descarrega o HidHide oficial, valida a assinatura e instala (UAC)
-//   configure         escolhe a base Fanatec, confirma e configura o HidHide (+ game.xml)
+//   configure         autoriza a RealFFB.exe, identifica a base (qualquer marca), esconde-a e verifica (+ game.xml)
 //   schedule-resume   retoma a configuracao depois de reiniciar o Windows
 //   resume            (corre sozinho depois de reiniciar)
 //   patch-gamexml     ajusta o game.xml (com copia de seguranca)
 //   restore           desinstalacao: repoe HidHide e game.xml   [--purge]
+//   uninstall-info    desinstalacao: o HidHide esta instalado? foi instalado por nos?
+//   hidhide-uninstall desinstalacao (so com consentimento): desinstalador oficial do HidHide (UAC)
+//   purge             apaga a pasta de dados (ultimo passo da desinstalacao)
 //   verify            verificacao final
 //   diagnose          relatorio anonimizado
 //
@@ -62,6 +65,9 @@ namespace RealFFBSetup
                     case "schedule-resume": code = ScheduleResume(res); break;
                     case "patch-gamexml": code = PatchGameXml(res); break;
                     case "restore": code = Restore(res); break;
+                    case "uninstall-info": code = UninstallInfo(res); break;
+                    case "hidhide-uninstall": code = UninstallHidHide(res); break;
+                    case "purge": code = Purge(res); break;
                     case "verify": code = VerifyCmd(res); break;
                     case "diagnose": code = Diagnose(res); break;
                     case "remember": code = Remember(res); break;
@@ -79,7 +85,7 @@ namespace RealFFBSetup
             res.Add("exit", code.ToString());
             res.Add("log", Diagnostics.Anon(LogText.ToString().Replace("\r\n", " | ").Replace("\n", " | ")));
             try { res.Write(Get("out")); } catch { }
-            AppendSetupLog(cmd, code);
+            if (cmd != "purge") AppendSetupLog(cmd, code);
             return code;
         }
 
@@ -148,13 +154,13 @@ namespace RealFFBSetup
             catch (Exception ex) { gxs = "error: " + ex.Message; }
             res.Add("gamexml", gxs);
 
-            List<string> other = new List<string>();
-            List<FanatecBase> bases = new List<FanatecBase>();
-            try { bases = Fanatec.Detect(other); }
+            // 0.14: qualquer base que o Windows declare com force feedback (nao so Fanatec/Logitech)
+            List<FfbInfo> bases = new List<FfbInfo>();
+            try { bases = Wheels.FfbBases(Wheels.ScanFfb(null, Log)); }
             catch (Exception ex) { res.Add("fanatec_error", ex.Message); }
             res.Add("fanatec_count", bases.Count.ToString());
-            for (int i = 0; i < bases.Count; i++) res.Add("fanatec_" + i, bases[i].Label);
-            res.Add("fanatec_other", string.Join(", ", other.ToArray()));
+            for (int i = 0; i < bases.Count; i++) res.Add("fanatec_" + i, Wheels.NameOf(bases[i]));
+            res.Add("fanatec_other", "");
 
             string ver = HidHide.InstalledVersion();
             string status = ver == null ? "missing" : (ver != "desconhecida" && HidHide.CompareVersions(ver, HidHide.MinVersion) < 0 ? "outdated" : "ok");
@@ -172,6 +178,10 @@ namespace RealFFBSetup
             {
                 res.Add("status", "present");
                 res.Add("version", ver);
+                State pre = State.Load();
+                if (InstalledByUs()) { pre.Set("HH_InstalledByUs", "1"); pre.Set("HH_Preexisting", null); }
+                else pre.Set("HH_Preexisting", "1");
+                pre.Save();
                 Log("HidHide " + ver + " already installed: nothing to do.");
                 return Responding() ? 0 : Reboot(res);
             }
@@ -203,6 +213,13 @@ namespace RealFFBSetup
 
             int rc = HidHide.RunInstaller(file, true);
             Log("HidHide installer (silent) -> " + rc);
+            if (rc == HidHide.TimedOut)
+            {
+                res.Add("status", "timeout");
+                res.Add("error", "the official HidHide installer did not finish within 5 minutes");
+                Log("The official HidHide installer did not answer within 5 minutes. It was left running (stopping a driver installation half-way is unsafe). Restart Windows and run the FS25 RealFFB installer again.");
+                return 1;
+            }
             if (rc != 0 && rc != 3010 && rc != 1641 && rc != 1223)
             {
                 Log("Retrying in interactive mode.");
@@ -218,8 +235,32 @@ namespace RealFFBSetup
             res.Add("version", after ?? "");
             if (after == null) { res.Add("status", "failed"); return 1; }
             res.Add("status", "installed");
+            State mine = State.Load(); mine.Set("HH_InstalledByUs", "1"); mine.Set("HH_Preexisting", null); mine.Save();
+            MarkInstalledByUs(true);
             if (rc == 3010 || rc == 1641) return Reboot(res);
             return Responding() ? 0 : Reboot(res);
+        }
+
+        // "O HidHide foi instalado pelo FS25 RealFFB" sobrevive a desinstalar/reinstalar a app (o estado e apagado).
+        private const string MarkKey = @"Software\FS25 RealFFB";
+        internal static bool InstalledByUs()
+        {
+            if (State.Load().Get("HH_InstalledByUs") == "1") return true;
+            try { using (RegistryKey k = Registry.CurrentUser.OpenSubKey(MarkKey)) return k != null && (k.GetValue("HidHideInstalledByUs") as string) == "1"; }
+            catch { return false; }
+        }
+        private static void MarkInstalledByUs(bool on)
+        {
+            try
+            {
+                if (on) using (RegistryKey k = Registry.CurrentUser.CreateSubKey(MarkKey)) k.SetValue("HidHideInstalledByUs", "1");
+                else
+                {
+                    using (RegistryKey k = Registry.CurrentUser.OpenSubKey(MarkKey, true)) if (k != null) k.DeleteValue("HidHideInstalledByUs", false);
+                    try { Registry.CurrentUser.DeleteSubKey(MarkKey, false); } catch { }   // so se ficar vazia
+                }
+            }
+            catch { }
         }
 
         private static bool Responding()
@@ -236,95 +277,140 @@ namespace RealFFBSetup
             string title = L.T("Device setup");
             State st = State.Load();
             if (resume) { st.Set("PendingResume", null); st.Save(); }
+            int code = ConfigureCore(res, resume, st, title);
+            // resultado guardado para o diagnostico (distingue erro de configuracao de problema de hardware)
+            st = State.Load();
+            st.Set("HH_LastResult", res.Get("status"));
+            st.Set("HH_LastTime", DateTime.Now.ToString("yyyy-MM-dd HH:mm"));
+            st.Set("HH_LastError", res.Get("error").Length > 0 ? Diagnostics.Anon(res.Get("error")) : null);
+            st.Save();
+            return code;
+        }
+
+        private static int ConfigureCore(Result res, bool resume, State st, string title)
+        {
+            bool quiet = Get("quiet") != null;
             string exe = AppExe();
-            if (!File.Exists(exe)) { Ui.Error(title, L.F("RealFFB.exe not found:\n{0}", exe)); res.Add("status", "no-app"); return 1; }
+            if (!File.Exists(exe)) { if (!quiet) Ui.Error(title, L.F("RealFFB.exe not found:\n{0}", exe)); res.Add("status", "no-app"); return 1; }
             if (HidHide.Cli() == null)
             {
-                Ui.Error(title, L.T("HidHide is not installed.\nRun the FS25 RealFFB installer again to install it."));
+                if (!quiet) Ui.Error(title, L.T("HidHide is not installed.\nRun the FS25 RealFFB installer again to install it."));
                 res.Add("status", "no-hidhide"); return 1;
             }
             if (!Responding())
             {
-                Ui.Error(title, L.T("The HidHide driver is not responding.\n\nIf you just installed it, restart Windows.\nIf the 'HidHide Configuration Client' is open, close it and try again."));
+                if (!quiet) Ui.Error(title, L.T("The HidHide driver is not responding.\n\nIf you just installed it, restart Windows.\nIf the 'HidHide Configuration Client' is open, close it and try again."));
                 res.Add("status", "not-responding"); return 3;
             }
 
-            List<string> other = new List<string>();
-            List<FanatecBase> bases = Fanatec.Detect(other);
-            if (bases.Count == 0)
+            // 1) game.xml e autorizacao da app: sempre, mesmo sem volante ligado (antes, sem volante
+            //    "suportado", nada era feito e a RealFFB.exe ficava fora da lista do HidHide).
+            if (!GameRunning()) PatchGameXml(new Result());
+            st = State.Load();   // PatchGameXml gravou GX_Orig/GX_Backup: nao os perder ao gravar este estado
+            try
             {
-                Ui.Error(title, L.T("No supported wheel was found (Fanatec in PC mode or Logitech G29/G920/G923/G27/G25).") + (other.Count > 0 ? "\n(Fanatec: " + string.Join(", ", other.ToArray()) + ")" : "") + "\n\n" +
-                    L.T("Connect the wheel (Fanatec: red LED = PC mode) and use the 'FS25 RealFFB - Configure devices' shortcut.\nNothing was changed."));
-                res.Add("status", "no-fanatec"); return 2;
+                Config.BackupOnce(st, Log);
+                Config.EnsureApp(st, exe, Log);
             }
-            // Atualizacao/reinstalacao: se a base configurada antes continua corretamente configurada, nao perguntar nada.
-            string prev = st.Get("HH_Base");
-            if (prev != null && Get("force") == null)
-                foreach (FanatecBase pb in bases)
-                {
-                    if (!pb.Key.Equals(prev, StringComparison.OrdinalIgnoreCase)) continue;
-                    List<string> need = SafePaths(pb);
-                    List<string> hidden = HidHide.HiddenDevices();
-                    bool all = need.Count > 0 && Config.Contains(HidHide.Apps(), exe);
-                    foreach (string n in need) if (!Config.Contains(hidden, n)) all = false;
-                    if (all)
-                    {
-                        res.Add("status", "unchanged"); res.Add("device", pb.Label);
-                        Log("HidHide ja configurado para " + pb.Label + ": nada alterado.");
-                        if (!GameRunning()) PatchGameXml(new Result());
-                        if (resume) Ui.Info(title, L.F("Settings were already applied to {0}.", pb.Label));
-                        return 0;
-                    }
-                }
-
-            FanatecBase b;
-            if (bases.Count == 1) b = bases[0];
-            else
+            catch (Exception ex)
             {
+                res.Add("error", ex.Message);
+                if (!quiet) Ui.Error(title, L.F("HidHide could not be changed:\n{0}\n\nClose the 'HidHide Configuration Client' if it is open and use the 'FS25 RealFFB - Configure devices' shortcut.", ex.Message));
+                res.Add("status", "hidhide-error"); return 1;
+            }
+            res.Add("app_allowed", "1");
+
+            // 2) identificar a base: HidHide (todos os dispositivos de jogo, mesmo escondidos) + DirectInput
+            //    pela RealFFB.exe, que ja esta autorizada e por isso ve o volante mesmo escondido.
+            List<HidHide.GamingDevice> gaming = HidHide.GamingDevices();
+            List<FfbInfo> ffb = Wheels.ScanFfb(exe, Log);
+            List<WheelDevice> others = new List<WheelDevice>();
+            List<WheelDevice> wheels = Wheels.Find(gaming, ffb, st.Get("HH_Base"), others);
+            foreach (WheelDevice w in wheels) Log("Wheel found [" + w.Reason + "]: " + w.Label);
+            foreach (WheelDevice o in others) Log("Not a wheel base (not hidden): " + o.Label);
+
+            WheelDevice b = null;
+            if (wheels.Count == 1) b = wheels[0];
+            else if (wheels.Count > 1)
+            {
+                if (quiet) { res.Add("status", "choose"); return 2; }
                 List<string> labels = new List<string>();
-                for (int i = 0; i < bases.Count; i++) labels.Add((i + 1) + ". " + bases[i].Label);
+                for (int i = 0; i < wheels.Count; i++) labels.Add((i + 1) + ". " + wheels[i].Label);
                 int c = Ui.Choose(title, L.T("Several wheels were found. Choose the one you will use in FS25.\nOnly that one will be hidden from the game."), labels);
                 if (c < 0) { res.Add("status", "cancelled"); return 2; }
-                b = bases[c];
+                b = wheels[c];
+            }
+            else
+            {
+                // nenhuma base identificada com seguranca: escolha manual (com aviso) ou nada
+                if (quiet || others.Count == 0)
+                {
+                    if (!quiet) Ui.Error(title, L.T("No force feedback wheel was found.\n\nRealFFB.exe is already allowed in HidHide. Connect and switch on the wheel base (Fanatec: red LED = PC mode), then use the 'FS25 RealFFB - Configure devices' shortcut.\nNo device was hidden."));
+                    res.Add("status", "no-wheel"); return 2;
+                }
+                List<string> labels = new List<string>();
+                for (int i = 0; i < others.Count; i++) labels.Add((i + 1) + ". " + others[i].Label);
+                int c = Ui.Choose(title, L.T("No force feedback wheel was identified automatically.\nIf your wheel base is in this list, choose it. Choose only the wheel base, never pedals, shifters or other controllers.\nIf you are not sure, cancel: nothing will be hidden."), labels);
+                if (c < 0) { res.Add("status", "no-wheel"); return 2; }
+                b = others[c]; b.Reason = "manual";
             }
 
-            List<string> safe = SafePaths(b);
+            List<string> safe = Wheels.PathsFor(b, gaming, Log);
             if (safe.Count == 0)
             {
-                Ui.Error(title, L.F("The HidHide entries of the {0} could not be identified safely.\nNothing was changed.\n\nCreate the diagnostic report and open an issue on GitHub.", b.Label));
-                res.Add("status", "ambiguous"); return 1;
+                if (!quiet) Ui.Error(title, L.F("The HidHide entries of the {0} could not be identified safely.\nNothing was changed.\n\nCreate the diagnostic report and open an issue on GitHub.", b.Label));
+                res.Add("status", "ambiguous"); res.Add("device", b.Label); return 1;
             }
 
-            StringBuilder t = new StringBuilder();
-            t.AppendLine(L.T("These changes will be made in HidHide:"));
-            t.AppendLine();
-            t.AppendLine(L.T("1) Allow the application:"));
-            t.AppendLine("   " + exe);
-            t.AppendLine();
-            t.AppendLine(L.F("2) Hide only the {0} from games:", b.Label));
-            foreach (string p in safe) t.AppendLine("   " + p);
-            t.AppendLine();
-            t.AppendLine(L.T("No other controller is changed. Hiding is only active while RealFFB is open (with 'AutoHide')."));
-            t.AppendLine(L.T("The previous configuration is saved and restored on uninstall."));
-            if (!Ui.Confirm(title, t.ToString())) { res.Add("status", "declined"); return 2; }
+            // reinstalacao/reparacao: ja esta tudo certo -> nada a perguntar
+            List<string> pending = Config.Missing(null, safe);
+            if (pending.Count == 0)
+            {
+                st.Set("HH_Base", b.Key); st.Set("HH_BaseLabel", b.Label); st.Save();
+                res.Add("status", "unchanged"); res.Add("device", b.Label);
+                Log("HidHide already configured for " + b.Label + ".");
+                if (resume && !quiet) Ui.Info(title, L.F("Settings were already applied to {0}.", b.Label));
+                return 0;
+            }
 
-            Config.Apply(st, b, safe, exe, Log);
+            if (!quiet)
+            {
+                StringBuilder t = new StringBuilder();
+                t.AppendLine(L.F("Wheel: {0}", b.Label));
+                t.AppendLine();
+                t.AppendLine(L.F("Hide only the {0} from games:", b.Label));
+                foreach (string p in safe) t.AppendLine("   " + p);
+                t.AppendLine();
+                t.AppendLine(L.T("No other controller is changed. Hiding is only active while RealFFB is open (with 'AutoHide')."));
+                t.AppendLine(L.T("The previous configuration is saved and restored on uninstall."));
+                if (!Ui.Confirm(title, t.ToString())) { res.Add("status", "declined"); return 2; }
+            }
+
+            try { Config.HideDevices(st, b, safe, Log); }
+            catch (Exception ex)
+            {
+                res.Add("error", ex.Message);
+                if (!quiet) Ui.Error(title, L.F("HidHide could not be changed:\n{0}\n\nClose the 'HidHide Configuration Client' if it is open and use the 'FS25 RealFFB - Configure devices' shortcut.", ex.Message));
+                res.Add("status", "hidhide-error"); return 1;
+            }
+
+            // 3) verificacao: ler de novo o HidHide
+            List<string> miss = Config.Missing(exe, safe);
+            if (miss.Count > 0)
+            {
+                res.Add("error", string.Join("; ", miss.ToArray()));
+                if (!quiet) Ui.Error(title, L.F("HidHide did not keep these settings:\n{0}\n\nUse the 'FS25 RealFFB - Configure devices' shortcut to try again.", string.Join("\n", miss.ToArray())));
+                res.Add("status", "verify-failed"); return 1;
+            }
             res.Add("status", "configured");
             res.Add("device", b.Label);
 
-            string gxr = "";
-            if (!GameRunning()) PatchGameXml(new Result());
-            else gxr = "\n\n" + L.T("FS25 is open: game.xml will be adjusted next time (close the game and use this shortcut again).");
-            Ui.Info(title, L.F("Settings applied to {0}.", b.Label) + gxr + (resume ? "\n\n" + L.T("Installation complete. Open FS25 RealFFB from the shortcut.") : ""));
+            string gxr = GameRunning() ? "\n\n" + L.T("FS25 is open: game.xml will be adjusted next time (close the game and use this shortcut again).") : "";
+            if (!quiet)
+                Ui.Info(title, L.F("Settings applied to {0}.", b.Label) + "\n\n" +
+                    L.T("Windows applies the change when the wheel reconnects: unplug the wheel's USB cable and plug it back in (or restart Windows) before playing.") +
+                    gxr + (resume ? "\n\n" + L.T("Installation complete. Open FS25 RealFFB from the shortcut.") : ""));
             return 0;
-        }
-
-        private static List<string> SafePaths(FanatecBase b)
-        {
-            List<string> safe = new List<string>();
-            foreach (string p in Config.PathsFor(b, HidHide.GamingDevices()))
-                if (p.ToUpperInvariant().Contains("VID_" + b.Vid.ToString("X4"))) safe.Add(p); else Log("Ignorado (nao e o volante): " + p);
-            return safe;
         }
 
         internal static int ScheduleResume(Result res)
@@ -406,6 +492,8 @@ namespace RealFFBSetup
             try { Config.Restore(st, Log); } catch (Exception ex) { Log("HidHide: " + ex.Message); }
             try { RestoreGameXml(st); } catch (Exception ex) { Log("game.xml: " + ex.Message); }
             try { using (RegistryKey k = Registry.CurrentUser.OpenSubKey(RunOnceKey, true)) if (k != null) k.DeleteValue(RunOnceName, false); } catch { }
+            // entrada "--unhide" do arranque do Windows criada pela app (0.10): sem a app, deixa de fazer sentido
+            try { using (RegistryKey k = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true)) if (k != null) k.DeleteValue("FS25 RealFFB - show wheel", false); } catch { }
             st.Save();
             if (Get("purge") != null)
             {
@@ -417,6 +505,67 @@ namespace RealFFBSetup
             }
             res.Add("status", "restored");
             return 0;
+        }
+
+        // Desinstalacao: estado do HidHide para a pergunta "desinstalar tambem o HidHide?".
+        internal static int UninstallInfo(Result res)
+        {
+            string ver = HidHide.InstalledVersion();
+            State st = State.Load();
+            res.Add("hidhide_installed", ver != null ? "1" : "0");
+            res.Add("hidhide_version", ver ?? "");
+            bool ours = InstalledByUs();
+            res.Add("installed_by_us", ours ? "1" : "0");
+            res.Add("preexisting", !ours && st.Get("HH_Preexisting") == "1" ? "1" : "0");
+            res.Add("status", "ok");
+            return 0;
+        }
+
+        // Desinstala o HidHide pelo desinstalador OFICIAL (so chamado depois de o utilizador confirmar duas vezes).
+        // Antes: desliga o esconderijo, para nenhum dispositivo ficar escondido se a remocao do driver falhar.
+        internal static int UninstallHidHide(Result res)
+        {
+            if (HidHide.InstalledVersion() == null) { res.Add("status", "absent"); MarkInstalledByUs(false); Log("HidHide is not installed."); return 0; }
+            if (HidHide.Cli() != null)
+            {
+                try { HidHide.Run("--cloak-off"); Log("HidHide --cloak-off"); }
+                catch (Exception ex) { Log("HidHide --cloak-off failed: " + ex.Message); }
+            }
+            HidHide.UninstallEntry e = HidHide.FindUninstall();
+            string[] cmd = HidHide.UninstallCommand(e);
+            if (cmd == null)
+            {
+                res.Add("status", "no-uninstaller");
+                res.Add("error", "HidHide uninstall entry not found");
+                Log("HidHide uninstall entry not found: remove it in Windows Settings > Apps.");
+                return 1;
+            }
+            Log("Official HidHide uninstaller: " + cmd[0] + " " + cmd[1]);
+            int rc = HidHide.RunUninstall(cmd);
+            res.Add("uninstaller_exit", rc.ToString());
+            Log("HidHide uninstaller -> " + rc);
+            if (rc == HidHide.TimedOut) { res.Add("status", "timeout"); res.Add("error", "the official HidHide uninstaller did not finish within 10 minutes"); return 1; }
+            if (rc == 1223) { res.Add("status", "uac-denied"); return 2; }
+            if (rc == 1602) { res.Add("status", "cancelled"); return 2; }
+            if (rc != 0 && rc != 3010 && rc != 1641) { res.Add("status", "failed"); res.Add("error", "exit code " + rc); return 1; }
+            bool gone = HidHide.InstalledVersion() == null;
+            if (rc == 3010 || rc == 1641 || !gone || HidHide.Cli() != null)
+            {
+                res.Add("status", "reboot");
+                MarkInstalledByUs(false);
+                Log("HidHide removed; Windows must restart to finish removing the driver.");
+                return 3;
+            }
+            res.Add("status", "removed");
+            MarkInstalledByUs(false);
+            return 0;
+        }
+
+        // Ultimo passo da desinstalacao, se o utilizador pediu: apagar a pasta de dados (sem voltar a escrever nela).
+        internal static int Purge(Result res)
+        {
+            try { Directory.Delete(State.Dir, true); res.Add("status", "purged"); return 0; }
+            catch (Exception ex) { res.Add("status", "failed"); res.Add("error", ex.Message); return 1; }
         }
 
         // Guarda a pasta do jogo e dos mods escolhidas no instalador (usadas pela app e pela verificacao).
