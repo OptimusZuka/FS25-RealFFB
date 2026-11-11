@@ -98,7 +98,7 @@ namespace RealFFBSetup
             ProcessStartInfo psi = new ProcessStartInfo(cmd[0], cmd[1]);
             psi.UseShellExecute = true;
             psi.Verb = "runas";
-            try { using (Process p = Process.Start(psi)) { p.WaitForExit(); return p.ExitCode; } }
+            try { using (Process p = Process.Start(psi)) { if (!p.WaitForExit(10 * 60 * 1000)) return TimedOut; return p.ExitCode; } }
             catch (Win32Exception ex) { if (ex.NativeErrorCode == 1223) return 1223; throw; }
         }
 
@@ -437,9 +437,17 @@ namespace RealFFBSetup
             psi.Verb = "runas";
             try
             {
-                using (Process p = Process.Start(psi)) { p.WaitForExit(); return p.ExitCode; }
+                // 0.14: nunca esperar para sempre (num teste o instalador oficial ficou parado >20 min em modo
+                // silencioso). O processo nao e terminado a forca: a meio da instalacao de um driver isso seria pior.
+                using (Process p = Process.Start(psi))
+                {
+                    if (!p.WaitForExit((silent ? 5 : 20) * 60 * 1000)) return TimedOut;
+                    return p.ExitCode;
+                }
             }
             catch (Win32Exception ex) { if (ex.NativeErrorCode == 1223) return 1223; throw; }   // 1223 = UAC recusado
         }
+
+        public const int TimedOut = -2;
     }
 }

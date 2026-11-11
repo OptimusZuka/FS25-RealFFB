@@ -211,6 +211,13 @@ namespace RealFFBSetup
 
             int rc = HidHide.RunInstaller(file, true);
             Log("HidHide installer (silent) -> " + rc);
+            if (rc == HidHide.TimedOut)
+            {
+                res.Add("status", "timeout");
+                res.Add("error", "the official HidHide installer did not finish within 5 minutes");
+                Log("The official HidHide installer did not answer within 5 minutes. It was left running (stopping a driver installation half-way is unsafe). Restart Windows and run the FS25 RealFFB installer again.");
+                return 1;
+            }
             if (rc != 0 && rc != 3010 && rc != 1641 && rc != 1223)
             {
                 Log("Retrying in interactive mode.");
@@ -274,6 +281,7 @@ namespace RealFFBSetup
             // 1) game.xml e autorizacao da app: sempre, mesmo sem volante ligado (antes, sem volante
             //    "suportado", nada era feito e a RealFFB.exe ficava fora da lista do HidHide).
             if (!GameRunning()) PatchGameXml(new Result());
+            st = State.Load();   // PatchGameXml gravou GX_Orig/GX_Backup: nao os perder ao gravar este estado
             try
             {
                 Config.BackupOnce(st, Log);
@@ -510,6 +518,7 @@ namespace RealFFBSetup
             int rc = HidHide.RunUninstall(cmd);
             res.Add("uninstaller_exit", rc.ToString());
             Log("HidHide uninstaller -> " + rc);
+            if (rc == HidHide.TimedOut) { res.Add("status", "timeout"); res.Add("error", "the official HidHide uninstaller did not finish within 10 minutes"); return 1; }
             if (rc == 1223) { res.Add("status", "uac-denied"); return 2; }
             if (rc == 1602) { res.Add("status", "cancelled"); return 2; }
             if (rc != 0 && rc != 3010 && rc != 1641) { res.Add("status", "failed"); res.Add("error", "exit code " + rc); return 1; }
