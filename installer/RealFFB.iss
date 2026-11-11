@@ -53,10 +53,10 @@ SetupWindowTitle=FS25 RealFFB Installer
 WelcomeLabel1=FS25 RealFFB Installer
 
 [CustomMessages]
-en.Welcome2=Real force feedback in Farming Simulator 25 for Fanatec and Logitech wheels (G29, G920, G923).%n%nSteps:%n  1. System check%n  2. Farming Simulator 25 detection%n  3. Wheel check%n  4. HidHide installation%n  5. Device setup%n  6. RealFFB installation%n  7. Final check%n%nClose Farming Simulator 25 before continuing.
-pt.Welcome2=Force feedback de verdade no Farming Simulator 25 para volantes Fanatec e Logitech (G29, G920, G923).%n%nEtapas:%n  1. Verificação do sistema%n  2. Detecção do Farming Simulator 25%n  3. Verificação do volante%n  4. Instalação do HidHide%n  5. Configuração dos dispositivos%n  6. Instalação do RealFFB%n  7. Verificação final%n%nFeche o Farming Simulator 25 antes de continuar.
-es.Welcome2=Force feedback real en Farming Simulator 25 para volantes Fanatec y Logitech (G29, G920, G923).%n%nPasos:%n  1. Comprobación del sistema%n  2. Detección de Farming Simulator 25%n  3. Comprobación del volante%n  4. Instalación de HidHide%n  5. Configuración de dispositivos%n  6. Instalación de RealFFB%n  7. Comprobación final%n%nCierra Farming Simulator 25 antes de continuar.
-fr.Welcome2=Un vrai force feedback dans Farming Simulator 25 pour les volants Fanatec et Logitech (G29, G920, G923).%n%nÉtapes :%n  1. Vérification du système%n  2. Détection de Farming Simulator 25%n  3. Vérification du volant%n  4. Installation de HidHide%n  5. Configuration des périphériques%n  6. Installation de RealFFB%n  7. Vérification finale%n%nFermez Farming Simulator 25 avant de continuer.
+en.Welcome2=Real force feedback in Farming Simulator 25 for force feedback steering wheels (Fanatec, Logitech, Thrustmaster, MOZA and other DirectInput wheels).%n%nSteps:%n  1. System check%n  2. Farming Simulator 25 detection%n  3. Wheel check%n  4. HidHide installation%n  5. Device setup%n  6. RealFFB installation%n  7. Final check%n%nClose Farming Simulator 25 before continuing.
+pt.Welcome2=Force feedback de verdade no Farming Simulator 25 para volantes com force feedback (Fanatec, Logitech, Thrustmaster, MOZA e outros volantes DirectInput).%n%nEtapas:%n  1. Verificação do sistema%n  2. Detecção do Farming Simulator 25%n  3. Verificação do volante%n  4. Instalação do HidHide%n  5. Configuração dos dispositivos%n  6. Instalação do RealFFB%n  7. Verificação final%n%nFeche o Farming Simulator 25 antes de continuar.
+es.Welcome2=Force feedback real en Farming Simulator 25 para volantes con force feedback (Fanatec, Logitech, Thrustmaster, MOZA y otros volantes DirectInput).%n%nPasos:%n  1. Comprobación del sistema%n  2. Detección de Farming Simulator 25%n  3. Comprobación del volante%n  4. Instalación de HidHide%n  5. Configuración de dispositivos%n  6. Instalación de RealFFB%n  7. Comprobación final%n%nCierra Farming Simulator 25 antes de continuar.
+fr.Welcome2=Un vrai retour de force dans Farming Simulator 25 pour les volants à retour de force (Fanatec, Logitech, Thrustmaster, MOZA et autres volants DirectInput).%n%nÉtapes :%n  1. Vérification du système%n  2. Détection de Farming Simulator 25%n  3. Vérification du volant%n  4. Installation de HidHide%n  5. Configuration des périphériques%n  6. Installation de RealFFB%n  7. Vérification finale%n%nFermez Farming Simulator 25 avant de continuer.
 en.TaskDesktop=Create a desktop shortcut (opens RealFFB and FS25)
 pt.TaskDesktop=Criar atalho na área de trabalho (abre o RealFFB e o FS25)
 es.TaskDesktop=Crear acceso directo en el escritorio (abre RealFFB y FS25)
@@ -125,10 +125,10 @@ en.GameOpen=FS25 is open. Close it before continuing.
 pt.GameOpen=O FS25 está aberto. Feche-o antes de continuar.
 es.GameOpen=FS25 está abierto. Ciérralo antes de continuar.
 fr.GameOpen=FS25 est ouvert. Fermez-le avant de continuer.
-en.NoWheel=No supported wheel connected. You can continue and set it up later.
-pt.NoWheel=Nenhum volante suportado conectado. Pode continuar e configurar depois.
-es.NoWheel=Ningún volante compatible conectado. Puedes continuar y configurarlo después.
-fr.NoWheel=Aucun volant compatible connecté. Vous pouvez continuer et le configurer plus tard.
+en.NoWheel=No force feedback wheel found. Connect and switch on the wheel base now (Fanatec: PC mode) or set it up later with the "Configure devices" shortcut.
+pt.NoWheel=Nenhum volante com force feedback encontrado. Ligue a base agora (Fanatec: modo PC) ou configure depois pelo atalho "Configure devices".
+es.NoWheel=No se encontró ningún volante con force feedback. Conecta y enciende la base ahora (Fanatec: modo PC) o configúralo después con el acceso directo "Configure devices".
+fr.NoWheel=Aucun volant à retour de force trouvé. Branchez et allumez la base maintenant (Fanatec : mode PC) ou configurez-le plus tard avec le raccourci "Configure devices".
 en.OtherFanatec=(other Fanatec devices, which will not be changed: %1)
 pt.OtherFanatec=(outros dispositivos Fanatec, que não serão alterados: %1)
 es.OtherFanatec=(otros dispositivos Fanatec, que no se cambiarán: %1)
@@ -197,10 +197,10 @@ en.DevDesc=Only the chosen wheel is hidden from the game
 pt.DevDesc=Só o volante escolhido é escondido do jogo
 es.DevDesc=Solo el volante elegido se oculta al juego
 fr.DevDesc=Seul le volant choisi est masqué au jeu
-en.DevSub=After the files are copied, a window shows exactly what will change in HidHide: allow RealFFB.exe and hide only the wheel. No other controller is changed.%n%nIf there are several wheels, you choose which one to use. If the wheel cannot be identified safely, nothing is changed.%n%nThe FS25 game.xml is also adjusted (joystick on, the game's own force feedback off), with a backup.
-pt.DevSub=Depois de copiar os arquivos, abre-se uma janela que mostra exatamente o que vai mudar no HidHide: autorizar o RealFFB.exe e esconder apenas o volante. Nenhum outro controle é alterado.%n%nSe houver vários volantes, você escolhe qual usar. Se o volante não for identificado com segurança, nada é alterado.%n%nO game.xml do FS25 também é ajustado (joystick ativo, force feedback do jogo desligado), com cópia de segurança.
-es.DevSub=Tras copiar los archivos se abre una ventana que muestra exactamente qué cambiará en HidHide: autorizar RealFFB.exe y ocultar solo el volante. No se cambia ningún otro mando.%n%nSi hay varios volantes, eliges cuál usar. Si el volante no se identifica con seguridad, no se cambia nada.%n%nTambién se ajusta el game.xml de FS25 (joystick activado, force feedback del juego desactivado), con copia de seguridad.
-fr.DevSub=Après la copie des fichiers, une fenêtre montre exactement ce qui change dans HidHide : autoriser RealFFB.exe et masquer uniquement le volant. Aucun autre périphérique n'est modifié.%n%nS'il y a plusieurs volants, vous choisissez lequel utiliser. Si le volant ne peut pas être identifié de façon sûre, rien n'est modifié.%n%nLe game.xml de FS25 est aussi ajusté (joystick activé, force feedback du jeu désactivé), avec une sauvegarde.
+en.DevSub=After the files are copied, setup configures HidHide automatically:%n  1. allows RealFFB.exe (always, even without a wheel connected);%n  2. finds the wheel base: the device that Windows reports with force feedback (any brand), never pedals, shifters or other controllers;%n  3. hides only that wheel from games and checks that HidHide kept the settings.%n%nA window shows exactly what will change. If several wheels are connected, you choose one. If no wheel can be identified safely, nothing is hidden and you can choose it yourself or set it up later.%n%nThe FS25 game.xml is also adjusted (joystick on, the game's own force feedback off), with a backup.
+pt.DevSub=Depois de copiar os arquivos, o instalador configura o HidHide sozinho:%n  1. autoriza o RealFFB.exe (sempre, mesmo sem volante ligado);%n  2. encontra a base do volante: o dispositivo que o Windows indica com force feedback (qualquer marca), nunca pedais, câmbios ou outros controles;%n  3. esconde dos jogos apenas esse volante e confirma que o HidHide guardou a configuração.%n%nUma janela mostra exatamente o que vai mudar. Se houver vários volantes, você escolhe um. Se nenhum for identificado com segurança, nada é escondido e você pode escolher ou configurar depois.%n%nO game.xml do FS25 também é ajustado (joystick ativo, force feedback do jogo desligado), com cópia de segurança.
+es.DevSub=Tras copiar los archivos, el instalador configura HidHide solo:%n  1. autoriza RealFFB.exe (siempre, incluso sin volante conectado);%n  2. encuentra la base del volante: el dispositivo que Windows indica con force feedback (cualquier marca), nunca pedales, palancas u otros mandos;%n  3. oculta a los juegos solo ese volante y comprueba que HidHide guardó la configuración.%n%nUna ventana muestra exactamente qué cambiará. Si hay varios volantes, eliges uno. Si ninguno se identifica con seguridad, no se oculta nada y puedes elegirlo tú o configurarlo después.%n%nTambién se ajusta el game.xml de FS25 (joystick activado, force feedback del juego desactivado), con copia de seguridad.
+fr.DevSub=Après la copie des fichiers, l'installateur configure HidHide automatiquement :%n  1. autorise RealFFB.exe (toujours, même sans volant branché) ;%n  2. trouve la base du volant : le périphérique que Windows indique avec retour de force (toute marque), jamais les pédales, leviers ou autres périphériques ;%n  3. masque aux jeux uniquement ce volant et vérifie que HidHide a conservé les réglages.%n%nUne fenêtre montre exactement ce qui change. S'il y a plusieurs volants, vous en choisissez un. Si aucun n'est identifié de façon sûre, rien n'est masqué et vous pouvez le choisir vous-même ou le configurer plus tard.%n%nLe game.xml de FS25 est aussi ajusté (joystick activé, force feedback du jeu désactivé), avec une sauvegarde.
 en.DevOption=Set up automatically (asks for confirmation)
 pt.DevOption=Configurar automaticamente (pede confirmação)
 es.DevOption=Configurar automáticamente (pide confirmación)
@@ -309,6 +309,50 @@ en.SumProblems=Installed with %1 problem(s) above. Use "FS25 RealFFB - Diagnosti
 pt.SumProblems=Instalado com %1 problema(s) acima. Use "FS25 RealFFB - Diagnostic report" para pedir ajuda.
 es.SumProblems=Instalado con %1 problema(s) arriba. Usa "FS25 RealFFB - Diagnostic report" para pedir ayuda.
 fr.SumProblems=Installé avec %1 problème(s) ci-dessus. Utilisez "FS25 RealFFB - Diagnostic report" pour demander de l'aide.
+en.SumDevNoWheel=RealFFB.exe allowed in HidHide; no force feedback wheel connected. Connect it and use the "FS25 RealFFB - Configure devices" shortcut.
+pt.SumDevNoWheel=RealFFB.exe autorizado no HidHide; nenhum volante com force feedback ligado. Ligue-o e use o atalho "FS25 RealFFB - Configure devices".
+es.SumDevNoWheel=RealFFB.exe autorizado en HidHide; ningún volante con force feedback conectado. Conéctalo y usa el acceso directo "FS25 RealFFB - Configure devices".
+fr.SumDevNoWheel=RealFFB.exe autorisé dans HidHide ; aucun volant à retour de force branché. Branchez-le et utilisez le raccourci "FS25 RealFFB - Configure devices".
+en.SumReplug=Before playing, unplug the wheel's USB cable and plug it back in (or restart Windows) so Windows applies the hiding.
+pt.SumReplug=Antes de jogar, desligue o cabo USB do volante e ligue-o de novo (ou reinicie o Windows) para o Windows aplicar a ocultação.
+es.SumReplug=Antes de jugar, desconecta el cable USB del volante y vuelve a conectarlo (o reinicia Windows) para que Windows aplique la ocultación.
+fr.SumReplug=Avant de jouer, débranchez le câble USB du volant puis rebranchez-le (ou redémarrez Windows) pour que Windows applique le masquage.
+en.UnHidInstr=Would you also like to uninstall HidHide?
+pt.UnHidInstr=Deseja desinstalar também o HidHide?
+es.UnHidInstr=¿Quieres desinstalar también HidHide?
+fr.UnHidInstr=Voulez-vous aussi désinstaller HidHide ?
+en.UnHidText=HidHide %1 (Nefarius) is the driver FS25 RealFFB uses to hide the wheel from the game.%n%nIf you keep it, only the FS25 RealFFB entries are removed from it and your wheel is no longer hidden. Other programs' settings are not touched.
+pt.UnHidText=O HidHide %1 (Nefarius) é o driver que o FS25 RealFFB usa para esconder o volante do jogo.%n%nSe o mantiver, só as entradas do FS25 RealFFB são retiradas dele e o volante deixa de estar escondido. As configurações de outros programas não são alteradas.
+es.UnHidText=HidHide %1 (Nefarius) es el driver que FS25 RealFFB usa para ocultar el volante al juego.%n%nSi lo conservas, solo se quitan las entradas de FS25 RealFFB y el volante deja de estar oculto. Los ajustes de otros programas no se tocan.
+fr.UnHidText=HidHide %1 (Nefarius) est le pilote que FS25 RealFFB utilise pour masquer le volant au jeu.%n%nSi vous le gardez, seules les entrées de FS25 RealFFB sont retirées et le volant n'est plus masqué. Les réglages des autres programmes ne sont pas touchés.
+en.UnHidPre=%n%nHidHide was already installed before FS25 RealFFB: another program probably uses it. Keeping it is recommended.
+pt.UnHidPre=%n%nO HidHide já estava instalado antes do FS25 RealFFB: provavelmente outro programa o usa. Recomenda-se mantê-lo.
+es.UnHidPre=%n%nHidHide ya estaba instalado antes de FS25 RealFFB: probablemente otro programa lo usa. Se recomienda conservarlo.
+fr.UnHidPre=%n%nHidHide était déjà installé avant FS25 RealFFB : un autre programme l'utilise probablement. Il est recommandé de le garder.
+en.UnHidYes=Yes, uninstall HidHide
+pt.UnHidYes=Sim, desinstalar o HidHide
+es.UnHidYes=Sí, desinstalar HidHide
+fr.UnHidYes=Oui, désinstaller HidHide
+en.UnHidNo=No, keep HidHide installed
+pt.UnHidNo=Não, manter o HidHide instalado
+es.UnHidNo=No, mantener HidHide instalado
+fr.UnHidNo=Non, garder HidHide installé
+en.UnHidConfirm=Other programs may depend on HidHide (for example DS4Windows, DualSenseX, UCR, other force feedback or controller tools). If you remove it, devices they hide become visible again and they may stop working as expected.%n%nHidHide will be removed with its official uninstaller. Windows will ask for administrator permission and may need a restart.%n%nUninstall HidHide now?
+pt.UnHidConfirm=Outros programas podem depender do HidHide (por exemplo DS4Windows, DualSenseX, UCR, outras ferramentas de force feedback ou de controles). Se o remover, os dispositivos que eles escondem voltam a ficar visíveis e podem deixar de funcionar como esperado.%n%nO HidHide será removido pelo desinstalador oficial. O Windows vai pedir autorização de administrador e pode ser preciso reiniciar.%n%nDesinstalar o HidHide agora?
+es.UnHidConfirm=Otros programas pueden depender de HidHide (por ejemplo DS4Windows, DualSenseX, UCR, otras herramientas de force feedback o de mandos). Si lo quitas, los dispositivos que ocultan vuelven a ser visibles y pueden dejar de funcionar como se espera.%n%nHidHide se quitará con su desinstalador oficial. Windows pedirá permiso de administrador y puede ser necesario reiniciar.%n%n¿Desinstalar HidHide ahora?
+fr.UnHidConfirm=D'autres programmes peuvent dépendre de HidHide (par exemple DS4Windows, DualSenseX, UCR, d'autres outils de retour de force ou de manettes). Si vous le supprimez, les périphériques qu'ils masquent redeviennent visibles et ils peuvent ne plus fonctionner comme prévu.%n%nHidHide sera supprimé par son désinstallateur officiel. Windows demandera l'autorisation administrateur et un redémarrage peut être nécessaire.%n%nDésinstaller HidHide maintenant ?
+en.UnHidDone=HidHide was uninstalled. No device is hidden any more.
+pt.UnHidDone=O HidHide foi desinstalado. Nenhum dispositivo continua escondido.
+es.UnHidDone=HidHide se desinstaló. Ya no hay ningún dispositivo oculto.
+fr.UnHidDone=HidHide a été désinstallé. Plus aucun périphérique n'est masqué.
+en.UnHidReboot=HidHide was uninstalled. Restart Windows to finish removing its driver. Device hiding was switched off before removal, so no device stays hidden.
+pt.UnHidReboot=O HidHide foi desinstalado. Reinicie o Windows para terminar de remover o driver. A ocultação foi desligada antes, por isso nenhum dispositivo fica escondido.
+es.UnHidReboot=HidHide se desinstaló. Reinicia Windows para terminar de quitar el driver. La ocultación se desactivó antes, así que ningún dispositivo queda oculto.
+fr.UnHidReboot=HidHide a été désinstallé. Redémarrez Windows pour finir de supprimer le pilote. Le masquage a été désactivé avant, donc aucun périphérique ne reste masqué.
+en.UnHidFail=HidHide was NOT uninstalled (%1). Device hiding was switched off and the FS25 RealFFB entries were removed, so your wheel is not hidden. You can remove HidHide later in Windows Settings > Apps.
+pt.UnHidFail=O HidHide NÃO foi desinstalado (%1). A ocultação foi desligada e as entradas do FS25 RealFFB foram retiradas, por isso o volante não está escondido. Pode remover o HidHide depois em Configurações do Windows > Aplicativos.
+es.UnHidFail=HidHide NO se desinstaló (%1). La ocultación se desactivó y se quitaron las entradas de FS25 RealFFB, así que el volante no está oculto. Puedes quitar HidHide después en Configuración de Windows > Aplicaciones.
+fr.UnHidFail=HidHide n'a PAS été désinstallé (%1). Le masquage a été désactivé et les entrées de FS25 RealFFB retirées, donc le volant n'est pas masqué. Vous pouvez supprimer HidHide plus tard dans Paramètres Windows > Applications.
 en.Purge=Also delete your RealFFB settings and profiles (FFB tuning, pedals, buttons)?%n%nYes = delete everything.   No = keep them (recommended if you will reinstall).
 pt.Purge=Apagar também seus ajustes e perfis do RealFFB (FFB, pedais, comandos)?%n%nSim = apagar tudo.   Não = manter (recomendado se for reinstalar).
 es.Purge=¿Borrar también tus ajustes y perfiles de RealFFB (FFB, pedales, botones)?%n%nSí = borrar todo.   No = conservarlos (recomendado si vas a reinstalar).
@@ -343,7 +387,7 @@ var
   GamePage: TInputDirWizardPage;
   HidPage, DevPage: TInputOptionWizardPage;
   StepLog: String;
-  PurgeData: Boolean;
+  PurgeData, RemoveHidHide, Replug: Boolean;
   OsText: String;
 
 function R(Key: String): String;
@@ -569,10 +613,16 @@ begin
     end
     else if DevPage.Values[0] then
     begin
-      Code := Helper(True, 'configure');
-      if R('status') = 'configured' then AddStep(CustomMessage('Step5') + ': ' + FmtMessage(CustomMessage('SumDevOk'), [R('device')]))
+      if WizardSilent then Code := Helper(True, 'configure --quiet')
+      else Code := Helper(True, 'configure');
+      if R('status') = 'configured' then
+      begin
+        AddStep(CustomMessage('Step5') + ': ' + FmtMessage(CustomMessage('SumDevOk'), [R('device')]));
+        Replug := True;
+      end
       else if R('status') = 'unchanged' then AddStep(CustomMessage('Step5') + ': ' + FmtMessage(CustomMessage('SumDevSame'), [R('device')]))
-      else AddStep(CustomMessage('Step5') + ': ' + FmtMessage(CustomMessage('SumDevNot'), [R('status')]));
+      else if R('status') = 'no-wheel' then AddStep(CustomMessage('Step5') + ': ' + CustomMessage('SumDevNoWheel'))
+      else AddStep(CustomMessage('Step5') + ': ' + FmtMessage(CustomMessage('SumDevNot'), [R('status') + ' ' + R('error')]));
     end
     else
     begin
@@ -594,7 +644,10 @@ begin
     if RebootNeeded then
       AddStep(CustomMessage('SumReboot'))
     else if Errors = 0 then
-      AddStep(CustomMessage('SumReady'))
+    begin
+      AddStep(CustomMessage('SumReady'));
+      if Replug then AddStep(CustomMessage('SumReplug'));
+    end
     else
       AddStep(FmtMessage(CustomMessage('SumProblems'), [IntToStr(Errors)]));
     Prog.SetProgress(5, 5);
@@ -609,22 +662,58 @@ begin
 end;
 
 // ---------------------------------------------------------------- uninstall
+// 0.14: the normal uninstall asks whether to remove HidHide too (two confirmations, never by default).
+function UninstallHelper(Params: String; ResIni: String): Integer;
+var
+  Code: Integer;
+begin
+  DeleteFile(ResIni);
+  if not Exec(ExpandConstant('{app}\RealFFB.Setup.exe'), Params + ' --out "' + ResIni + '"', '', SW_SHOW, ewWaitUntilTerminated, Code) then Code := -1;
+  Result := Code;
+end;
+
 function InitializeUninstall(): Boolean;
+var
+  Ini, Txt: String;
 begin
   Result := True;
+  RemoveHidHide := False;
+  PurgeData := False;
+  // silent uninstall: keep the settings and keep HidHide (nothing is removed without a question)
+  if UninstallSilent then Exit;
   PurgeData := MsgBox(CustomMessage('Purge'), mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
+  Ini := ExpandConstant('{tmp}\uninstall-info.ini');
+  if (UninstallHelper('uninstall-info', Ini) = 0) and (GetIniString('r', 'hidhide_installed', '0', Ini) = '1') then
+  begin
+    Txt := FmtMessage(CustomMessage('UnHidText'), [GetIniString('r', 'hidhide_version', '', Ini)]);
+    if GetIniString('r', 'preexisting', '0', Ini) = '1' then Txt := Txt + CustomMessage('UnHidPre');
+    // default button = "No, keep HidHide installed"
+    if TaskDialogMsgBox(CustomMessage('UnHidInstr'), Txt, mbConfirmation, MB_YESNO or MB_DEFBUTTON2,
+         [CustomMessage('UnHidYes'), CustomMessage('UnHidNo')], 0) = IDYES then
+      RemoveHidHide := MsgBox(CustomMessage('UnHidConfirm'), mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
+  end;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   Code: Integer;
-  P: String;
+  Ini, St: String;
 begin
   if CurUninstallStep = usUninstall then
   begin
-    P := 'restore';
-    if PurgeData then P := P + ' --purge';
-    // restores HidHide and game.xml as they were before; HidHide itself is not uninstalled
-    Exec(ExpandConstant('{app}\RealFFB.Setup.exe'), P, '', SW_HIDE, ewWaitUntilTerminated, Code);
+    Ini := ExpandConstant('{tmp}\uninstall-result.ini');
+    // 1) always: remove only the FS25 RealFFB entries from HidHide and restore game.xml
+    UninstallHelper('restore', Ini);
+    // 2) only with the user's explicit consent: official HidHide uninstaller (UAC)
+    if RemoveHidHide then
+    begin
+      Code := UninstallHelper('hidhide-uninstall', Ini);
+      St := GetIniString('r', 'status', '', Ini);
+      if (St = 'removed') or (St = 'absent') then MsgBox(CustomMessage('UnHidDone'), mbInformation, MB_OK)
+      else if St = 'reboot' then MsgBox(CustomMessage('UnHidReboot'), mbInformation, MB_OK)
+      else MsgBox(FmtMessage(CustomMessage('UnHidFail'), [St + ' ' + GetIniString('r', 'error', '', Ini)]), mbError, MB_OK);
+    end;
+    // 3) settings folder, last (nothing writes to it afterwards)
+    if PurgeData then UninstallHelper('purge', Ini);
   end;
 end;
