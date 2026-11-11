@@ -7,13 +7,19 @@ $fails = 0
 function Check([string]$name, [bool]$ok, [string]$detail = '') {
     if ($ok) { Write-Host "PASS  $name $detail" } else { Write-Host "FAIL  $name $detail"; $script:fails++ }
 }
-function Cli { param([string[]]$a) $c = Get-HidHideCli; if (-not $c) { return '' }; (& $c @a 2>&1 | Out-String) }
+function HH { param([string[]]$a) $c = Get-HidHideCli; if (-not $c) { return '' }; [string](& $c @a 2>&1 | Out-String) }
+# RealFFB.Setup.exe is a Windows (GUI) program: PowerShell does not wait for it unless Start-Process -Wait is used
+function RunSetup([string]$exe, [string]$argline, [int]$timeoutSec = 120) {
+    $p = Start-Process $exe -ArgumentList $argline -PassThru
+    if (-not $p.WaitForExit($timeoutSec * 1000)) { try { $p.Kill() } catch {}; Write-Host "   TIMEOUT: $argline"; return -1 }
+    return $p.ExitCode
+}
 function Get-HidHideCli {
     foreach ($p in @("$env:ProgramFiles\Nefarius Software Solutions\HidHide\x64\HidHideCLI.exe", "$env:ProgramFiles\Nefarius Software Solutions\HidHide\HidHideCLI.exe")) { if (Test-Path $p) { return $p } }
     return $null
 }
-function Apps { Cli @('--app-list') }
-function Devs { Cli @('--dev-list') }
+function Apps { HH @('--app-list') }
+function Devs { HH @('--dev-list') }
 function Ini([string]$file, [string]$key) { $l = Get-Content $file -ErrorAction SilentlyContinue | Where-Object { $_ -like "$key=*" } | Select-Object -First 1; if ($l) { $l.Substring($key.Length + 1) } else { '' } }
 function HidHideEntries {
     foreach ($r in @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall', 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall')) {
@@ -46,7 +52,7 @@ Check 'HidHide installed by the installer (official, signature checked)' ((Get-H
 Check 'state: HidHide installed by us' ((Ini $state 'HH_InstalledByUs') -eq '1')
 if ((Ini $state 'PendingResume') -eq '1') {
     Write-Host '   HidHide asked for a restart: running the resumed configuration now'
-    & "$appDir\RealFFB.Setup.exe" configure --quiet --out r.ini | Out-Null; Get-Content r.ini | ForEach-Object { Write-Host "   $_" }
+    RunSetup "$appDir\RealFFB.Setup.exe" 'configure --quiet --out r.ini' | Out-Null; Get-Content r.ini | ForEach-Object { Write-Host "   $_" }
 }
 $apps = Apps
 Write-Host $apps
@@ -62,7 +68,7 @@ $cli = Get-HidHideCli
 # an entry that FS25 RealFFB added earlier (as after a real wheel setup), recorded in the state
 & $cli --dev-hide "HID\VID_346E&PID_0004\8&RFFBTEST&0&0000" | Out-Null
 Add-Content $state "HH_DevAdded=HID\VID_346E&PID_0004\8&RFFBTEST&0&0000"
-for ($i = 1; $i -le 3; $i++) { & "$appDir\RealFFB.Setup.exe" configure --quiet --out "r$i.ini" | Out-Null }
+for ($i = 1; $i -le 3; $i++) { $c = RunSetup "$appDir\RealFFB.Setup.exe" "configure --quiet --out r$i.ini"; Write-Host "   run $i -> $c status=$(Ini "r$i.ini" 'status')" }
 $apps = Apps
 $n = ([regex]::Matches($apps, [regex]::Escape($appExe))).Count
 Check 'still exactly one RealFFB.exe entry after 3 runs' ($n -eq 1) "($n)"
@@ -70,7 +76,7 @@ Check 'other application kept' ($apps -like '*OtherApp.exe*')
 Check 'other device kept' ((Devs) -like '*VID_1234&PID_5678*')
 
 Write-Host "`n== 3. Diagnostic report =="
-& "$appDir\RealFFB.Setup.exe" diagnose --report diag.txt --quiet --out d.ini | Out-Null
+RunSetup "$appDir\RealFFB.Setup.exe" "diagnose --report `"$PWD\diag.txt`" --quiet --out d.ini" | Out-Null
 $diag = Get-Content diag.txt -Raw
 Write-Host $diag
 Check 'diag: HidHide installed OK' ($diag -match '\[OK\] HidHide installed')
@@ -91,7 +97,9 @@ Check 'device added by FS25 RealFFB unhidden' (-not ($devs -like '*RFFBTEST*'))
 Check 'other application still allowed' ($apps -like '*OtherApp.exe*')
 Check 'other device still hidden' ($devs -like '*VID_1234&PID_5678*')
 Check 'HidHide still installed' ((Get-HidHideCli) -ne $null)
-Check 'game.xml restored' ((Get-Content "$prof\game.xml" -Raw) -eq $gxOrig)
+$gxNow = [IO.File]::ReadAllText("$prof\game.xml")
+Check 'game.xml restored' ($gxNow -eq $gxOrig)
+if ($gxNow -ne $gxOrig) { Write-Host "--- game.xml now:"; Write-Host $gxNow; Get-Content "$env:APPDATA\FS25 RealFFB\setup_log.txt" -ErrorAction SilentlyContinue | Select-Object -Last 30 | ForEach-Object { Write-Host "   log: $_" } }
 
 Write-Host "`n== 5. Reinstall with HidHide already installed and configured =="
 $p = Start-Process $setupExe -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/LOG=install2.log' -PassThru -Wait
@@ -105,10 +113,9 @@ Check 'HidHide marked as already present' ((Ini $state 'HH_Preexisting') -eq '1'
 Write-Host "`n== 6. Official HidHide removal (the uninstaller's 'Yes, uninstall HidHide' path) =="
 HidHideEntries | ForEach-Object { Write-Host "   entry: $($_.DisplayName) $($_.DisplayVersion) | $($_.UninstallString) | SystemComponent=$($_.SystemComponent)" }
 & $cli --cloak-on | Out-Null
-$job = Start-Job { param($d) & "$d\RealFFB.Setup.exe" hidhide-uninstall --out "$d\..\hh.ini"; $LASTEXITCODE } -ArgumentList (Resolve-Path dist\app).Path
-if (-not (Wait-Job $job -Timeout 300)) { Check 'HidHide uninstaller finished within 5 minutes' $false; Stop-Job $job }
-Receive-Job $job | Out-Null
 $r = (Resolve-Path dist).Path + '\hh.ini'
+$c = RunSetup ((Resolve-Path dist\app).Path + '\RealFFB.Setup.exe') "hidhide-uninstall --out `"$r`"" 300
+Write-Host "   exit $c"
 Get-Content $r -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "   $_" }
 $st = Ini $r 'status'
 Check 'HidHide removed (or removed pending restart)' ($st -eq 'removed' -or $st -eq 'reboot') $st
