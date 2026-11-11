@@ -26,31 +26,41 @@ mkdir dist\app
 >>build\Version.g.cs echo [assembly: AssemblyInformationalVersion("%VER%")]
 >>build\Version.g.cs echo [assembly: AssemblyProduct("FS25 RealFFB")]
 >>build\Version.g.cs echo [assembly: AssemblyCompany("OptimusZuka")]
->>build\Version.g.cs echo [assembly: AssemblyCopyright("MIT License - OptimusZuka")]
+>>build\Version.g.cs echo [assembly: AssemblyCopyright("Copyright (c) 2026 OptimusZuka. All rights reserved.")]
 
 set COMMON=/nologo /optimize+ /platform:x64 /win32icon:assets\realffb.ico /r:System.Windows.Forms.dll /r:System.Drawing.dll
 
-echo [1/5] RealFFB.exe
-"%CSC%" %COMMON% /target:winexe /r:System.Core.dll /resource:assets\logo.png,RealFFB.logo.png /out:dist\app\RealFFB.exe build\Version.g.cs src\RealFFB\*.cs > build\app_log.txt 2>&1
+echo [1/6] RealFFB.exe
+rem 0.13: the app has sub-folders (Ffb, Devices, UI) and an embedded device catalog (devices.ini)
+"%CSC%" %COMMON% /target:winexe /r:System.Core.dll /resource:assets\logo.png,RealFFB.logo.png /resource:src\RealFFB\Devices\devices.ini,RealFFB.devices.ini /out:dist\app\RealFFB.exe build\Version.g.cs /recurse:src\RealFFB\*.cs > build\app_log.txt 2>&1
 if errorlevel 1 ( type build\app_log.txt & echo [ERROR] RealFFB.exe & exit /b 1 )
 
-echo [2/5] RealFFB.Setup.exe
-"%CSC%" %COMMON% /target:winexe /r:System.Management.dll /resource:assets\logo.png,RealFFB.logo.png /out:dist\app\RealFFB.Setup.exe build\Version.g.cs src\RealFFB.Setup\*.cs > build\setup_log.txt 2>&1
+echo [2/6] FFB tests (simulated devices, no hardware needed)
+"%CSC%" /nologo /platform:x64 /target:exe /main:FS25RealFFB.Tests.TestMain /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Core.dll /resource:assets\logo.png,RealFFB.logo.png /resource:src\RealFFB\Devices\devices.ini,RealFFB.devices.ini /out:build\FfbTests.exe build\Version.g.cs /recurse:src\RealFFB\*.cs tests\Ffb\*.cs > build\ffbtests_log.txt 2>&1
+if errorlevel 1 ( type build\ffbtests_log.txt & echo [ERROR] building the FFB tests & exit /b 1 )
+build\FfbTests.exe > build\ffbtests_result.txt 2>&1
+if errorlevel 1 (
+  type build\ffbtests_result.txt
+  if /i "%1"=="notest" ( echo [WARNING] some FFB tests failed - see build\ffbtests_result.txt ) else ( echo [ERROR] some FFB tests failed & exit /b 1 )
+)
+
+echo [3/6] RealFFB.Setup.exe
+"%CSC%" %COMMON% /target:winexe /r:System.Management.dll /r:System.Web.Extensions.dll /resource:assets\logo.png,RealFFB.logo.png /out:dist\app\RealFFB.Setup.exe build\Version.g.cs src\RealFFB.Setup\*.cs > build\setup_log.txt 2>&1
 if errorlevel 1 ( type build\setup_log.txt & echo [ERROR] RealFFB.Setup.exe & exit /b 1 )
 
-echo [3/5] tests
-"%CSC%" /nologo /platform:x64 /target:exe /main:RealFFBSetupTests.TestMain /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Management.dll /out:build\SetupTests.exe src\RealFFB.Setup\*.cs tests\SetupTests.cs > build\tests_log.txt 2>&1
+echo [4/6] installer tests
+"%CSC%" /nologo /platform:x64 /target:exe /main:RealFFBSetupTests.TestMain /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Management.dll /r:System.Web.Extensions.dll /out:build\SetupTests.exe src\RealFFB.Setup\*.cs tests\SetupTests.cs > build\tests_log.txt 2>&1
 if errorlevel 1 ( type build\tests_log.txt & echo [ERROR] building the tests & exit /b 1 )
 if /i "%1"=="notest" goto mod
 build\SetupTests.exe
 if errorlevel 1 ( echo [ERROR] some tests failed & exit /b 1 )
 
 :mod
-echo [4/5] mod
+echo [5/6] mod
 tar -a -c -f dist\app\FS25_RealFFBTelemetry.zip -C mod\FS25_RealFFBTelemetry modDesc.xml RealFFBTelemetry.lua icon_RealFFB.dds
 if errorlevel 1 ( echo [ERROR] mod zip & exit /b 1 )
 
-echo [5/5] installer
+echo [6/6] installer
 set ISCC=
 if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
 if exist "%ProgramFiles%\Inno Setup 6\ISCC.exe" set "ISCC=%ProgramFiles%\Inno Setup 6\ISCC.exe"

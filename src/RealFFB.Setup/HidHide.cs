@@ -226,46 +226,136 @@ namespace RealFFBSetup
             finally { Marshal.FreeHGlobal(pfi); }
         }
 
-        // Descarrega o instalador oficial da ultima versao. Devolve o caminho local.
-        public static string Download(Action<string> log, out string version, out string sha256)
+        // Falha ao obter o HidHide: Kind distingue rede/API/limite/sem instalador/integridade.
+        public sealed class DownloadException : Exception
+        {
+            public readonly string Kind;
+            public DownloadException(string kind, string msg) : base(msg) { Kind = kind; }
+        }
+
+        public sealed class Asset
+        {
+            public string Version, Name, Url, Sha256;
+            public long Size;
+            public bool IsMsi { get { return Name.EndsWith(".msi", StringComparison.OrdinalIgnoreCase); } }
+        }
+
+        public const string OfficialPrefix = "https://github.com/nefarius/HidHide/releases/download/";
+
+        // Le a resposta de /releases/latest com um parser JSON real (os assets tem objetos aninhados,
+        // como "uploader", que partiam a leitura por expressoes regulares) e escolhe o instalador x64 oficial.
+        public static Asset SelectAsset(string json)
+        {
+            object root;
+            try { root = new System.Web.Script.Serialization.JavaScriptSerializer { MaxJsonLength = 16 * 1024 * 1024 }.DeserializeObject(json); }
+            catch (Exception ex) { throw new DownloadException("parse", "GitHub API answer could not be read: " + ex.Message); }
+            Dictionary<string, object> rel = root as Dictionary<string, object>;
+            if (rel == null) throw new DownloadException("parse", "GitHub API answer is not a release object");
+            string version = Str(rel, "tag_name") ?? "?";
+            if (version.StartsWith("v", StringComparison.OrdinalIgnoreCase)) version = version.Substring(1);
+            object[] assets = Get(rel, "assets") as object[];
+            if (assets == null) throw new DownloadException("noasset", "release " + version + " has no files");
+            Asset best = null; int bestScore = -1;
+            List<string> names = new List<string>();
+            foreach (object o in assets)
+            {
+                Dictionary<string, object> d = o as Dictionary<string, object>;
+                if (d == null) continue;
+                string name = Str(d, "name") ?? "", url = Str(d, "browser_download_url") ?? "";
+                names.Add(name);
+                string n = name.ToLowerInvariant();
+                if (!url.StartsWith(OfficialPrefix, StringComparison.OrdinalIgnoreCase)) continue;
+                if (!(n.EndsWith(".exe") || n.EndsWith(".msi"))) continue;
+                bool x64 = n.Contains("x64") || n.Contains("amd64");
+                if (!x64 && (n.Contains("arm64") || n.Contains("x86"))) continue;   // so ARM ou 32 bits
+                int score = (x64 ? 4 : 0) + (n.Contains("hidhide") ? 2 : 0) + (n.EndsWith(".exe") ? 1 : 0);
+                if (score <= bestScore) continue;
+                Asset a = new Asset();
+                a.Version = version; a.Name = name; a.Url = url;
+                object sz = Get(d, "size"); a.Size = sz == null ? 0 : Convert.ToInt64(sz);
+                string dg = Str(d, "digest");
+                if (dg != null && dg.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase)) a.Sha256 = dg.Substring(7).ToLowerInvariant();
+                best = a; bestScore = score;
+            }
+            if (best == null)
+                throw new DownloadException("noasset", "no Windows x64 installer in HidHide " + version + " (files: " + string.Join(", ", names.ToArray()) + ")");
+            return best;
+        }
+
+        private static object Get(Dictionary<string, object> d, string k) { object v; return d.TryGetValue(k, out v) ? v : null; }
+        private static string Str(Dictionary<string, object> d, string k) { return Get(d, k) as string; }
+
+        private static HttpWebRequest Request(string url, int timeoutMs)
+        {
+            HttpWebRequest r = (HttpWebRequest)WebRequest.Create(url);
+            r.UserAgent = "FS25-RealFFB-Installer";
+            r.Accept = "application/vnd.github+json";
+            r.Timeout = timeoutMs; r.ReadWriteTimeout = timeoutMs;
+            r.AllowAutoRedirect = true;
+            return r;
+        }
+
+        public static string GetLatestJson()
         {
             ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072;
-            version = null; sha256 = null;
-            using (WebClient wc = new WebClient())
+            try
             {
-                wc.Headers[HttpRequestHeader.UserAgent] = "FS25-RealFFB-Installer";
-                string json = wc.DownloadString(ReleasesApi);
-                Match tag = Regex.Match(json, "\"tag_name\"\\s*:\\s*\"v?([^\"]+)\"");
-                version = tag.Success ? tag.Groups[1].Value : "?";
-                string url = null, digest = null;
-                foreach (Match a in Regex.Matches(json, "\\{[^{}]*\"browser_download_url\"\\s*:\\s*\"([^\"]+)\"[^{}]*\\}", RegexOptions.Singleline))
-                {
-                    string u = a.Groups[1].Value;
-                    string name = u.Substring(u.LastIndexOf('/') + 1);
-                    if (!Regex.IsMatch(name, "^HidHide.*x64.*\\.exe$", RegexOptions.IgnoreCase)) continue;
-                    if (!u.StartsWith("https://github.com/nefarius/HidHide/releases/download/", StringComparison.OrdinalIgnoreCase)) continue;
-                    url = u;
-                    Match dg = Regex.Match(a.Value, "\"digest\"\\s*:\\s*\"sha256:([0-9a-fA-F]{64})\"");
-                    if (dg.Success) digest = dg.Groups[1].Value;
-                    break;
-                }
-                if (url == null) throw new InvalidOperationException("instalador x64 do HidHide nao encontrado na ultima versao oficial");
-                string dir = Path.Combine(Path.GetTempPath(), "FS25RealFFB_hidhide");
-                Directory.CreateDirectory(dir);
-                string file = Path.Combine(dir, url.Substring(url.LastIndexOf('/') + 1));
-                log("A descarregar " + url);
-                wc.DownloadFile(url, file);
-                sha256 = Diagnostics.Sha256(file);
-                if (digest != null && !digest.Equals(sha256, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidOperationException("SHA-256 do HidHide nao confere com o publicado pelo GitHub (" + digest + " vs " + sha256 + ")");
-                return file;
+                using (HttpWebResponse resp = (HttpWebResponse)Request(ReleasesApi, 20000).GetResponse())
+                using (StreamReader rd = new StreamReader(resp.GetResponseStream(), Encoding.UTF8))
+                    return rd.ReadToEnd();
             }
+            catch (WebException ex)
+            {
+                HttpWebResponse hr = ex.Response as HttpWebResponse;
+                if (hr == null) throw new DownloadException("network", "no connection to GitHub (" + ex.Status + ": " + ex.Message + ")");
+                int code = (int)hr.StatusCode;
+                string remaining = hr.Headers["X-RateLimit-Remaining"];
+                if ((code == 403 || code == 429) && remaining == "0")
+                    throw new DownloadException("ratelimit", "GitHub API limit reached for this connection; try again in about an hour");
+                throw new DownloadException("api", "GitHub API answered HTTP " + code + " " + hr.StatusDescription);
+            }
+        }
+
+        // Descarrega o instalador oficial da ultima versao estavel. Devolve o ficheiro local.
+        public static string Download(Action<string> log, out Asset asset)
+        {
+            asset = SelectAsset(GetLatestJson());
+            log("HidHide " + asset.Version + ": " + asset.Name + " (" + asset.Size + " bytes" + (asset.Sha256 != null ? ", SHA-256 published by GitHub" : "") + ")");
+            string dir = Path.Combine(Path.GetTempPath(), "FS25RealFFB_hidhide");
+            Directory.CreateDirectory(dir);
+            string file = Path.Combine(dir, Path.GetFileName(asset.Name));
+            log("Downloading " + asset.Url);
+            try
+            {
+                using (HttpWebResponse resp = (HttpWebResponse)Request(asset.Url, 120000).GetResponse())
+                using (Stream src = resp.GetResponseStream())
+                using (FileStream dst = File.Create(file))
+                    src.CopyTo(dst);
+            }
+            catch (WebException ex) { throw new DownloadException("network", "download failed (" + ex.Status + ": " + ex.Message + ")"); }
+            long len = new FileInfo(file).Length;
+            if (asset.Size > 0 && len != asset.Size)
+            {
+                try { File.Delete(file); } catch { }
+                throw new DownloadException("integrity", "incomplete download (" + len + " of " + asset.Size + " bytes)");
+            }
+            string sha = Diagnostics.Sha256(file);
+            if (asset.Sha256 != null && asset.Sha256 != sha)
+            {
+                try { File.Delete(file); } catch { }
+                throw new DownloadException("integrity", "SHA-256 does not match the one published by GitHub (" + asset.Sha256 + " vs " + sha + ")");
+            }
+            asset.Sha256 = sha;
+            return file;
         }
 
         // Executa o instalador oficial (sem o alterar) com elevacao. Devolve o codigo de saida.
         public static int RunInstaller(string file, bool silent)
         {
-            ProcessStartInfo psi = new ProcessStartInfo(file, silent ? "/exenoui /qn /norestart" : "");
+            bool msi = file.EndsWith(".msi", StringComparison.OrdinalIgnoreCase);
+            ProcessStartInfo psi = msi
+                ? new ProcessStartInfo("msiexec.exe", "/i \"" + file + "\"" + (silent ? " /qn /norestart" : ""))
+                : new ProcessStartInfo(file, silent ? "/exenoui /qn /norestart" : "");
             psi.UseShellExecute = true;
             psi.Verb = "runas";
             try

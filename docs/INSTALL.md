@@ -12,13 +12,13 @@ Every release publishes `SHA256SUMS.txt`. If the value computed on your PC match
 1. Open your Downloads folder, right-click an empty area → **Open in Terminal** (or PowerShell).
 2. Run:
    ```powershell
-   Get-FileHash .\FS25_RealFFB_Setup_0.6.0.exe -Algorithm SHA256
+   Get-FileHash .\FS25_RealFFB_Setup_0.13.0.exe -Algorithm SHA256
    ```
 3. Compare the `Hash` with the line in `SHA256SUMS.txt`. Upper or lower case does not matter.
    - **Same** → safe to run.
    - **Different** → do not run it. Delete the file and download it again from the official page.
 
-Without PowerShell, run `certutil -hashfile FS25_RealFFB_Setup_0.6.0.exe SHA256` in Command Prompt instead.
+Without PowerShell, run `certutil -hashfile FS25_RealFFB_Setup_0.13.0.exe SHA256` in Command Prompt instead.
 
 ## 2. Windows warnings (what is normal)
 

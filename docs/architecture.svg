@@ -18,7 +18,7 @@
   <rect x="335" y="40" width="230" height="250" rx="12" fill="#1A1A1A" stroke="#FFCC00" stroke-width="2"/>
   <text x="450" y="72" text-anchor="middle" fill="#FFFFFF" font-size="18" font-weight="600">RealFFB.exe</text>
   <text x="450" y="104" text-anchor="middle" fill="#FFCC00" font-size="13">force feedback engine</text>
-  <text x="450" y="132" text-anchor="middle" fill="#BBBBBB" font-size="12">speed-based centering</text>
+  <text x="450" y="132" text-anchor="middle" fill="#BBBBBB" font-size="12">realistic centering</text>
   <text x="450" y="150" text-anchor="middle" fill="#BBBBBB" font-size="12">damping · friction</text>
   <text x="450" y="168" text-anchor="middle" fill="#BBBBBB" font-size="12">potholes · impacts · texture</text>
   <text x="450" y="186" text-anchor="middle" fill="#BBBBBB" font-size="12">engine vibration</text>
@@ -32,7 +32,7 @@
   <rect x="709" y="152" width="92" height="14" fill="#FFFFFF"/>
   <rect x="748" y="160" width="14" height="48" fill="#FFFFFF"/>
   <circle cx="755" cy="160" r="14" fill="#FFCC00"/>
-  <text x="755" y="250" text-anchor="middle" fill="#BBBBBB" font-size="12">Fanatec · Logitech G29/G920/G923</text>
+  <text x="755" y="250" text-anchor="middle" fill="#BBBBBB" font-size="12">DirectInput force feedback wheels</text>
   <text x="755" y="270" text-anchor="middle" fill="#777777" font-size="12">DirectInput, exclusive mode</text>
   <!-- arrows -->
   <line x1="262" y1="120" x2="330" y2="120" stroke="#FFCC00" stroke-width="2.5" marker-end="url(#a)"/>

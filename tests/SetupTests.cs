@@ -1,3 +1,4 @@
+// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
 // Testes automaticos (sem hardware): compilados com as fontes do RealFFB.Setup pelo build.bat / CI.
 using System;
 using System.Collections.Generic;
@@ -129,6 +130,22 @@ namespace RealFFBSetupTests
             lgg.Add(Dev(@"HID\VID_044F&PID_0405\9&e7c901f&0&0000", @"USB\VID_044F&PID_0405\1"));
             Eq("g29: volante + contentor", 2, lgb.Count > 0 ? Config.PathsFor(lgb[0], lgg).Count : 0);
 
+            // --- HidHide /releases/latest (formato real do GitHub: "uploader" aninhado, digest)
+            string up = "\"uploader\":{\"login\":\"nefarius\",\"id\":1},";
+            string rel = "{\"tag_name\":\"v1.7.346.0\",\"prerelease\":false,\"assets\":[" +
+                "{\"name\":\"HidHide_1.7.346_arm64.exe\"," + up + "\"size\":100,\"digest\":null,\"browser_download_url\":\"https://github.com/nefarius/HidHide/releases/download/v1.7.346.0/HidHide_1.7.346_arm64.exe\"}," +
+                "{\"name\":\"HidHide_1.7.346_x64.exe\"," + up + "\"size\":5000,\"digest\":\"sha256:ABCDEF0123456789abcdef0123456789abcdef0123456789abcdef0123456789\",\"browser_download_url\":\"https://github.com/nefarius/HidHide/releases/download/v1.7.346.0/HidHide_1.7.346_x64.exe\"}," +
+                "{\"name\":\"HidHide_1.7.346_x64.exe\"," + up + "\"size\":1,\"browser_download_url\":\"https://evil.example.com/HidHide_1.7.346_x64.exe\"}]}";
+            HidHide.Asset ha = HidHide.SelectAsset(rel);
+            Eq("hidhide: versao", "1.7.346.0", ha.Version);
+            Eq("hidhide: escolhe x64 oficial", "https://github.com/nefarius/HidHide/releases/download/v1.7.346.0/HidHide_1.7.346_x64.exe", ha.Url);
+            Eq("hidhide: tamanho", 5000L, ha.Size);
+            Eq("hidhide: digest", "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789", ha.Sha256);
+            string msiRel = "{\"tag_name\":\"v2.0.0\",\"assets\":[{\"name\":\"Nefarius_HidHide_Drivers_x64_arm64_v2.0.0.msi\"," + up + "\"size\":9,\"browser_download_url\":\"https://github.com/nefarius/HidHide/releases/download/v2.0.0/Nefarius_HidHide_Drivers_x64_arm64_v2.0.0.msi\"}]}";
+            Eq("hidhide: aceita msi x64+arm64", true, HidHide.SelectAsset(msiRel).IsMsi);
+            Throws2("hidhide: sem instalador", delegate { HidHide.SelectAsset("{\"tag_name\":\"v1\",\"assets\":[]}"); });
+            Throws2("hidhide: resposta invalida", delegate { HidHide.SelectAsset("<html>rate limited</html>"); });
+
             // --- anonimizacao
             string user = Environment.UserName;
             Eq("anon: sem nome de utilizador", false, Diagnostics.Anon(@"C:\Users\" + user + @"\x").Contains(user) && user.Length > 2);
@@ -142,6 +159,13 @@ namespace RealFFBSetupTests
         {
             return "{ \"present\" : true ,\n\"symbolicLink\" : \"\\\\\\\\?\\\\hid#x#{4d1e55b2-f16f-11cf-88cb-001111000030}\" ,\n\"vendor\" : \"V\" ,\n\"product\" : \"P\" ,\n" +
                 "\"deviceInstancePath\" : \"" + inst + "\" ,\n\"baseContainerDeviceInstancePath\" : \"" + cont + "\" ,\n\"baseContainerClassGuid\" : \"{745A17A0-74D3-11D0-B6FE-00A0C90F57DA}\" ,\n\"baseContainerDeviceCount\" : 3 }";
+        }
+
+        private static void Throws2(string name, Action a)
+        {
+            runs++;
+            try { a(); fails++; Console.WriteLine("FAILED " + name + " (should throw)"); }
+            catch (HidHide.DownloadException) { Console.WriteLine("ok     " + name); }
         }
 
         private static HidHide.GamingDevice Dev(string inst, string cont)

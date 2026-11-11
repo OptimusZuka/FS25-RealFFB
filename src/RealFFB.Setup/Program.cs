@@ -11,7 +11,7 @@
 //   verify            verificacao final
 //   diagnose          relatorio anonimizado
 //
-// Codigos de saida: 0 ok, 1 erro, 2 cancelado/nada feito, 3 reiniciar o Windows.
+// Codigos de saida: 0 ok, 1 erro, 2 cancelado/nada feito, 3 reiniciar o Windows, 4 sem ligacao ao GitHub (repetir).
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -172,31 +172,42 @@ namespace RealFFBSetup
             {
                 res.Add("status", "present");
                 res.Add("version", ver);
-                Log("HidHide " + ver + " ja instalado: nada a fazer.");
+                Log("HidHide " + ver + " already installed: nothing to do.");
                 return Responding() ? 0 : Reboot(res);
             }
 
-            string newVer, sha;
-            string file = HidHide.Download(Log, out newVer, out sha);
-            res.Add("downloaded", newVer);
-            res.Add("sha256", sha);
+            if (ver != null) Log("HidHide " + ver + " is older than " + HidHide.MinVersion + ": updating to the latest official version.");
+            HidHide.Asset asset;
+            string file;
+            try { file = HidHide.Download(Log, out asset); }
+            catch (HidHide.DownloadException dx)
+            {
+                // Falha de ligacao/API nao e o mesmo que "nao ha versao": o instalador oferece tentar de novo.
+                res.Add("status", "download-failed");
+                res.Add("kind", dx.Kind);
+                res.Add("error", dx.Message);
+                Log("HidHide download failed [" + dx.Kind + "]: " + dx.Message);
+                return 4;
+            }
+            res.Add("downloaded", asset.Version);
+            res.Add("sha256", asset.Sha256);
             string signer;
             if (!HidHide.VerifySignature(file, out signer))
             {
                 res.Add("status", "bad-signature");
-                Log("Assinatura invalida ou nao emitida para a Nefarius: '" + signer + "'. Nada foi instalado.");
+                Log("Invalid signature or not issued to Nefarius: '" + signer + "'. Nothing was installed.");
                 try { File.Delete(file); } catch { }
                 return 1;
             }
-            Log("Assinatura valida: " + signer);
+            Log("Valid signature: " + signer);
 
             int rc = HidHide.RunInstaller(file, true);
-            Log("Instalador HidHide (silencioso) -> " + rc);
+            Log("HidHide installer (silent) -> " + rc);
             if (rc != 0 && rc != 3010 && rc != 1641 && rc != 1223)
             {
-                Log("A repetir em modo interativo.");
+                Log("Retrying in interactive mode.");
                 rc = HidHide.RunInstaller(file, false);
-                Log("Instalador HidHide (interativo) -> " + rc);
+                Log("HidHide installer (interactive) -> " + rc);
             }
             res.Add("installer_exit", rc.ToString());
             if (rc == 1223) { res.Add("status", "uac-denied"); return 2; }

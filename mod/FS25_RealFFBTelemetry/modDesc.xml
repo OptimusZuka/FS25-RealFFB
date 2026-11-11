@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<!-- FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. -->
 <modDesc descVersion="113">
     <author>OptimusZuka</author>
-    <version>0.6.0.0</version>
+    <version>0.13.0.0</version>
     <title><en>Real FFB Telemetry</en></title>
     <description>
-        <en><![CDATA[Sends the local player's vehicle telemetry to the RealFFB app (Windows), which creates force feedback for Fanatec and Logitech wheels. Read-only: it does not change the game.]]></en>
+        <en><![CDATA[Sends the local player's vehicle telemetry to the FS25 RealFFB app (Windows), which creates force feedback for steering wheels. When the app is running it also passes your wheel and pedal input to the vehicle you drive and, if you enable it in the app, can switch off AI or GPS steering when you take the wheel. It does not change savegames, other players' vehicles or game files.]]></en>
     </description>
     <iconFilename>icon_RealFFB.dds</iconFilename>
     <multiplayer supported="true"/>

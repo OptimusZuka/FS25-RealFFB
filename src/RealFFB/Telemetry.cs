@@ -1,4 +1,5 @@
-﻿// FS25 Real FFB - recetor de telemetria (named pipe \\.\pipe\FS25RealFFB).
+﻿// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
+// FS25 Real FFB - recetor de telemetria (named pipe \\.\pipe\FS25RealFFB).
 // Linha do mod: RFFB|1|seq=..|t=..|act=1|veh=..|spd=..|mass=..|steer=..|dir=..|vx=..|..|w=c,surf,susp,steer;...
 using System;
 using System.Collections.Generic;
@@ -24,10 +25,19 @@ namespace FS25RealFFB
         public string Surface = "-";
         public double Rpm = double.NaN, EngineLoad = double.NaN;
         public bool EngineOn;
+        public bool HasEngine;          // 0.12.1: o mod enviou o estado do motor
+        public int MotorState = -1;     // 0.12: 0 desligado, 1 ignicao, 2 a arrancar, 3 a trabalhar, -1 desconhecido
         public double WheelSteer;       // angulo de direcao da roda mais virada (rad)
         public double SuspSpreadRate;   // velocidade de diferenca de suspensao entre rodas (m/s)
         public double VertAcc, RollAcc; // derivados entre amostras (m/s2, rad/s2)
         public double[] Susp = new double[0];
+        public double[] WheelX = new double[0], WheelZ = new double[0];   // posicao no veiculo (m): x esquerda, z frente
+        public double[] WheelSteerA = new double[0];
+        public bool[] WheelContact = new bool[0];
+        public string VehicleType = "";
+        public string Category = "";   // 0.12: categoria da loja do jogo
+        public bool Articulated, Crawler;   // 0.12: direcao articulada / rastos
+        public int Auto;                // 0 jogador, 1 trabalhador de IA, 2 GPS do jogo (0.11)
     }
 
     internal sealed class TelemetryServer
@@ -136,6 +146,10 @@ namespace FS25RealFFB
                     case "t": f.GameTimeMs = Num(v); break;
                     case "act": f.Active = v == "1"; break;
                     case "veh": f.Vehicle = v.Trim(); break;
+                    case "vtype": f.VehicleType = v.Trim(); break;
+                    case "cat": f.Category = v.Trim(); break;
+                    case "art": f.Articulated = v == "1"; break;
+                    case "crawl": f.Crawler = v == "1"; break;
                     case "spd": f.SpeedKmh = Num(v); break;
                     case "mass": f.MassT = Num(v); break;
                     case "steer": f.Steer = Num(v); break;
@@ -149,7 +163,9 @@ namespace FS25RealFFB
                     case "w": wheels = v; break;
                     case "rpm": f.Rpm = Num(v); break;
                     case "load": f.EngineLoad = Num(v); break;
-                    case "eng": f.EngineOn = v == "1"; break;
+                    case "eng": f.EngineOn = v == "1"; f.HasEngine = true; break;
+                    case "mst": { double m = Num(v); f.MotorState = double.IsNaN(m) ? -1 : (int)m; } break;
+                    case "auto": { double a = Num(v); f.Auto = double.IsNaN(a) ? 0 : (int)a; } break;
                 }
             }
             if (wheels != null) ParseWheels(f, wheels);
@@ -191,7 +207,8 @@ namespace FS25RealFFB
             if (s.Length == 0) return;
             string[] ws = s.Split(';');
             Dictionary<string, int> count = new Dictionary<string, int>();
-            List<double> susp = new List<double>();
+            List<double> susp = new List<double>(), wx = new List<double>(), wz = new List<double>(), wst = new List<double>();
+            List<bool> wc = new List<bool>();
             foreach (string w in ws)
             {
                 string[] c = w.Split(',');
@@ -205,6 +222,10 @@ namespace FS25RealFFB
                     count[c[1]] = n + 1;
                 }
                 susp.Add(Num(c[2]));
+                wc.Add(c[0] == "1");
+                wst.Add(c.Length >= 4 ? Num(c[3]) : double.NaN);
+                wx.Add(c.Length >= 6 ? Num(c[4]) : double.NaN);
+                wz.Add(c.Length >= 6 ? Num(c[5]) : double.NaN);
                 if (c.Length >= 4)
                 {
                     double wsa = Num(c[3]);
@@ -212,6 +233,7 @@ namespace FS25RealFFB
                 }
             }
             f.Susp = susp.ToArray();
+            f.WheelX = wx.ToArray(); f.WheelZ = wz.ToArray(); f.WheelSteerA = wst.ToArray(); f.WheelContact = wc.ToArray();
             int best = 0;
             foreach (KeyValuePair<string, int> kv in count)
                 if (kv.Value > best) { best = kv.Value; f.Surface = kv.Key; }

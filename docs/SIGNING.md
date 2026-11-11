@@ -2,7 +2,7 @@
 
 ## Current status
 
-**The installer and executables of FS25 RealFFB are not signed**, and they are never presented as signed. Authenticity is verified with the SHA-256 checksums published in every release ([INSTALL.md](INSTALL.md#verify-the-file)). The source is open and every release is built by GitHub Actions, so anyone can review the process.
+**The installer and executables of FS25 RealFFB are not signed**, and they are never presented as signed. Authenticity is verified with the SHA-256 checksums published in every release ([INSTALL.md](INSTALL.md#verify-the-file)). The source code is public and every release is built by GitHub Actions, so anyone can review the process.
 
 ## What each Windows protection does with an unsigned file
 
@@ -21,25 +21,10 @@ Measures already in place to reduce false positives:
 
 For PCs with Smart App Control on, each release also ships `FS25_RealFFB_BuildOnPC_x.y.z.zip`: `install.bat` compiles the app on the user's own PC with the C# compiler built into Windows.
 
-## Free option: SignPath Foundation
+## Options for the future
 
-[SignPath Foundation](https://signpath.org) signs open source projects for free. The certificate is issued to "SignPath Foundation", and each signature is tied to a build made from this public repository.
+- **SignPath Foundation** signs open source projects for free, but it requires an OSI-approved licence. FS25 RealFFB is now "all rights reserved" (see `LICENSE`), so it does not qualify as things stand.
+- **Microsoft Store**: free developer registration for individuals; Microsoft signs the package.
+- **A commercial code signing certificate** (OV/EV) from a trusted CA: paid, issued to the author.
 
-Main requirements (always check SignPath's page, they may change):
-
-1. public repository with an OSI license (MIT ✔);
-2. built from source on a CI service (GitHub Actions ✔);
-3. MFA enabled on the GitHub and SignPath accounts;
-4. manual approval of each release;
-5. a project page with the code signing policy.
-
-Steps for the maintainer:
-
-1. Apply at https://signpath.org/apply.
-2. Once approved, add the [official action](https://github.com/SignPath/github-action-submit-signing-request) to `release.yml`:
-   - sign `RealFFB.exe` and `RealFFB.Setup.exe` before ISCC runs;
-   - sign the installer after ISCC;
-   - store the token in the `SIGNPATH_API_TOKEN` secret.
-3. Remove the "not signed" notice from the release notes.
-
-Another free route is publishing through the Microsoft Store (free developer registration for individuals), where Microsoft signs the package.
+No signing is in place yet, and no release is ever described as signed until it really is.

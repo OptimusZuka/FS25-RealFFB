@@ -1,3 +1,4 @@
+// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
 // FS25 RealFFB - identidade visual (OptimusZuka: preto, amarelo, branco) e controlos proprios.
 using System;
 using System.Drawing;
@@ -10,18 +11,46 @@ namespace FS25RealFFB
 {
     internal static class Theme
     {
-        public static readonly Color Bg = Color.FromArgb(10, 10, 10);
-        public static readonly Color Panel = Color.FromArgb(18, 18, 18);
-        public static readonly Color Card = Color.FromArgb(26, 26, 26);
-        public static readonly Color Line = Color.FromArgb(44, 44, 44);
+        // Paleta "Cockpit": grafite neutro, amarelo ZukaForce so como destaque, vermelho so no STOP.
+        public static readonly Color Bg = Color.FromArgb(14, 15, 17);
+        public static readonly Color Header = Color.FromArgb(18, 20, 23);
+        public static readonly Color Nav = Color.FromArgb(16, 18, 21);
+        public static readonly Color Panel = Color.FromArgb(21, 23, 26);
+        public static readonly Color Card = Color.FromArgb(28, 31, 35);
+        public static readonly Color Line = Color.FromArgb(38, 41, 46);
         public static readonly Color Yellow = Color.FromArgb(255, 204, 0);
-        public static readonly Color Text = Color.FromArgb(240, 240, 240);
-        public static readonly Color Muted = Color.FromArgb(150, 150, 150);
-        public static readonly Color Good = Color.FromArgb(60, 200, 90);
-        public static readonly Color Bad = Color.FromArgb(230, 60, 50);
+        public static readonly Color Text = Color.FromArgb(232, 233, 235);
+        public static readonly Color Soft = Color.FromArgb(183, 187, 193);
+        public static readonly Color Muted = Color.FromArgb(139, 144, 151);
+        public static readonly Color Good = Color.FromArgb(74, 222, 128);
+        public static readonly Color Bad = Color.FromArgb(229, 72, 77);
+        public static readonly Color Stop = Color.FromArgb(229, 72, 77);
 
         public static Font UI(float size) { return new Font("Segoe UI", size); }
         public static Font Bold(float size) { return new Font("Segoe UI Semibold", size); }
+        // numeros em fonte monoespacada: os valores nao "saltam" enquanto mudam
+        public static Font Mono(float size) { return new Font("Consolas", size); }
+
+        // Botao do menu lateral
+        public static Button NavBtn(string text, int w)
+        {
+            Button b = new Button();
+            b.Text = text; b.Width = w; b.Height = 40;
+            b.FlatStyle = FlatStyle.Flat; b.FlatAppearance.BorderSize = 0;
+            b.TextAlign = ContentAlignment.MiddleLeft; b.Padding = new Padding(10, 0, 0, 0);
+            b.Cursor = Cursors.Hand; b.Font = UI(10f);
+            b.Margin = new Padding(0, 0, 0, 4);
+            b.FlatAppearance.MouseOverBackColor = Card;
+            b.FlatAppearance.MouseDownBackColor = Line;
+            return b;
+        }
+
+        public static void NavActive(Button b, bool active)
+        {
+            b.BackColor = active ? Card : Nav;
+            b.ForeColor = active ? Yellow : Soft;
+            b.Font = active ? Bold(10f) : UI(10f);
+        }
 
         public static Image Logo()
         {
@@ -39,12 +68,12 @@ namespace FS25RealFFB
             b.Text = text; b.Width = w; b.Height = h;
             b.FlatStyle = FlatStyle.Flat;
             b.Cursor = Cursors.Hand;
-            b.Font = Bold(9.5f);
+            b.Font = primary ? Bold(9.5f) : UI(9.5f);
             b.BackColor = primary ? Yellow : Card;
             b.ForeColor = primary ? Color.Black : Text;
             b.FlatAppearance.BorderColor = primary ? Yellow : Line;
-            b.FlatAppearance.MouseOverBackColor = primary ? Color.FromArgb(255, 222, 80) : Color.FromArgb(40, 40, 40);
-            b.FlatAppearance.MouseDownBackColor = primary ? Color.FromArgb(220, 175, 0) : Color.FromArgb(55, 55, 55);
+            b.FlatAppearance.MouseOverBackColor = primary ? Color.FromArgb(255, 222, 80) : Color.FromArgb(36, 40, 45);
+            b.FlatAppearance.MouseDownBackColor = primary ? Color.FromArgb(220, 175, 0) : Color.FromArgb(46, 50, 56);
             b.Margin = new Padding(0, 3, 0, 3);
             return b;
         }
@@ -52,8 +81,8 @@ namespace FS25RealFFB
         public static Label Section(string text, int w)
         {
             Label l = new Label();
-            l.Text = text.ToUpperInvariant();
-            l.Font = Bold(10f); l.ForeColor = Yellow;
+            l.Text = text;
+            l.Font = Bold(11f); l.ForeColor = Text;
             l.Width = w; l.Height = 34;
             l.TextAlign = ContentAlignment.BottomLeft;
             l.Margin = new Padding(0, 10, 0, 4);
@@ -69,7 +98,7 @@ namespace FS25RealFFB
             CheckBox c = new CheckBox();
             c.Text = text; c.Checked = value;
             c.AutoSize = true; c.MaximumSize = new Size(w, 0);
-            c.ForeColor = Text; c.Cursor = Cursors.Hand;
+            c.ForeColor = Soft; c.Cursor = Cursors.Hand;
             c.Margin = new Padding(0, 3, 0, 3);
             return c;
         }
@@ -107,11 +136,12 @@ namespace FS25RealFFB
         public double Speed, Mass;
         public string Vehicle = "-", Surface = "-";
         public bool BridgeOn = true, Active;
+        public string CenterNote = "";   // 0.12.1: "sem centragem" quando o veiculo nao centra na vida real
 
         public LiveView()
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
-            BackColor = Theme.Panel;
+            BackColor = Theme.Bg;
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -121,16 +151,16 @@ namespace FS25RealFFB
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             int pad = 16, w = Width - pad * 2;
             int colW = (w - 24) / 2;
-            using (Font h = Theme.Bold(9.5f))
+            using (Font h = Theme.Bold(10.5f))
             using (Font f = Theme.UI(9f))
-            using (Font big = Theme.Bold(18f))
+            using (Font big = Theme.Mono(20f))
             using (SolidBrush yb = new SolidBrush(Theme.Yellow))
             using (SolidBrush tb = new SolidBrush(Theme.Text))
             using (SolidBrush mb = new SolidBrush(Theme.Muted))
             {
                 // ---- coluna 1: comandos
                 int x = pad, y = 12;
-                g.DrawString(L.T("COMMANDS") + "  " + (BridgeOn ? "" : L.T("(BRIDGE OFF)")), h, yb, x, y);
+                g.DrawString(L.T("COMMANDS") + "  " + (BridgeOn ? "" : L.T("(BRIDGE OFF)")), h, tb, x, y);
                 y += 28;
                 y = Centered(g, f, tb, mb, L.T("Steering"), Steer, x, y, colW);
                 y = Bar(g, f, tb, mb, L.T("Throttle"), Throttle, 1, (Throttle * 100).ToString("0") + " %", x, y, colW, Theme.Good);
@@ -144,10 +174,19 @@ namespace FS25RealFFB
 
                 // ---- coluna 2: forcas
                 x = pad + colW + 24; y = 12;
-                g.DrawString(L.F("FORCE AT THE WHEEL  (gain {0} %)", (Gain * 100).ToString("0")), h, yb, x, y);
+                g.DrawString(L.F("FORCE AT THE WHEEL  (gain {0} %)", (Gain * 100).ToString("0")), h, tb, x, y);
                 y += 28;
                 double m = Math.Max(0.5, MaxNm);
-                y = Bar(g, f, tb, mb, L.T("Centering"), Spring, m, Spring.ToString("0.00") + " Nm", x, y, colW, Theme.Yellow);
+                if (CenterNote.Length > 0)
+                {
+                    // veiculo sem centragem na vida real: diz-se em vez de mostrar uma barra vazia sem explicacao
+                    g.DrawString(L.T("Centering"), f, tb, x, y);
+                    SizeF cs = g.MeasureString(CenterNote, f);
+                    g.DrawString(CenterNote, f, yb, x + colW - cs.Width, y);
+                    Track(g, x, y + 20, colW);
+                    y += 40;
+                }
+                else y = Bar(g, f, tb, mb, L.T("Centering"), Spring, m, Spring.ToString("0.00") + " Nm", x, y, colW, Theme.Yellow);
                 y = Bar(g, f, tb, mb, L.T("Damping"), Damper, m, Damper.ToString("0.00") + " Nm", x, y, colW, Theme.Yellow);
                 y = Bar(g, f, tb, mb, L.T("Friction"), Friction, m, Friction.ToString("0.00") + " Nm", x, y, colW, Theme.Yellow);
                 y = CenteredNm(g, f, tb, mb, L.T("Bumps"), Bump, m, x, y, colW);
@@ -158,7 +197,7 @@ namespace FS25RealFFB
 
         private static void Track(Graphics g, int x, int y, int w)
         {
-            using (SolidBrush b = new SolidBrush(Theme.Card)) g.FillRectangle(b, x, y, w, 10);
+            using (SolidBrush b = new SolidBrush(Theme.Card)) g.FillRectangle(b, x, y + 2, w, 6);
         }
 
         private int Bar(Graphics g, Font f, Brush tb, Brush mb, string name, double v, double max, string txt, int x, int y, int w, Color c)
@@ -168,7 +207,7 @@ namespace FS25RealFFB
             g.DrawString(txt, f, mb, x + w - s.Width, y);
             Track(g, x, y + 20, w);
             double r = max <= 0 ? 0 : Math.Max(0, Math.Min(1, v / max));
-            using (SolidBrush b = new SolidBrush(c)) g.FillRectangle(b, x, y + 20, (float)(w * r), 10);
+            using (SolidBrush b = new SolidBrush(c)) g.FillRectangle(b, x, y + 22, (float)(w * r), 6);
             return y + 40;
         }
 
@@ -182,7 +221,7 @@ namespace FS25RealFFB
             float mid = x + w / 2f;
             float len = (float)(w / 2.0 * Math.Max(-1, Math.Min(1, v)));
             using (SolidBrush b = new SolidBrush(Theme.Yellow))
-                g.FillRectangle(b, len >= 0 ? mid : mid + len, y + 20, Math.Abs(len), 10);
+                g.FillRectangle(b, len >= 0 ? mid : mid + len, y + 22, Math.Abs(len), 6);
             using (Pen p = new Pen(Theme.Text, 2)) g.DrawLine(p, mid, y + 17, mid, y + 33);
             return y + 40;
         }
@@ -197,7 +236,7 @@ namespace FS25RealFFB
             float mid = x + w / 2f;
             float len = (float)(w / 2.0 * Math.Max(-1, Math.Min(1, v / max)));
             using (SolidBrush b = new SolidBrush(Theme.Yellow))
-                g.FillRectangle(b, len >= 0 ? mid : mid + len, y + 20, Math.Abs(len), 10);
+                g.FillRectangle(b, len >= 0 ? mid : mid + len, y + 22, Math.Abs(len), 6);
             using (Pen p = new Pen(Theme.Muted, 1)) g.DrawLine(p, mid, y + 18, mid, y + 32);
             return y + 40;
         }

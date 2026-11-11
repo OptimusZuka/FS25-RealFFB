@@ -1,3 +1,4 @@
+// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
 // FS25 RealFFB - um perfil de FFB por veiculo (%APPDATA%\FS25 RealFFB\perfis\<veiculo>.ini).
 // Veiculo sem perfil usa as afinacoes gerais; mexer nos controlos dentro de um veiculo cria o perfil dele.
 using System;
@@ -38,6 +39,25 @@ namespace FS25RealFFB
         }
 
         public static void Delete(string vehicle) { try { File.Delete(FileFor(vehicle)); } catch { } }
+
+        // Repor tudo: os perfis nao sao apagados, vao para uma pasta de copia (reversivel).
+        public static int MoveAllToBackup(out string backupDir)
+        {
+            backupDir = Path.Combine(Dir, "backup-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+            int n = 0;
+            try
+            {
+                string[] files = Directory.GetFiles(Dir, "*.ini");
+                if (files.Length == 0) return 0;
+                Directory.CreateDirectory(backupDir);
+                foreach (string f in files)
+                {
+                    try { File.Move(f, Path.Combine(backupDir, Path.GetFileName(f))); n++; } catch { }
+                }
+            }
+            catch { }
+            return n;
+        }
 
         public static int Count()
         {
