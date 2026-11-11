@@ -1,4 +1,4 @@
-// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
+﻿// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
 // FS25 RealFFB - identidade visual (OptimusZuka: preto, amarelo, branco) e controlos proprios.
 using System;
 using System.Drawing;
@@ -174,7 +174,20 @@ namespace FS25RealFFB
 
                 // ---- coluna 2: forcas
                 x = pad + colW + 24; y = 12;
-                g.DrawString(L.F("FORCE AT THE WHEEL  (gain {0} %)", (Gain * 100).ToString("0")), h, tb, x, y);
+                // titulo encolhe se a coluna for estreita (janela pequena): o ganho nunca fica cortado
+                string forceHdr = L.F("FORCE AT THE WHEEL  (gain {0} %)", (Gain * 100).ToString("0"));
+                if (g.MeasureString(forceHdr, h).Width <= colW) g.DrawString(forceHdr, h, tb, x, y);
+                else
+                {
+                    float hs = 10f;
+                    Font hSmall = Theme.Bold(hs);
+                    while (hs > 7.5f && g.MeasureString(forceHdr, hSmall).Width > colW)
+                    {
+                        hSmall.Dispose(); hs -= 0.5f; hSmall = Theme.Bold(hs);
+                    }
+                    g.DrawString(forceHdr, hSmall, tb, x, y + (10.5f - hs));
+                    hSmall.Dispose();
+                }
                 y += 28;
                 double m = Math.Max(0.5, MaxNm);
                 if (CenterNote.Length > 0)

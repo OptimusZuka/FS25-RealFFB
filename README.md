@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/tag/v0.13.0"><b>⬇ Download v0.13.0 (beta)</b></a> ·
+  <a href="../../releases/tag/v0.13.1"><b>⬇ Download v0.13.1 (beta)</b></a> ·
   <a href="docs/INSTALL.md">Installation guide</a> ·
   <a href="docs/dev/COMPATIBILITY-MATRIX.md">Supported wheels</a> ·
   <a href="docs/TROUBLESHOOTING.md">Troubleshooting</a>
@@ -79,7 +79,7 @@ Own a wheel that is not confirmed yet? Open the app → **Hardware** → **Test 
 
 ## Install
 
-1. Open the **[latest release (v0.13.0)](../../releases/tag/v0.13.0)** and download `FS25_RealFFB_Setup_0.13.0.exe`.
+1. Open the **[latest release (v0.13.1)](../../releases/tag/v0.13.1)** and download `FS25_RealFFB_Setup_0.13.1.exe`.
 2. Run it and follow the steps. The installer finds the game and installs HidHide by itself, and sets up Fanatec and Logitech wheels automatically ([other brands](docs/INSTALL.md#other-wheel-brands)).
 3. Open the **FS25 RealFFB** shortcut. It starts the app and the game.
 4. In the game, enable the **Real FFB Telemetry** mod in your savegame.

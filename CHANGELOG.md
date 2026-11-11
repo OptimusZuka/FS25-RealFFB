@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.13.1] - 2026-11-11 (beta)
+Small fixes after the 0.13.0 release. Forces unchanged.
+- "Realistic centering" card: the explanation was cut off after two lines. The card is taller now.
+- Live panel: "FORCE AT THE WHEEL (gain %)" was cut off in narrower windows. The title now shrinks to fit.
+- Mod description corrected: it is not read-only (it passes the wheel and pedals to the vehicle you drive).
+- Docs: the installer sets up HidHide automatically only for Fanatec and Logitech wheels; [INSTALL.md](docs/INSTALL.md#other-wheel-brands) explains the one-time manual setup for other brands. New screenshots of the 0.13 interface.
+
+The highlights since v0.6.0 are in the 0.13.0 entry below.
+
 ## [0.13.0] - 2026-11-11 (beta)
 ### Highlights since v0.6.0
 First public release since v0.6.0. It includes everything from 0.7 to 0.13:
