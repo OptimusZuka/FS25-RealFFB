@@ -108,7 +108,9 @@ Get-Content install2.log | Select-String 'Helper ' | ForEach-Object { Write-Host
 $apps = Apps
 Check 'RealFFB.exe allowed again' ($apps -like "*$appExe*")
 Check 'other application untouched' ($apps -like '*OtherApp.exe*')
-Check 'HidHide marked as already present' ((Ini $state 'HH_Preexisting') -eq '1')
+Check 'HidHide remembered as installed by FS25 RealFFB (not "already present")' (((Ini $state 'HH_InstalledByUs') -eq '1') -and ((Ini $state 'HH_Preexisting') -eq ''))
+$c = RunSetup "$appDir\RealFFB.Setup.exe" "uninstall-info --out `"$PWD\ui.ini`""
+Check 'uninstall question data: HidHide installed, by us' (((Ini ui.ini 'hidhide_installed') -eq '1') -and ((Ini ui.ini 'installed_by_us') -eq '1') -and ((Ini ui.ini 'preexisting') -eq '0'))
 
 Write-Host "`n== 6. Official HidHide removal (the uninstaller's 'Yes, uninstall HidHide' path) =="
 HidHideEntries | ForEach-Object { Write-Host "   entry: $($_.DisplayName) $($_.DisplayVersion) | $($_.UninstallString) | SystemComponent=$($_.SystemComponent)" }
@@ -120,6 +122,7 @@ Get-Content $r -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "   $
 $st = Ini $r 'status'
 Check 'HidHide removed (or removed pending restart)' ($st -eq 'removed' -or $st -eq 'reboot') $st
 Check 'HidHide uninstall entry gone' ((@(HidHideEntries)).Count -eq 0)
+Check 'no "installed by us" marker left' (-not (Get-ItemProperty 'HKCU:\Software\FS25 RealFFB' -Name HidHideInstalledByUs -ErrorAction SilentlyContinue))
 
 Write-Host "`n== 7. Final uninstall of FS25 RealFFB without HidHide =="
 $un = Get-ChildItem $appDir -Filter 'unins*.exe' | Select-Object -First 1

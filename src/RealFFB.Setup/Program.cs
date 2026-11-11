@@ -179,7 +179,9 @@ namespace RealFFBSetup
                 res.Add("status", "present");
                 res.Add("version", ver);
                 State pre = State.Load();
-                if (pre.Get("HH_InstalledByUs") == null) { pre.Set("HH_Preexisting", "1"); pre.Save(); }
+                if (InstalledByUs()) { pre.Set("HH_InstalledByUs", "1"); pre.Set("HH_Preexisting", null); }
+                else pre.Set("HH_Preexisting", "1");
+                pre.Save();
                 Log("HidHide " + ver + " already installed: nothing to do.");
                 return Responding() ? 0 : Reboot(res);
             }
@@ -234,8 +236,31 @@ namespace RealFFBSetup
             if (after == null) { res.Add("status", "failed"); return 1; }
             res.Add("status", "installed");
             State mine = State.Load(); mine.Set("HH_InstalledByUs", "1"); mine.Set("HH_Preexisting", null); mine.Save();
+            MarkInstalledByUs(true);
             if (rc == 3010 || rc == 1641) return Reboot(res);
             return Responding() ? 0 : Reboot(res);
+        }
+
+        // "O HidHide foi instalado pelo FS25 RealFFB" sobrevive a desinstalar/reinstalar a app (o estado e apagado).
+        private const string MarkKey = @"Software\FS25 RealFFB";
+        internal static bool InstalledByUs()
+        {
+            if (State.Load().Get("HH_InstalledByUs") == "1") return true;
+            try { using (RegistryKey k = Registry.CurrentUser.OpenSubKey(MarkKey)) return k != null && (k.GetValue("HidHideInstalledByUs") as string) == "1"; }
+            catch { return false; }
+        }
+        private static void MarkInstalledByUs(bool on)
+        {
+            try
+            {
+                if (on) using (RegistryKey k = Registry.CurrentUser.CreateSubKey(MarkKey)) k.SetValue("HidHideInstalledByUs", "1");
+                else
+                {
+                    using (RegistryKey k = Registry.CurrentUser.OpenSubKey(MarkKey, true)) if (k != null) k.DeleteValue("HidHideInstalledByUs", false);
+                    try { Registry.CurrentUser.DeleteSubKey(MarkKey, false); } catch { }   // so se ficar vazia
+                }
+            }
+            catch { }
         }
 
         private static bool Responding()
@@ -489,8 +514,9 @@ namespace RealFFBSetup
             State st = State.Load();
             res.Add("hidhide_installed", ver != null ? "1" : "0");
             res.Add("hidhide_version", ver ?? "");
-            res.Add("installed_by_us", st.Get("HH_InstalledByUs") ?? "0");
-            res.Add("preexisting", st.Get("HH_Preexisting") ?? "0");
+            bool ours = InstalledByUs();
+            res.Add("installed_by_us", ours ? "1" : "0");
+            res.Add("preexisting", !ours && st.Get("HH_Preexisting") == "1" ? "1" : "0");
             res.Add("status", "ok");
             return 0;
         }
@@ -499,7 +525,7 @@ namespace RealFFBSetup
         // Antes: desliga o esconderijo, para nenhum dispositivo ficar escondido se a remocao do driver falhar.
         internal static int UninstallHidHide(Result res)
         {
-            if (HidHide.InstalledVersion() == null) { res.Add("status", "absent"); Log("HidHide is not installed."); return 0; }
+            if (HidHide.InstalledVersion() == null) { res.Add("status", "absent"); MarkInstalledByUs(false); Log("HidHide is not installed."); return 0; }
             if (HidHide.Cli() != null)
             {
                 try { HidHide.Run("--cloak-off"); Log("HidHide --cloak-off"); }
@@ -526,10 +552,12 @@ namespace RealFFBSetup
             if (rc == 3010 || rc == 1641 || !gone || HidHide.Cli() != null)
             {
                 res.Add("status", "reboot");
+                MarkInstalledByUs(false);
                 Log("HidHide removed; Windows must restart to finish removing the driver.");
                 return 3;
             }
             res.Add("status", "removed");
+            MarkInstalledByUs(false);
             return 0;
         }
 
