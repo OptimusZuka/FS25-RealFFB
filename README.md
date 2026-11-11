@@ -29,8 +29,8 @@ Farming Simulator 25 supports steering wheels, but its force feedback is almost 
 **FS25 RealFFB** creates the force feedback outside the game. A small mod reads what your vehicle is doing every frame, and a Windows app turns that into real forces at your wheel, the way racing sims and truck simulators do it.
 
 <p align="center">
-  <img src="docs/screenshot-app.png" alt="FS25 RealFFB running: settings, live commands and forces" width="900">
-  <br><sub>Real screenshot of the app (v0.6 interface). Version 0.13 adds a side menu, a live vehicle view and a Hardware page.</sub>
+  <img src="docs/screenshot-app.png" alt="FS25 RealFFB v0.13.1: settings, live commands and forces" width="900">
+  <br><sub>Real screenshot of v0.13.1: settings on the left, live commands and forces on the right. Captured automatically on GitHub's build server, with no wheel and no game, which is why it shows "HidHide is not installed" and "NOT OPEN".</sub>
 </p>
 
 ## What you feel
