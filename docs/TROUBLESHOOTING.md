@@ -1,6 +1,6 @@
 # Troubleshooting
 
-First step, always: **Start → FS25 RealFFB - Diagnostic report**, or the button in the app. The report contains no user name, PC name or serial numbers. Attach it to an [issue](https://github.com/OptimusZuka/FS25-RealFFB/issues).
+First step, always: **Start → FS25 RealFFB - Diagnostic report**, or the button in the app. The report contains no user name, PC name or serial numbers. Attach it to an [issue](https://github.com/OptimusZuka/fs25-realffb/issues).
 
 Logs are in `%APPDATA%\FS25 RealFFB\` (`RealFFB_log.txt`, `setup_log.txt`). Backups are in the `backup\` subfolder.
 
@@ -10,7 +10,7 @@ Logs are in `%APPDATA%\FS25 RealFFB\` (`RealFFB_log.txt`, `setup_log.txt`). Back
 | `HidHide driver ... not responding` | the driver has not loaded yet, or the *HidHide Configuration Client* is open | restart Windows; close the Configuration Client |
 | `RealFFB allowed in HidHide: ERROR` | the app was moved or reinstalled in another folder | Start → *Configure devices* |
 | `Wheel hidden from the game: ERROR` | setup not applied or cancelled | Start → *Configure devices* |
-| `Wheel: no supported wheel connected` | wheel off, in compatibility mode, or missing its driver | Fanatec: PC mode (red LED) + Fanatec driver. Logitech: G HUB installed |
+| `Wheel: no supported wheel connected` | wheel off, in compatibility mode, or missing its driver | Fanatec: PC mode (red LED) + Fanatec driver. Logitech: G HUB installed. Other brands: the installer does not recognise them yet, see [INSTALL.md](INSTALL.md#other-wheel-brands) |
 | `Other controllers hidden: WARN` | HidHide entries that are not the wheel (RealFFB never creates them) | review them in the *HidHide Configuration Client* |
 | `Farming Simulator 25: not found` | installed outside Steam in an unusual folder | run the installer and choose the folder |
 | `Mod RealFFB: installed in the wrong folder` | the zip was copied by hand somewhere else | delete that copy; run the installer |
@@ -27,7 +27,8 @@ Logs are in `%APPDATA%\FS25 RealFFB\` (`RealFFB_log.txt`, `setup_log.txt`). Back
 - **The wheel does not steer in the game.** Either the command bridge is off or FS25 still sees the wheel. Use *Configure devices* and restart the game.
 - **The wheel does not work in other games.** Close RealFFB; hiding turns off when the app closes. If the app crashed, open and close it again.
 - **Logitech wheel pulls to centre on its own.** Turn off the centering spring in Logitech G HUB.
-- **Wrong force strength on a different wheel.** Set *Wheel torque (peak)* to the manufacturer's value.
+- **Wrong force strength on a different wheel.** Set *Wheel torque (peak)* to the manufacturer's value, or use **Hardware → Calibrate force**.
+- **The steering wheel does not return to centre on a tractor.** With *Realistic centering* on, this is intended: hydrostatic steering does not self-centre in real life. Switch it per vehicle (Auto · On · Off) or turn the option off.
 - **The installer stopped half-way** (power cut, PC turned off). Run it again. Each step checks the current state first: it does not reinstall HidHide or duplicate entries.
 - **"Windows protected your PC" / Smart App Control.** See [INSTALL.md](INSTALL.md#2-windows-warnings-what-is-normal).
 

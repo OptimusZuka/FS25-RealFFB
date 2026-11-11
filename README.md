@@ -73,12 +73,14 @@ FS25 RealFFB talks to the wheel through standard **DirectInput** force feedback,
 
 Full details, notes per model and how levels are decided: **[Compatibility matrix](docs/dev/COMPATIBILITY-MATRIX.md)**.
 
+> **Installer note:** the installer sets up HidHide automatically for **Fanatec and Logitech** wheels only. Other brands are driven by the app, but for now they must be hidden from the game once by hand: see [INSTALL.md](docs/INSTALL.md#other-wheel-brands).
+
 Own a wheel that is not confirmed yet? Open the app → **Hardware** → **Test my wheel**, drive a few minutes, then **Export compatibility report** and attach it to an [issue](../../issues). That is how a wheel becomes confirmed.
 
 ## Install
 
 1. Open the **[latest release (v0.13.0)](../../releases/tag/v0.13.0)** and download `FS25_RealFFB_Setup_0.13.0.exe`.
-2. Run it and follow the steps. The installer finds the game, the wheel and HidHide by itself.
+2. Run it and follow the steps. The installer finds the game and installs HidHide by itself, and sets up Fanatec and Logitech wheels automatically ([other brands](docs/INSTALL.md#other-wheel-brands)).
 3. Open the **FS25 RealFFB** shortcut. It starts the app and the game.
 4. In the game, enable the **Real FFB Telemetry** mod in your savegame.
 
@@ -110,7 +112,7 @@ Nothing to compile, no Python, no Visual Studio. The installer:
 
 **Is it free?** Yes, FS25 RealFFB is free to download and use for personal, non-commercial use.
 
-**Does it change the game files or my savegames?** No. It is a normal FS25 mod plus a separate app. The installer adjusts one setting in `game.xml` and keeps a backup.
+**Does it change the game files or my savegames?** No. It is a normal FS25 mod plus a separate app. The installer adjusts the joystick, vibration and force feedback options in `game.xml`, keeps a backup and restores it when you uninstall.
 
 **Does it work in multiplayer?** The mod reads only the vehicle you are driving on your own PC.
 
