@@ -51,9 +51,16 @@ jobs:
           Shot $h "ui-screenshot.png"
           try {
             $root = [System.Windows.Automation.AutomationElement]::FromHandle($h)
-            $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, "Hardware")
-            $btn = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
-            $btn.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+            $c1 = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, "Hardware")
+            $c2 = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Button)
+            $btn = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.AndCondition($c1, $c2)))
+            $ip = $null
+            if ($btn.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]$ip)) { $ip.Invoke() }
+            else {
+              Add-Type -AssemblyName System.Windows.Forms
+              $btn.SetFocus(); Start-Sleep -Milliseconds 300
+              [System.Windows.Forms.SendKeys]::SendWait(" ")
+            }
             Start-Sleep -Seconds 3
             Shot $h "ui-hardware.png"
           } catch { Write-Host "Hardware page capture failed: $_" }
