@@ -338,15 +338,15 @@ namespace FS25RealFFB
             flow.Controls.Add(realCenterBox);
             tips.SetToolTip(realCenterBox, L.T("In real life only vehicles with mechanical steering (cars, pickups, trucks) bring the wheel back to the center. Tractors, combines, loaders, telehandlers and forklifts use hydrostatic steering: the wheel stays where you leave it. With this on, those vehicles get no centering spring."));
             // Cartao: "na vida real centra / nao centra" + porque + o que o volante faz agora
-            centerCard = new Panel(); centerCard.Width = W; centerCard.Height = 112; centerCard.BackColor = Theme.Card;
+            centerCard = new Panel(); centerCard.Width = W; centerCard.Height = 124; centerCard.BackColor = Theme.Card;
             centerCard.Margin = new Padding(0, 6, 0, 6);
             Panel stripe = new Panel(); stripe.Dock = DockStyle.Left; stripe.Width = 4; stripe.BackColor = Theme.Line;
             centerCard.Controls.Add(stripe);
             centerRealLbl = new Label(); centerRealLbl.AutoSize = false; centerRealLbl.SetBounds(14, 8, W - 22, 24);
             centerRealLbl.Font = Theme.Bold(11f); centerRealLbl.ForeColor = Theme.Text; centerRealLbl.BackColor = Theme.Card;
-            centerWhyLbl = new Label(); centerWhyLbl.AutoSize = false; centerWhyLbl.SetBounds(14, 34, W - 22, 48);
+            centerWhyLbl = new Label(); centerWhyLbl.AutoSize = false; centerWhyLbl.SetBounds(14, 34, W - 22, 60);
             centerWhyLbl.ForeColor = Theme.Soft; centerWhyLbl.BackColor = Theme.Card;
-            centerNowLbl = new Label(); centerNowLbl.AutoSize = false; centerNowLbl.SetBounds(14, 84, W - 22, 22);
+            centerNowLbl = new Label(); centerNowLbl.AutoSize = false; centerNowLbl.SetBounds(14, 96, W - 22, 22);
             centerNowLbl.Font = Theme.Bold(9.5f); centerNowLbl.ForeColor = Theme.Muted; centerNowLbl.BackColor = Theme.Card;
             centerCard.Controls.Add(centerRealLbl); centerCard.Controls.Add(centerWhyLbl); centerCard.Controls.Add(centerNowLbl);
             centerCard.Tag = stripe;

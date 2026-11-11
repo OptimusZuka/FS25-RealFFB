@@ -31,25 +31,38 @@ jobs:
             [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr h, int x, int y, int w, int hh, bool p);
           }
           "@
+          Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+          function Shot($h, $file) {
+            $r = New-Object W+R
+            [W]::GetWindowRect($h, [ref]$r) | Out-Null
+            $bmp = New-Object System.Drawing.Bitmap ($r.Rr - $r.L), ($r.B - $r.T)
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $dc = $g.GetHdc()
+            [W]::PrintWindow($h, $dc, 2) | Out-Null
+            $g.ReleaseHdc($dc)
+            $bmp.Save($file, [System.Drawing.Imaging.ImageFormat]::Png)
+          }
           $p = Start-Process -FilePath dist\app\RealFFB.exe -PassThru
           Start-Sleep -Seconds 10
           $p.Refresh()
           $h = $p.MainWindowHandle
           [W]::MoveWindow($h, 0, 0, 1280, 820, $true) | Out-Null
           Start-Sleep -Seconds 3
-          $r = New-Object W+R
-          [W]::GetWindowRect($h, [ref]$r) | Out-Null
-          $bmp = New-Object System.Drawing.Bitmap ($r.Rr - $r.L), ($r.B - $r.T)
-          $g = [System.Drawing.Graphics]::FromImage($bmp)
-          $dc = $g.GetHdc()
-          [W]::PrintWindow($h, $dc, 2) | Out-Null
-          $g.ReleaseHdc($dc)
-          $bmp.Save("ui-screenshot.png", [System.Drawing.Imaging.ImageFormat]::Png)
+          Shot $h "ui-screenshot.png"
+          try {
+            $root = [System.Windows.Automation.AutomationElement]::FromHandle($h)
+            $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, "Hardware")
+            $btn = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
+            $btn.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+            Start-Sleep -Seconds 3
+            Shot $h "ui-hardware.png"
+          } catch { Write-Host "Hardware page capture failed: $_" }
           Stop-Process -Id $p.Id -Force
       - name: Commit the screenshot to the 'screenshot' branch
         shell: pwsh
         run: |
           Copy-Item ui-screenshot.png docs\screenshot-app.png -Force
+          if (Test-Path ui-hardware.png) { Copy-Item ui-hardware.png docs\images\screenshot-hardware.png -Force; git add docs/images/screenshot-hardware.png }
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/screenshot-app.png
