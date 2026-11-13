@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/tag/v0.14.0"><b>⬇ Download v0.14.0 (beta)</b></a> ·
+  <a href="../../releases/tag/v0.15.0"><b>⬇ Download v0.15.0 (beta)</b></a> ·
   <a href="docs/INSTALL.md">Installation guide</a> ·
   <a href="docs/dev/COMPATIBILITY-MATRIX.md">Supported wheels</a> ·
   <a href="docs/TROUBLESHOOTING.md">Troubleshooting</a>
@@ -31,8 +31,8 @@ Farming Simulator 25 supports steering wheels, but its force feedback is almost 
 **FS25 RealFFB** creates the force feedback outside the game. A small mod reads what your vehicle is doing every frame, and a Windows app turns that into real forces at your wheel, the way racing sims and truck simulators do it.
 
 <p align="center">
-  <img src="docs/screenshot-app.png" alt="FS25 RealFFB v0.14.0: settings, live commands and forces" width="900">
-  <br><sub>Real screenshot of v0.14.0: settings on the left, live commands and forces on the right. Captured automatically on GitHub's build server, with no wheel and no game, which is why it shows "HidHide is not installed" and "NOT OPEN".</sub>
+  <img src="docs/screenshot-app.png" alt="FS25 RealFFB: settings, live commands and forces" width="900">
+  <br><sub>Real screenshot of the v0.13 interface: settings on the left, live commands and forces on the right. Captured automatically on GitHub's build server, with no wheel and no game, which is why it shows "HidHide is not installed" and "NOT OPEN".</sub>
 </p>
 
 ## What you feel
@@ -40,7 +40,7 @@ Farming Simulator 25 supports steering wheels, but its force feedback is almost 
 | | |
 |---|---|
 | 🛞 **Realistic centering** | Optional. Cars and trucks return the wheel to centre; tractors with hydrostatic steering, articulated loaders, tracked machines and lever-steered machines do not, like the real ones. Override any vehicle with Auto · On · Off. |
-| 🔑 **Engine start** | The wheel reacts the moment you turn the key: starter-motor pulses, a jolt when the engine catches, then idle vibration that follows RPM and load. |
+| 🔑 **Engine start** | The wheel reacts the moment you turn the key: starter-motor pulses, a short rock when the engine catches, then idle vibration that follows RPM and load. Strong in tractors, light in trucks and pickups, with its own slider. |
 | 🌾 **Terrain** | Tarmac, dirt, grass and fields each feel different. On the road you feel the hum of the agricultural tyres. |
 | 🕳️ **Bumps and impacts** | Suspension bumps, potholes and collisions reach the wheel with the right strength. |
 | 🤖 **AI and GPS steering** | The wheel turns by itself while an AI worker or the GPS steers. Turn it firmly against them and the vehicle is yours again. |
@@ -60,7 +60,8 @@ Farming Simulator 25 supports steering wheels, but its force feedback is almost 
 - **STOP / Esc** cuts every force instantly.
 - A **watchdog** stops all forces if the app freezes for more than 150 ms.
 - An **oscillation guard** calms the wheel if it starts shaking around the centre.
-- Forces never go above the **Maximum force** you set, and unknown wheels start with low forces.
+- The sum of all forces never goes above the **Maximum force** you set, and unknown wheels start with low forces.
+- For an identified wheel base the **peak torque can never be set above the manufacturer's value** (MOZA R5: 5.5 Nm).
 
 ## Supported wheels
 
@@ -81,7 +82,7 @@ Own a wheel that is not confirmed yet? Open the app → **Hardware** → **Test 
 
 ## Install
 
-1. Open the **[latest release (v0.14.0)](../../releases/tag/v0.14.0)** and download `FS25_RealFFB_Setup_0.14.0.exe`.
+1. Open the **[latest release (v0.15.0)](../../releases/tag/v0.15.0)** and download `FS25_RealFFB_Setup_0.15.0.exe`.
 2. Run it and follow the steps. The installer finds the game, installs HidHide and sets up your wheel by itself. Then unplug and replug the wheel's USB cable once.
 3. Open the **FS25 RealFFB** shortcut. It starts the app and the game.
 4. In the game, enable the **Real FFB Telemetry** mod in your savegame.
@@ -119,6 +120,10 @@ Nothing to compile, no Python, no Visual Studio. The installer:
 **Does it work in multiplayer?** The mod reads only the vehicle you are driving on your own PC.
 
 **My wheel is not listed as confirmed. Will it work?** If it supports DirectInput force feedback it very likely will. The app reads what the wheel can do and starts with low forces. Please send a compatibility report.
+
+**Does it work on a dedicated server?** Yes. The game does not send wheel ground contact to multiplayer clients, so there the app keeps the centering but has no terrain texture or impact detection.
+
+**The forces feel weak.** Check *Wheel torque (peak)*: it must be your base's real value (G27 2.5 Nm, MOZA R5 5.5 Nm). A higher number makes the forces weaker. To make them stronger, raise the *Force multiplier*.
 
 **The steering of my tractor feels a little heavy and does not return to centre.** With realistic centering on, that is intended: hydrostatic steering has some viscous weight and does not self-centre. You can switch it per vehicle.
 

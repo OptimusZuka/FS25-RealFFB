@@ -36,6 +36,11 @@ namespace FS25RealFFB
         public bool[] WheelContact = new bool[0];
         public string VehicleType = "";
         public string Category = "";   // 0.12: categoria da loja do jogo
+        // 0.15: sp | host | client ("" = mod antigo). Em "client" (servidor dedicado / jogo de outra pessoa) o contacto
+        // das rodas nao e calculado neste PC e a velocidade chega aos degraus pela rede.
+        public string Session = "";
+        public bool MpClient { get { return Session == "client"; } }
+        public bool ContactUnknown;    // 0.15: o jogo nao da o contacto das rodas (nao confundir com "no ar")
         public bool Articulated, Crawler;   // 0.12: direcao articulada / rastos
         public int Auto;                // 0 jogador, 1 trabalhador de IA, 2 GPS do jogo (0.11)
     }
@@ -126,12 +131,16 @@ namespace FS25RealFFB
             return double.NaN;
         }
 
-        private void Handle(string line)
+        // 0.15: separado de Handle para os testes (sem pipe nem estado)
+        internal static TelemetryFrame ParseLine(string line)
         {
-            string[] parts = line.Split('|');
-            if (parts.Length < 2 || parts[0] != "RFFB") return;
-            if (!firstLineLogged) { firstLineLogged = true; Post("First line: " + line); }
+            string[] parts = (line ?? "").Split('|');
+            if (parts.Length < 2 || parts[0] != "RFFB") return null;
+            return ParseFields(parts);
+        }
 
+        private static TelemetryFrame ParseFields(string[] parts)
+        {
             TelemetryFrame f = new TelemetryFrame();
             string wheels = null;
             for (int i = 2; i < parts.Length; i++)
@@ -148,6 +157,7 @@ namespace FS25RealFFB
                     case "veh": f.Vehicle = v.Trim(); break;
                     case "vtype": f.VehicleType = v.Trim(); break;
                     case "cat": f.Category = v.Trim(); break;
+                    case "ses": f.Session = v.Trim(); break;
                     case "art": f.Articulated = v == "1"; break;
                     case "crawl": f.Crawler = v == "1"; break;
                     case "spd": f.SpeedKmh = Num(v); break;
@@ -169,6 +179,16 @@ namespace FS25RealFFB
                 }
             }
             if (wheels != null) ParseWheels(f, wheels);
+            return f;
+        }
+
+        private void Handle(string line)
+        {
+            string[] parts = line.Split('|');
+            if (parts.Length < 2 || parts[0] != "RFFB") return;
+            if (!firstLineLogged) { firstLineLogged = true; Post("First line: " + line); }
+
+            TelemetryFrame f = ParseFields(parts);
 
             TelemetryFrame p = previous;
             if (p != null && f.Active && p.Active)
@@ -237,7 +257,14 @@ namespace FS25RealFFB
             int best = 0;
             foreach (KeyValuePair<string, int> kv in count)
                 if (kv.Value > best) { best = kv.Value; f.Surface = kv.Key; }
-            if (f.Contacts == 0) f.Surface = "air";
+            // 0.15: num cliente multijogador o contacto vem sempre "falso" (a fisica das rodas corre no servidor):
+            // isso NAO quer dizer "no ar". Fica "unknown": nao se inventa contacto nem piso, a centragem usa a
+            // aderencia neutra e a textura do piso fica generica.
+            if (f.Contacts == 0)
+            {
+                if (f.MpClient && f.Wheels > 0) { f.Surface = "unknown"; f.ContactUnknown = true; }
+                else f.Surface = "air";
+            }
         }
     }
 }

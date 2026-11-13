@@ -5,7 +5,7 @@ name: install-test
 # Runs on pushes to the 'install-test' branch and on demand.
 on:
   push:
-    branches: [install-test]
+    branches: [install-test, 'ci-*']
   workflow_dispatch:
 
 permissions:

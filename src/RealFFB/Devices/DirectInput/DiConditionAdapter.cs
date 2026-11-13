@@ -32,7 +32,7 @@ namespace FS25RealFFB
             lastDt = dt > 0 ? dt : 0.016;
             FfbOutput o = new FfbOutput();
             o.CopyInfo(r);
-            double cf = Math.Sqrt(TunedBaseNm / Math.Max(1.0, s.BaseNm));
+            double cf = Math.Sqrt(TunedBaseNm / Math.Max(1.0, s.PeakNm));
             o.SpringCoef = (int)Math.Min(10000, (int)(10000 * r.SpringK) * cf * (s.GearDriven ? 1.5 : 1.0));
             o.SpringSat = s.ToMag(r.SpringNm);
             o.SpringOffset = (int)Math.Round(Clamp(r.SpringOffset, -1, 1) * 10000);

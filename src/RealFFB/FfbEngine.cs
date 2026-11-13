@@ -34,6 +34,9 @@ namespace FS25RealFFB
         private double rpmSm = double.NaN, rpmSlow = double.NaN;
         // 0.12: arranque do motor (motor de arranque + "pegar")
         private double crankT, catchEnv, crankPhaseN; private int lastMotorState = -1;
+        private string engVeh = "";      // 0.15: veiculo a que o estado do motor diz respeito
+        public const double MaxCrankSeconds = 6.0;   // 0.15: o motor de arranque nunca vibra mais do que isto
+        public EngineProfile EngineType = EngineProfile.Default;   // 0.15: so para a interface/registo
         private int collSign, collCount;
         private double collLevel, collX, collZ, collDv;
         // historico curto da velocidade (m/s) para medir quanto ela mudou nos ultimos ~0,12 s
@@ -237,7 +240,10 @@ namespace FS25RealFFB
                         prevHeave = heave; prevHeaveRate = heaveRate;
                         if (jerk > 0.15) impactEnv = Math.Max(impactEnv, Clamp(jerk / 0.8, 0.2, 1));
                     }
-                    if (Ok(f.Vz) && Ok(prevVz) && Ok(f.Vx) && Ok(prevVx))
+                    // 0.15: cliente multijogador: a velocidade chega aos degraus pela rede (saltos de ~10 km/h
+                    // varias vezes por segundo, medidos num relatorio real). Isso nao e um embate: a deteccao de
+                    // embates pela velocidade fica desligada nessa sessao (limitacao documentada).
+                    if (!f.MpClient && Ok(f.Vz) && Ok(prevVz) && Ok(f.Vx) && Ok(prevVx))
                     {
                         // 0.9.9: embate medido pela VARIACAO DE VELOCIDADE numa janela curta (~0,12 s), nao pela
                         // aceleracao de uma so amostra. Um embate tira >= 7 km/h em ~0,1 s (> 16 m/s2 de media);
@@ -306,7 +312,8 @@ namespace FS25RealFFB
             // Asfalto: zumbido dos tacos do pneu agricola (frequencia = rotacao da roda x ~38 tacos).
             // Terra/campo: ondulacao mais grossa e de frequencia mais baixa.
             double rms = Math.Sqrt(Math.Max(0, vertEnergy));
-            double rough = Roughness(f.Surface);
+            // 0.15: piso desconhecido (cliente multijogador): o jogo nao diz que piso e -> sem textura inventada.
+            double rough = f.ContactUnknown ? 0 : Roughness(f.Surface);
             // raiz: a baixa velocidade (2-5 km/h no campo) ja se sente o piso, sem esperar pelos 15 km/h
             double sf = Math.Sqrt(Clamp(v / 4.0, 0, 1));
             // Piso real nao e uniforme: ruido aleatorio filtrado (~0,15 s) modula a amplitude.
@@ -316,7 +323,7 @@ namespace FS25RealFFB
             texNoise += (texNoiseTarget - texNoise) * Clamp(dt / 0.06, 0, 1);
             double depth = f.Surface == "road" ? 0.15 : (f.Surface == "snow" ? 0.25 : 0.45);
             double mod = 1.0 + depth * texNoise;
-            o.TextureNm = s.Texture * s.MaxNm * 0.3 * mod * (rough * sf + 0.5 * Clamp(rms / 2.0, 0, 1) * Clamp(v / 1.0, 0, 1));
+            o.TextureNm = f.ContactUnknown ? 0 : s.Texture * s.MaxNm * 0.3 * mod * (rough * sf + 0.5 * Clamp(rms / 2.0, 0, 1) * Clamp(v / 1.0, 0, 1));
             if (s.GearDriven) o.TextureNm *= 0.4;
             else o.TextureNm *= 1.3;   // DD: mais informacao do piso (sem o atrito a come-la)
             double hz;
@@ -338,13 +345,23 @@ namespace FS25RealFFB
             // Antes o volante ficava mudo esse tempo. Agora, mal a chave roda (estado "a arrancar"), sente-se o
             // motor de arranque: sacudidelas irregulares a ~9-12 Hz (as compressoes dos cilindros), e quando o
             // motor pega, um esticao curto que assenta no ralenti.
-            bool cranking = f.MotorState == 2;   // (mesmo que o jogo ja diga "ligado": ainda nao ha rotacoes)
+            // 0.15: troca de veiculo -> o estado do motor anterior nao conta (sem "pegou" falso ao entrar num
+            // veiculo com o motor ja ligado; sem restos do arranque do veiculo anterior).
+            string ev = f.Vehicle ?? "";
+            if (ev != engVeh) { engVeh = ev; lastMotorState = -1; catchEnv = 0; crankT = 0; rpmSm = double.NaN; rpmSlow = double.NaN; }
+            EngineProfile ep = EngineProfile.For(f.Category);
+            EngineType = ep;
+            bool cranking = f.MotorState == 2 && crankT < MaxCrankSeconds;   // (mesmo que o jogo ja diga "ligado": ainda nao ha rotacoes)
             if (f.MotorState == 3 && lastMotorState == 2) catchEnv = 1.0;   // pegou
             if (f.MotorState >= 0) lastMotorState = f.MotorState;
             catchEnv *= Math.Exp(-dt / 0.25);
-            crankT = cranking ? crankT + dt : 0;
+            crankT = f.MotorState == 2 ? crankT + dt : 0;
             // ate as rotacoes chegarem: ralenti assumido para nao haver um buraco entre "pegou" e as primeiras rotacoes
             double rpmIn = Ok(f.Rpm) && f.Rpm > 200 ? f.Rpm : (f.EngineOn ? 750.0 : double.NaN);
+            // 0.15: arranque com intensidade propria ("Engine start"), separada da vibracao do motor, e escalada pela
+            // montagem do motor (trator sente-se muito, camiao/pickup pouco). Valores por omissao iguais aos da 0.12
+            // num trator (EngineStart 0.70 x 0.39 = 0.275 Nm em direct drive).
+            double startAmp = s.EngineStart * ep.Mount;
             if (cranking)
             {
                 rpmSm = double.NaN; rpmSlow = double.NaN;
@@ -352,7 +369,7 @@ namespace FS25RealFFB
                 crankPhaseN += dt * 2 * Math.PI * 2.6;
                 double pulse = 0.65 + 0.35 * Math.Abs(Math.Sin(crankPhaseN));
                 double rampIn = Clamp(crankT / 0.15, 0, 1);
-                o.EngineNm = s.Engine * (s.GearDriven ? 1.0 : 0.55) * pulse * rampIn;
+                o.EngineNm = startAmp * (s.GearDriven ? 0.71 : 0.39) * pulse * rampIn;
                 double chz = (s.GearDriven ? 9.0 : 11.0) + 1.5 * Math.Sin(crankPhaseN * 0.37);
                 o.EngineHz = Math.Round(chz);
             }
@@ -373,21 +390,27 @@ namespace FS25RealFFB
                 // Parado o motor domina (cabine e coluna vibram com o trator imovel); em andamento o piso
                 // e o rolamento mascaram-no: 1,3x parado, a cair ate 0,4x a partir de ~14 km/h.
                 double engMove = 1.3 - 0.9 * Clamp(v / 4.0, 0, 1);
-                o.EngineNm = s.Engine * (0.30 + 0.25 * rpmN + 0.20 * load + 0.25 * rev) * engMove;
-                // frequencia de combustao (6 cilindros, 4 tempos: rpm/20 Hz): ralenti ~42 Hz, 2200 rpm ~110 Hz
+                o.EngineNm = s.Engine * ep.Mount * (0.30 + 0.25 * rpmN + 0.20 * load + 0.25 * rev) * engMove;
+                // frequencia de combustao (aproximacao 6 cilindros, 4 tempos: rpm/20 Hz): ralenti ~42 Hz, 2200 rpm ~110 Hz
                 double ehz = Clamp(rpmSm / 20.0, 15, 150);
                 if (s.GearDriven)
                 {
                     // Engrenagens: forcas abaixo de ~0,4 Nm perdem-se na folga e no atrito interno, por isso
                     // o motor tem uma base maior (ralenti ~0,45 Nm com o slider a 50%) e frequencia mais baixa
                     // (ralenti ~17 Hz, regime alto ~44 Hz).
-                    o.EngineNm = s.Engine * (0.9 + 0.25 * rpmN + 0.15 * load + 0.25 * rev) * engMove;
+                    o.EngineNm = s.Engine * ep.Mount * (0.9 + 0.25 * rpmN + 0.15 * load + 0.25 * rev) * engMove;
                     ehz = Clamp(rpmSm / 50.0, 14, 45);
                 }
                 ehz = Math.Round(ehz);
                 o.EngineHz = ehz;
-                // motor acabou de pegar: esticao curto por cima do ralenti
-                if (catchEnv > 0.02) o.EngineNm += s.Engine * (s.GearDriven ? 0.8 : 0.6) * catchEnv;
+                // 0.15: motor acabou de pegar: o bloco balanca nos apoios (baixa frequencia, ~10 Hz) e assenta no
+                // ralenti em ~0,3 s. Antes era um reforco a frequencia do ralenti (sentia-se um "zumbido" forte).
+                if (catchEnv > 0.02)
+                {
+                    double rock = startAmp * (s.GearDriven ? 0.57 : 0.43) * catchEnv;
+                    if (catchEnv > 0.35) { o.EngineNm = Math.Max(o.EngineNm, rock); o.EngineHz = s.GearDriven ? 9 : 10; }
+                    else o.EngineNm += rock * 0.5;
+                }
             }
             else { rpmSm = double.NaN; rpmSlow = double.NaN; }
 

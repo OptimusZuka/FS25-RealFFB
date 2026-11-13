@@ -136,7 +136,7 @@ namespace FS25RealFFB
                     prevPos = pos;
                     vel += (vNow - vel) * Math.Min(1, dt / 0.004);   // filtro ~4 ms
                     bool sineOk = UseSineEffects && sink.Caps != null && sink.Caps.Usable("Sine");
-                    tq = model.Torque(r, pos, vel, s.BaseNm, s.ForceCapNm, s.GearDriven, !sineOk, t);
+                    tq = model.Torque(r, pos, vel, s.PeakNm, s.ForceCapNm, s.GearDriven, !sineOk, t);
                 }
                 else if (stale && Math.Abs(lastTorque) > 0.01) StaleStops++;
                 lastTorque = tq;

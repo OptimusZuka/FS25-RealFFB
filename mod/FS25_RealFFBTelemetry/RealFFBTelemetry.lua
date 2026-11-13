@@ -122,6 +122,19 @@ local function currentVehicle()
     return try(function() return g_localPlayer:getCurrentVehicle() end)
 end
 
+-- 0.15: tipo de sessao. Num servidor dedicado (ou no jogo de outra pessoa) a fisica das rodas corre no
+-- servidor: neste PC o contacto das rodas com o chao nao e calculado (vem sempre "falso") e a velocidade
+-- chega aos degraus pela rede. A app precisa de saber para nao concluir "veiculo no ar".
+-- sp = jogo local; host = este PC e o servidor; client = ligado a um servidor.
+local function sessionKind()
+    local mi = g_currentMission
+    local mp = false
+    if mi ~= nil and type(mi.missionDynamicInfo) == "table" then mp = mi.missionDynamicInfo.isMultiplayer == true end
+    if not mp then return "sp" end
+    if g_server ~= nil then return "host" end
+    return "client"
+end
+
 local function isPaused()
     if g_currentMission == nil or g_currentMission.isPaused == true then return true end
     if g_gui ~= nil and type(g_gui.getIsGuiVisible) == "function" then
@@ -391,6 +404,7 @@ function RealFFBTelemetry:buildLine()
     table.insert(parts, "vtype=" .. clean(tostring(vehicle.typeName or "?")))
     local si = try(function() return steerInfo(vehicle) end)
     if si ~= nil and si ~= "" then table.insert(parts, si) end
+    table.insert(parts, "ses=" .. tostring(try(function() return sessionKind() end) or "?"))
     if type(vehicle.getLastSpeed) == "function" then
         table.insert(parts, "spd=" .. fmt(try(function() return vehicle:getLastSpeed() end)))
     end

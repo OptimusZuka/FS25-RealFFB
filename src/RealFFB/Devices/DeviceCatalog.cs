@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using System.IO;
 using System.Reflection;
 
@@ -59,6 +60,11 @@ namespace FS25RealFFB
         public string Notes = "";
         public string Source = "";
         public bool Known;           // entrada de produto (nao so fabricante/nome)
+        // 0.15: como o modelo foi identificado: "usb" (ID do produto), "name" (modelo exato no nome), "" (nao identificado)
+        public string IdentifiedBy = "";
+        public bool Sustained;       // o fabricante publica binario continuo, nao de pico
+        // Teto do binario configuravel: o pico do fabricante para um modelo identificado; 0 = sem teto verificado.
+        public double CeilingNm { get { return Known && PeakNm > 0 ? PeakNm : 0; } }
         public DeviceQuirks Quirks { get { return DeviceQuirks.Parse(QuirksText); } }
     }
 
@@ -143,6 +149,14 @@ namespace FS25RealFFB
             if (d.TryGetValue("Quirks", out v) && (overwrite || e.QuirksText.Length == 0)) e.QuirksText = v;
             if (d.TryGetValue("Notes", out v) && (overwrite || e.Notes.Length == 0)) e.Notes = v;
             if (d.TryGetValue("Source", out v) && (overwrite || e.Source.Length == 0)) e.Source = v;
+            if (d.TryGetValue("Rating", out v) && (overwrite || !e.Sustained)) e.Sustained = v.Equals("Sustained", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // 0.15: modelo pelo nome do dispositivo (so o token exato do modelo; nunca so a marca).
+        private static bool ModelMatch(string pattern, string productName)
+        {
+            try { return Regex.IsMatch(productName, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(50)); }
+            catch { return false; }
         }
 
         public static CatalogEntry Find(int vid, int pid) { return Find(vid, pid, null); }
@@ -155,7 +169,15 @@ namespace FS25RealFFB
             string key = vid.ToString("X4") + ":" + pid.ToString("X4");
             e.Key = key;
             bool drivSet = false;
-            if (sections.TryGetValue(key, out d)) { Fill(e, d, true); e.Known = true; drivSet = d.ContainsKey("Drive"); }
+            if (sections.TryGetValue(key, out d)) { Fill(e, d, true); e.Known = true; e.IdentifiedBy = "usb"; drivSet = d.ContainsKey("Drive"); }
+            if (!e.Known && !string.IsNullOrEmpty(productName))
+                foreach (KeyValuePair<string, Dictionary<string, string>> kv in sections)
+                    if (kv.Key.StartsWith("model:", StringComparison.OrdinalIgnoreCase) && kv.Value.ContainsKey("PeakNm")
+                        && ModelMatch(kv.Key.Substring(6), productName))
+                    {
+                        Fill(e, kv.Value, true); e.Known = true; e.IdentifiedBy = "name"; drivSet = kv.Value.ContainsKey("Drive");
+                        break;
+                    }
             if (!string.IsNullOrEmpty(productName))
                 foreach (KeyValuePair<string, Dictionary<string, string>> kv in sections)
                     if (kv.Key.StartsWith("name:", StringComparison.OrdinalIgnoreCase)
@@ -180,6 +202,24 @@ namespace FS25RealFFB
         }
 
         public static int Count { get { Ensure(); return sections.Count; } }
+
+        // 0.15: modelos com pico conhecido (para escolher o modelo quando nao e identificado automaticamente)
+        public static List<CatalogEntry> ModelsWithTorque()
+        {
+            Ensure();
+            List<CatalogEntry> r = new List<CatalogEntry>();
+            HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (KeyValuePair<string, Dictionary<string, string>> kv in sections)
+            {
+                if (kv.Key.StartsWith("vendor:", StringComparison.OrdinalIgnoreCase) || kv.Key.StartsWith("name:", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!kv.Value.ContainsKey("PeakNm") || !kv.Value.ContainsKey("Model")) continue;
+                CatalogEntry e = new CatalogEntry(); Fill(e, kv.Value, true); e.Known = true; e.Key = kv.Key;
+                if (e.PeakNm <= 0 || !seen.Add(e.Model + "|" + e.PeakNm.ToString(CultureInfo.InvariantCulture))) continue;
+                r.Add(e);
+            }
+            r.Sort(delegate(CatalogEntry x, CatalogEntry y) { return string.Compare(x.Model, y.Model, StringComparison.OrdinalIgnoreCase); });
+            return r;
+        }
 
         public static IEnumerable<KeyValuePair<string, Dictionary<string, string>>> All()
         {

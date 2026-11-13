@@ -31,8 +31,8 @@ Rules:
 | Logitech G920, G923, G25, Driving Force GT, PRO Racing Wheel | D | DirectInput (Logitech driver) | G HUB centering spring must be off. |
 | Logitech TRUEFORCE | **N** | Proprietary SDK (partners only) | Standard FFB still works. |
 | Thrustmaster T128, T150, TMX, T248, T300 RS, TX, T500 RS, T-GT, TS-XW, TS-PC, T818 | D | DirectInput (Thrustmaster driver) | Peak torque per model not in the catalog: calibrate. T150: PS3 switch position on PC. |
-| MOZA R5 | **C** | DirectInput | Tested and confirmed working by TheNobunaga. Set the peak torque. |
-| MOZA R3, R9, R12, R16, R21 | D | DirectInput | Recognised by product name; set the peak torque. |
+| MOZA R5 | **C** | DirectInput | Tested and confirmed working by TheNobunaga. Identified by USB ID 346E:0004; peak torque 5.5 Nm set automatically and used as the hard ceiling (0.15). |
+| MOZA R3, R9, R12, R16, R21 | D | DirectInput | Identified by the model token in the device name ("MOZA R9 ..."), naming not verified on hardware. Peak torque from mozaracing.com (3.9 / 9 / 12 / 16 / 21 Nm) set automatically and used as the hard ceiling. R21 Ultra: MOZA publishes 21 Nm sustained, peak not published. R5 Pro (6 Nm) is not in the catalogue: choose it in Calibrate force. |
 | MOZA via MOZA Racing SDK | T | MOZA SDK | The SDK has FFB functions; licence and benefit not evaluated. Not implemented. |
 | Simucube 2 Sport / Pro / Ultimate | D | DirectInput | True Drive "DirectInput effect fine tuning" sliders can mute spring/damper: keep them up or use computed torque. |
 | Simagic Alpha / Alpha Mini / Alpha Ultimate (0483:0522), EVO / Sport / Pro (3670:0500-0502) | D | DirectInput (HID PID) | Set the peak torque. |
