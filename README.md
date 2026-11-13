@@ -66,8 +66,8 @@ FS25 RealFFB talks to the wheel through standard **DirectInput** force feedback,
 
 | Status | Wheels |
 |---|---|
-| ✅ **Confirmed** (tested on real hardware) | Fanatec **CSL DD 8 Nm** |
-| 📄 **Documented** (standard DirectInput, not tested yet) | Fanatec GT DD Pro, Podium DD1/DD2, ClubSport, CSL Elite · Logitech G29, G920, G923, G PRO, G27, G25 · Thrustmaster T150 to T818 · MOZA R3 to R21 · Simucube 2 · Simagic · Asetek, Cammus, VRS |
+| ✅ **Confirmed** (tested on real hardware) | Fanatec **CSL DD 8 Nm** · Logitech **G29** · Logitech **G27** · MOZA **R5** |
+| 📄 **Documented** (standard DirectInput, not tested yet) | Fanatec GT DD Pro, Podium DD1/DD2, ClubSport, CSL Elite · Logitech G920, G923, G PRO, G25 · Thrustmaster T150 to T818 · MOZA R3, R9 to R21 · Simucube 2 · Simagic · Asetek, Cammus, VRS |
 | 🧪 **Experimental** | PXN · the "computed torque" output mode |
 | ❌ **Not supported** | Logitech TRUEFORCE (proprietary SDK; normal force feedback still works) |
 
@@ -137,6 +137,10 @@ docs/                guides, images and developer notes
 ```
 
 `build.bat` builds everything into `dist\` and runs the tests.
+
+## Thanks
+
+A big thank you to **TheNobunaga**, who tirelessly tested the mod build after build and kept sending honest, detailed feedback. The Logitech G29, Logitech G27 and MOZA R5 moved to *confirmed* thanks to his testing.
 
 ## Creator
 

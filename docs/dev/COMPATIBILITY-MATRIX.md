@@ -26,11 +26,13 @@ Rules:
 | Fanatec Gran Turismo DD Pro (same ID 0EB7:0020) | D | DirectInput | Same USB ID as the CSL DD, never tested. |
 | Fanatec Podium DD1 / DD2, ClubSport V2/V2.5, CSL Elite, CSR Elite | D | DirectInput | Fanatec documents FFB as standard DirectInput. |
 | Fanatec ClubSport DD / DD+ | D / U | DirectInput | No USB ID in the catalog yet: works through capabilities, peak torque must be set. |
-| Logitech G29 | D | DirectInput (Logitech driver) | A user report exists in the project history but is not confirmed. |
-| Logitech G920, G923, G27, G25, Driving Force GT, PRO Racing Wheel | D | DirectInput (Logitech driver) | G HUB centering spring must be off. |
+| Logitech G29 | **C** | DirectInput (Logitech driver) | Tested and confirmed working by TheNobunaga. G HUB centering spring must be off. |
+| Logitech G27 | **C** | DirectInput (Logitech driver) | Tested and confirmed working by TheNobunaga. G HUB centering spring must be off. |
+| Logitech G920, G923, G25, Driving Force GT, PRO Racing Wheel | D | DirectInput (Logitech driver) | G HUB centering spring must be off. |
 | Logitech TRUEFORCE | **N** | Proprietary SDK (partners only) | Standard FFB still works. |
 | Thrustmaster T128, T150, TMX, T248, T300 RS, TX, T500 RS, T-GT, TS-XW, TS-PC, T818 | D | DirectInput (Thrustmaster driver) | Peak torque per model not in the catalog: calibrate. T150: PS3 switch position on PC. |
-| MOZA R3, R5, R9, R12, R16, R21 | D | DirectInput | Recognised by product name; set the peak torque. |
+| MOZA R5 | **C** | DirectInput | Tested and confirmed working by TheNobunaga. Set the peak torque. |
+| MOZA R3, R9, R12, R16, R21 | D | DirectInput | Recognised by product name; set the peak torque. |
 | MOZA via MOZA Racing SDK | T | MOZA SDK | The SDK has FFB functions; licence and benefit not evaluated. Not implemented. |
 | Simucube 2 Sport / Pro / Ultimate | D | DirectInput | True Drive "DirectInput effect fine tuning" sliders can mute spring/damper: keep them up or use computed torque. |
 | Simagic Alpha / Alpha Mini / Alpha Ultimate (0483:0522), EVO / Sport / Pro (3670:0500-0502) | D | DirectInput (HID PID) | Set the peak torque. |

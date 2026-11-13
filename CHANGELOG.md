@@ -1,5 +1,8 @@
 # Changelog
 
+## [Unreleased] - 2026-11-13
+- **Docs:** Logitech G29, Logitech G27 and MOZA R5 are now listed as **confirmed** (tested on real hardware) in the README and the compatibility matrix. Thank you to TheNobunaga for tirelessly testing the mod and for all the feedback.
+
 ## [0.14.0] - 2026-11-11 (beta)
 Automatic HidHide setup for every force feedback wheel, and a choice to remove HidHide when uninstalling.
 
