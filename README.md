@@ -18,6 +18,8 @@
   <a href="docs/TROUBLESHOOTING.md">Troubleshooting</a>
 </p>
 
+> 🙏 **Special thanks to TheNobunaga**, who tirelessly tested the mod build after build and kept sending honest, detailed feedback. Thanks to him, the Logitech **G29**, Logitech **G27** and MOZA **R5** are now confirmed working.
+
 ---
 
 ## The problem
@@ -137,10 +139,6 @@ docs/                guides, images and developer notes
 ```
 
 `build.bat` builds everything into `dist\` and runs the tests.
-
-## Thanks
-
-A big thank you to **TheNobunaga**, who tirelessly tested the mod build after build and kept sending honest, detailed feedback. The Logitech G29, Logitech G27 and MOZA R5 moved to *confirmed* thanks to his testing.
 
 ## Creator
 
