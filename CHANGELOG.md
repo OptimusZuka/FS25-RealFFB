@@ -37,7 +37,7 @@ Torque calibration safety, MOZA models, force feedback that no longer stays off 
 - The starter vibration stops after 6 s even if the game stays in "starting". Switching vehicles resets the engine state, so there is no false "catch" from the previous vehicle.
 
 ### Tests
-- 72 new automated tests (simulated, no hardware): MOZA catalogue and identification, ceiling rejection, bypass attempts through configuration files and the force multiplier, final output magnitude, persistence of manual calibration, sum ceiling, engine start sequence for tractor and truck, repeated starts, vehicle switch, engine sliders, FFB activation/telemetry loss/vehicle exit transitions, dedicated-server parsing, centering and impacts.
+- 67 new automated checks (simulated, no hardware): MOZA catalogue and identification, ceiling rejection, bypass attempts through configuration files and the force multiplier, final output magnitude, persistence of manual calibration, sum ceiling, engine start sequence for tractor and truck, repeated starts, vehicle switch, engine sliders, FFB activation/telemetry loss/vehicle exit transitions, dedicated-server parsing, centering and impacts.
 - **Not tested on physical hardware:** MOZA bases (the R5 data comes from a tester's diagnostic report), the new engine start feel, dedicated-server play.
 
 ## [0.14.0] - 2026-11-11 (beta)
