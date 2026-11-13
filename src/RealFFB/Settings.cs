@@ -28,6 +28,7 @@ namespace FS25RealFFB
         public double Bumps = 0.60;
         public double Texture = 0.60;
         public double Engine = 0.50;
+        public double EngineStart = 0.70;  // 0.15: arranque (motor de arranque + "pegou"), independente da vibracao do motor
         public double RefSpeedKmh = 30;
         public bool InvertBumps = false;
         public bool AltInterface = false;
@@ -46,12 +47,24 @@ namespace FS25RealFFB
         public int[] PedalRel = { 0, 0, 0 };           // valor com o pedal solto
         public int[] PedalFull = { 10000, 10000, 10000 }; // valor com o pedal a fundo
 
+        // 0.15: pico do HARDWARE do modelo identificado (catalogo). Definido ao abrir o volante, nunca gravado.
+        // 0 = modelo nao identificado (sem teto verificado).
+        public double HwPeakNm;
+        public string HwModel = "";
+        // 0.15: modelo confirmado pelo utilizador para um volante que a app nao identifica sozinha (gravado)
+        public string UserModel = "", UserModelDevice = "";
+        public double UserModelPeakNm;
+
+        // 0.15: pico usado nos calculos: o configurado, mas nunca acima do pico do hardware identificado
+        // (ultima linha de defesa: mesmo que BaseNm venha errado de um ficheiro, perfil ou migracao).
+        public double PeakNm { get { return HwPeakNm > 0 ? Math.Min(BaseNm, HwPeakNm) : Math.Min(BaseNm, TorqueLimits.GenericCeilingNm); } }
+
         // 0.13: teto fisico = min("Maximum force", pico do volante)
-        public double ForceCapNm { get { return Math.Min(MaxNm, BaseNm); } }
+        public double ForceCapNm { get { return Math.Min(MaxNm, PeakNm); } }
 
         // 0.13: pico efetivo = pico do volante x "FF %" do fabricante (se o menu da base estiver a 50 %, um pedido
         // de 1 Nm tem de usar o dobro da escala). Com 100 % e igual a antes.
-        public double EffectivePeakNm { get { return Math.Max(0.5, BaseNm * Math.Max(10, Math.Min(100, VendorFfPercent)) / 100.0); } }
+        public double EffectivePeakNm { get { return Math.Max(0.5, PeakNm * Math.Max(10, Math.Min(100, VendorFfPercent)) / 100.0); } }
 
         public int ToMag(double nm)
         {
@@ -78,7 +91,7 @@ namespace FS25RealFFB
         public void SetTuning(double[] t)
         {
             if (t == null || t.Length < 9) return;
-            MaxNm = Math.Max(0.5, Math.Min(BaseNm, t[0]));
+            MaxNm = Math.Max(0.5, Math.Min(PeakNm, t[0]));
             Center = Clamp01(t[1]); Damping = Clamp01(t[2]); Friction = Clamp01(t[3]);
             Bumps = Clamp01(t[4]); Texture = Clamp01(t[5]); Engine = Clamp01(t[6]);
             RefSpeedKmh = Math.Max(5, Math.Min(80, t[7]));
@@ -114,7 +127,10 @@ namespace FS25RealFFB
             get { return AppInfo.DataFile("RealFFB.ini"); }
         }
 
-        public void Save()
+        public void Save() { File.WriteAllText(FilePath, ToText()); }
+
+        // 0.15: texto do ficheiro (separado de Save para os testes, sem tocar no disco)
+        public string ToText()
         {
             CultureInfo c = CultureInfo.InvariantCulture;
             StringBuilder sb = new StringBuilder();
@@ -126,6 +142,10 @@ namespace FS25RealFFB
             sb.AppendLine("PreferredInstance=" + PreferredInstance);
             sb.AppendLine("VendorFfPercent=" + VendorFfPercent.ToString(c));
             sb.AppendLine("TorqueSource=" + TorqueSource);
+            sb.AppendLine("EngineStart=" + EngineStart.ToString(c));
+            sb.AppendLine("UserModel=" + UserModel);
+            sb.AppendLine("UserModelDevice=" + UserModelDevice);
+            sb.AppendLine("UserModelPeakNm=" + UserModelPeakNm.ToString(c));
             sb.AppendLine("OutputMode=" + OutputMode);
             sb.AppendLine("Language=" + Language);
             double[] tu = GlobalTuning ?? GetTuning();
@@ -150,17 +170,25 @@ namespace FS25RealFFB
             sb.AppendLine("RealisticCentering=" + (RealisticCentering ? "1" : "0"));
             for (int i = 0; i < 3; i++)
                 sb.AppendLine("Pedal" + i + "=" + PedalAxis[i] + ";" + PedalRel[i] + ";" + PedalFull[i]);
-            File.WriteAllText(FilePath, sb.ToString());
+            return sb.ToString();
         }
 
         public static Settings Load()
+        {
+            string[] lines;
+            try { if (!File.Exists(FilePath)) return new Settings(); lines = File.ReadAllLines(FilePath); }
+            catch { return new Settings(); }
+            return FromLines(lines);
+        }
+
+        // 0.15: le o texto do ficheiro (importacao/migracao: valores fora dos limites sao corrigidos aqui)
+        public static Settings FromLines(string[] lines)
         {
             Settings s = new Settings();
             bool sawVersion = false;
             try
             {
-                if (!File.Exists(FilePath)) return s;
-                foreach (string raw in File.ReadAllLines(FilePath))
+                foreach (string raw in lines)
                 {
                     int eq = raw.IndexOf('=');
                     if (eq <= 0) continue;
@@ -171,7 +199,11 @@ namespace FS25RealFFB
                     switch (k)
                     {
                         case "SettingsVersion": sawVersion = isNum && (int)d == Version; break;
-                        case "BaseNm": if (isNum) s.BaseNm = Math.Max(1, Math.Min(25, d)); break;
+                        case "BaseNm": if (isNum) s.BaseNm = Math.Max(TorqueLimits.MinNm, Math.Min(TorqueLimits.GenericCeilingNm, d)); break;
+                        case "EngineStart": if (isNum) s.EngineStart = Clamp01(d); break;
+                        case "UserModel": s.UserModel = v; break;
+                        case "UserModelDevice": s.UserModelDevice = v; break;
+                        case "UserModelPeakNm": if (isNum) s.UserModelPeakNm = Math.Max(0, Math.Min(TorqueLimits.GenericCeilingNm, d)); break;
                         case "BaseDevice": s.BaseDevice = v; break;
                         case "ForceScale": if (isNum) { s.ForceScale = Math.Max(0.25, Math.Min(4, d)); s.ForceScaleSaved = true; } break;
                         case "PreferredWheel": s.PreferredWheel = v; break;

@@ -24,9 +24,10 @@ namespace FS25RealFFB
 
         // Explicacao ao passar o rato (chave = titulo em ingles; o texto e traduzido em Lang.cs)
         private static readonly Dictionary<string, string> Help = new Dictionary<string, string> {
-            { "Wheel torque (peak)", "Real peak torque of your wheel (CSL DD 8 Nm, G29 2.2 Nm). Must match the hardware so the forces come out right." },
+            { "Wheel torque (peak)", "Real peak torque of your wheel base (CSL DD 8 Nm, G29 2.2 Nm, MOZA R5 5.5 Nm). It is NOT the force you want: a higher value makes all forces WEAKER. For an identified model it cannot go above the manufacturer's value." },
             { "Force multiplier", "Raises or lowers ALL forces in proportion (centering, weight, terrain and engine). The quickest way to make everything lighter or stronger." },
             { "Maximum force", "Safety limit: the sum of the forces never goes above this value." },
+            { "Engine start", "Starter motor and the moment the engine catches. Scaled by vehicle type: strong in tractors (engine bolted to the chassis), light in trucks and pickups (suspended cab). 0 = off; engine vibration is a separate slider." },
             { "Centering / self-aligning", "How strongly the wheel returns to centre while moving. Grows with speed; zero at a standstill." },
             { "Damping", "Resistance to fast wheel movements while driving. Higher = calmer, slower wheel." },
             { "Standstill weight (friction)", "Weight of the hydraulic steering when stopped or crawling. Fades as speed rises." },
@@ -241,7 +242,14 @@ namespace FS25RealFFB
             enableBox.Font = Theme.Bold(10.5f); enableBox.Cursor = Cursors.Hand;
             enableBox.Margin = new Padding(8, 0, 0, 0);
             StyleToggle();
-            enableBox.CheckedChanged += delegate { StyleToggle(); Log(enableBox.Checked ? "FFB on." : "FFB off."); };
+            enableBox.CheckedChanged += delegate
+            {
+                // 0.15: o motivo de o FFB estar desligado fica sempre registado e visivel no painel ao vivo
+                if (enableBox.Checked) ffbOffReason = "";
+                else if (!panicking) ffbOffReason = "turned off with the FFB button";
+                StyleToggle();
+                Log(enableBox.Checked ? "FFB on." : "FFB off (" + ffbOffReason + ").");
+            };
 
             pinBtn = Theme.Btn(L.T("Pin on top"), 110, 36, false);
             pinBtn.Margin = new Padding(8, 0, 0, 0);
@@ -401,8 +409,15 @@ namespace FS25RealFFB
             flow.Controls.Add(wheelInfo);
 
             flow.Controls.Add(Theme.Section(L.T("Force"), W));
-            flow.Controls.Add(Slider("Wheel torque (peak)", 10, 250, (int)Math.Round(settings.BaseNm * 10),
-                delegate(int v) { settings.BaseNm = v / 10.0; settings.TorqueSource = "user"; UpdateMaxSlider(); }, delegate(int v) { return (v / 10.0).ToString("0.0") + " Nm"; }));
+            flow.Controls.Add(Slider("Wheel torque (peak)", 10, (int)Math.Round(TorqueLimits.GenericCeilingNm * 10), (int)Math.Round(settings.BaseNm * 10),
+                delegate(int v)
+                {
+                    // 0.15: o slider ja tem como maximo o pico do hardware; a validacao repete-se aqui
+                    string why;
+                    double ok = TorqueLimits.Validate(v / 10.0, settings.HwPeakNm, settings.HwModel, out why);
+                    settings.BaseNm = ok; settings.TorqueSource = "user"; UpdateMaxSlider();
+                    if (why.Length > 0) Log("Wheel torque (peak): " + (v / 10.0).ToString("0.0", CultureInfo.InvariantCulture) + " Nm not accepted - " + why);
+                }, delegate(int v) { return (v / 10.0).ToString("0.0") + " Nm"; }));
             flow.Controls.Add(Slider("Force multiplier", 25, 400, (int)Math.Round(settings.ForceScale * 100),
                 delegate(int v) { settings.ForceScale = v / 100.0; }, Pct));
             flow.Controls.Add(Slider("Maximum force", 5, (int)(settings.BaseNm * 10), (int)(settings.MaxNm * 10),
@@ -423,6 +438,8 @@ namespace FS25RealFFB
                 delegate(int v) { settings.Texture = v / 100.0; }, Pct));
             flow.Controls.Add(Slider("Engine vibration", 0, 100, (int)(settings.Engine * 100),
                 delegate(int v) { settings.Engine = v / 100.0; }, Pct));
+            flow.Controls.Add(Slider("Engine start", 0, 100, (int)Math.Round(settings.EngineStart * 100),
+                delegate(int v) { settings.EngineStart = v / 100.0; try { settings.Save(); } catch { } }, Pct));
             invertBox = Theme.Check(L.T("Invert bump direction"), settings.InvertBumps, W);
             invertBox.CheckedChanged += delegate { settings.InvertBumps = invertBox.Checked; if (!loadingProfile) TuningChanged(); };
             flow.Controls.Add(invertBox);
@@ -746,13 +763,36 @@ namespace FS25RealFFB
                 + (info.Drive == WheelDrive.Gear ? "gear-driven" : info.Drive == WheelDrive.Belt ? "belt-driven" : "direct drive")
                 + (info.GearProfile ? " (profile with internal friction: standstill weight, smoother terrain, faster centering)" : " (direct drive profile)")
                 + (info.Known ? "" : " - not validated on this wheel"));
+            // 0.15: teto do hardware. Modelo identificado pelo catalogo (ID USB ou modelo exato no nome) ou confirmado
+            // pelo utilizador para este volante. Sem nenhum dos dois: sem teto verificado (o pico fica "assumido").
+            CatalogEntry ce = DeviceCatalog.Find(wheel.OpenVid, wheel.OpenPid, wheel.OpenProduct);
+            if (ce.CeilingNm > 0) { settings.HwPeakNm = ce.CeilingNm; settings.HwModel = ce.Model; }
+            else if (settings.UserModelDevice == id && settings.UserModelPeakNm > 0) { settings.HwPeakNm = settings.UserModelPeakNm; settings.HwModel = settings.UserModel + " (chosen by you)"; }
+            else { settings.HwPeakNm = 0; settings.HwModel = ""; }
+            SetSliderMax("Wheel torque (peak)", (int)Math.Round(TorqueLimits.Ceiling(settings.HwPeakNm) * 10));
+            Log(settings.HwPeakNm > 0
+                ? string.Format(CultureInfo.InvariantCulture, "Hardware limit: {0} = {1:0.0} Nm peak ({2}). The configured peak can never be higher.", settings.HwModel, settings.HwPeakNm,
+                    ce.CeilingNm > 0 ? (ce.IdentifiedBy == "usb" ? "identified by USB ID" : "identified by device name") : "model chosen by you")
+                : "Hardware limit: model not identified - no verified ceiling. Choose the model in Hardware > Calibrate force.");
+
             if (settings.BaseDevice == id)
             {
                 // instalacoes anteriores a 0.6.1 nao tinham o multiplicador: valor inicial por marca
                 if (settings.ForceScaleSaved == false) settings.ForceScale = 1.0;
+                // 0.15: migracao / ficheiro de configuracao: um pico acima do hardware nunca e aceite, e a correcao
+                // e explicada (antes, um MOZA R5 de 5,5 Nm ficava com 21 Nm e as forcas saiam a ~1/4).
+                if (settings.HwPeakNm > 0 && settings.BaseNm > settings.HwPeakNm + 1e-9)
+                    CorrectPeak(string.Format(CultureInfo.InvariantCulture, "the configured peak torque was {0:0.0} Nm, above the {1:0.0} Nm of the {2}", settings.BaseNm, settings.HwPeakNm, settings.HwModel));
+                else if (settings.HwPeakNm > 0 && settings.TorqueSource == "assumed")
+                    CorrectPeak(string.Format(CultureInfo.InvariantCulture, "the {0} is now identified ({1:0.0} Nm); the assumed value was replaced", settings.HwModel, settings.HwPeakNm));
+                else
+                {
+                    string warn = TorqueLimits.BelowSpecWarning(settings.BaseNm, settings.HwPeakNm, settings.HwModel);
+                    if (warn.Length > 0) Log("WARNING: " + warn);
+                }
                 return;
             }
-            double nm = info.Known ? info.PeakNm : 0;
+            double nm = settings.HwPeakNm > 0 ? settings.HwPeakNm : (info.Known ? info.PeakNm : 0);
             // Desconhecido: assumir uma base forte. As forcas sao percentagem deste valor, por isso o motor
             // recebe pouco (antes 3 Nm assumidos = 100% do motor numa base de 15-25 Nm).
             settings.BaseNm = nm > 0 ? nm : WheelCatalog.UnknownNm;
@@ -809,10 +849,36 @@ namespace FS25RealFFB
         {
             NoWheelTrackBar t;
             if (!sliders.TryGetValue("Maximum force", out t)) return;
-            int max = Math.Max(6, (int)Math.Round(settings.BaseNm * 10));
-            if (settings.MaxNm > settings.BaseNm) settings.MaxNm = settings.BaseNm;
+            int max = Math.Max(6, (int)Math.Round(settings.PeakNm * 10));
+            if (settings.MaxNm > settings.PeakNm) settings.MaxNm = settings.PeakNm;
             t.Maximum = max;
             if (t.Value > max) t.Value = max;
+        }
+
+        // 0.15: pico configurado corrigido para o pico do hardware, com explicacao (nunca em silencio)
+        private void CorrectPeak(string why)
+        {
+            double old = settings.BaseNm;
+            settings.BaseNm = settings.HwPeakNm;
+            settings.TorqueSource = "catalog";
+            SetSlider("Wheel torque (peak)", (int)Math.Round(settings.BaseNm * 10));
+            settings.TorqueSource = "catalog";
+            UpdateMaxSlider();
+            try { settings.Save(); } catch { }
+            Log(string.Format(CultureInfo.InvariantCulture, "Peak torque corrected: {0:0.0} -> {1:0.0} Nm ({2}).", old, settings.BaseNm, why));
+            BeginInvoke(new Action(delegate
+            {
+                MessageBox.Show(this, L.F("Wheel torque (peak) was changed from {0} Nm to {1} Nm.\n\nReason: {2}.\n\nThis value must match the wheel base so the forces come out right. To make the forces stronger or lighter use 'Force multiplier' or 'Maximum force'.",
+                    old.ToString("0.0"), settings.BaseNm.ToString("0.0"), why), "FS25 RealFFB", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }));
+        }
+
+        private void SetSliderMax(string title, int max)
+        {
+            NoWheelTrackBar t;
+            if (!sliders.TryGetValue(title, out t)) return;
+            if (t.Value > max) t.Value = max;
+            t.Maximum = max;
         }
 
         private void SetSlider(string title, int value)
@@ -1226,6 +1292,9 @@ namespace FS25RealFFB
             engine.WheelPos = (wheel != null && wheel.IsOpen) ? wheel.Axes[0] / 10000.0 : double.NaN;
             engine.CenterFactor = CenteringNow(f, age);
             ForceRequest req = engine.Update(f, age, enableBox.Checked && device.IsOpen, dt, settings);
+            if (!enableBox.Checked) req.State = "FFB off - " + ffbOffReason;
+            else if (!device.IsOpen) req.State = "FFB on, but no wheel is open";
+            LogTransitions(f, age, req);
             req = mixer.Finish(req, settings, dt);
             oscGuard.Apply(req, engine.WheelPos, dt);
             if (oscGuard.Trips != lastOscTrips) { lastOscTrips = oscGuard.Trips; Log("SAFETY: wheel oscillation detected - centering halved and damping raised for 2 s."); }
@@ -1281,11 +1350,47 @@ namespace FS25RealFFB
             {
                 nextStatsLogMs = now + 5000;
                 Log(string.Format(CultureInfo.InvariantCulture,
-                    "[stats] {20} | bridge {16:0}/s steer {17:+0.00;-0.00} thr {18:0.00} brk {19:0.00} | {0:0} Hz | {1:0.0} km/h | {2:0.0} t | surface {3} | wheels {4}/{5} | steer {6:0.00} | vAcc {7:0.0} | rollAcc {8:0.0} | susp {9:0.00} || spring {10:0.00} Nm | damper {11:0.00} | friction {12:0.00} | bump {13:+0.00;-0.00} | texture {14:0.00} | gain {15:0%} | springK {21} dampK {22} off {23} pos {24:+0.000;-0.000}",
+                    "[stats] ffb {25} | ses {26} | engine {27} mst {28} {29:0.00} Nm {30:0} Hz | {20} | bridge {16:0}/s steer {17:+0.00;-0.00} thr {18:0.00} brk {19:0.00} | {0:0} Hz | {1:0.0} km/h | {2:0.0} t | surface {3} | wheels {4}/{5} | steer {6:0.00} | vAcc {7:0.0} | rollAcc {8:0.0} | susp {9:0.00} || spring {10:0.00} Nm | damper {11:0.00} | friction {12:0.00} | bump {13:+0.00;-0.00} | texture {14:0.00} | gain {15:0%} | springK {21} dampK {22} off {23} pos {24:+0.000;-0.000}",
                     telemetryHz, f.SpeedKmh, f.MassT, f.Surface, f.Contacts, f.Wheels, f.Steer, f.VertAcc, f.RollAcc, f.SuspSpreadRate,
                     o.SpringNm, o.DamperNm, o.FrictionNm, o.BumpNm, o.TextureNm, o.Gain, bridgeRate, steerOut, thrOut, brkOut,
                     wheel != null ? wheel.Health : "no wheel", o.SpringCoef, o.DamperCoef, o.SpringOffset,
-                    (wheel != null && wheel.IsOpen) ? wheel.Axes[0] / 10000.0 : 0.0));
+                    (wheel != null && wheel.IsOpen) ? wheel.Axes[0] / 10000.0 : 0.0,
+                    enableBox.Checked ? "on" : "OFF (" + ffbOffReason + ")", f.Session.Length > 0 ? f.Session : "?",
+                    engine.EngineType.Name, f.MotorState, o.EngineNm, lastReq != null ? lastReq.EngineHz : 0));
+            }
+        }
+
+        // 0.15: regista as transicoes que explicam o comportamento do FFB: telemetria perdida/recuperada, entrar e
+        // sair de um veiculo, tipo de sessao e estado do motor (com as forcas do motor nesse instante).
+        private void LogTransitions(TelemetryFrame f, double age, ForceRequest req)
+        {
+            bool telOk = f != null && age < 300;
+            if (telOk != logTelOk)
+            {
+                logTelOk = telOk;
+                Log(telOk ? "Telemetry: receiving." : string.Format(CultureInfo.InvariantCulture, "Telemetry: lost (last frame {0:0} ms ago) - forces fade out.", age));
+            }
+            if (!telOk) return;
+            string veh = f.Active ? (f.Vehicle ?? "") : "";
+            if (veh != logVeh)
+            {
+                Log(veh.Length > 0 ? string.Format("Vehicle: entered {0} (category {1}, engine profile {2})", veh, f.Category, EngineProfile.For(f.Category).Name)
+                                   : "Vehicle: left the vehicle or game paused - forces fade out.");
+                logVeh = veh; logMst = -99;
+            }
+            if (f.Session != logSes)
+            {
+                logSes = f.Session;
+                if (f.MpClient) Log("Session: multiplayer client (dedicated server or someone else's game). Wheel contact and surface are not available here: centering uses neutral grip, terrain texture and speed-based impacts are off.");
+                else if (f.Session.Length > 0) Log("Session: " + (f.Session == "host" ? "multiplayer host" : "single player") + ".");
+            }
+            if (f.Active && f.MotorState != logMst)
+            {
+                Log(string.Format(CultureInfo.InvariantCulture, "Engine: state {0} -> {1} ({2}) | rpm {3:0} | engine force {4:0.00} Nm at {5:0} Hz",
+                    logMst == -99 ? "?" : logMst.ToString(), f.MotorState,
+                    f.MotorState == 2 ? "starting" : f.MotorState == 3 ? "running" : f.MotorState == 1 ? "ignition" : f.MotorState == 0 ? "off" : "unknown",
+                    f.Rpm, req.EngineNm, req.EngineHz));
+                logMst = f.MotorState;
             }
         }
 
@@ -1454,10 +1559,17 @@ namespace FS25RealFFB
 
         private double lastSentGain;
         private int lastOscTrips;
+        // 0.15: porque e que o FFB esta desligado (mostrado no painel ao vivo e no registo)
+        private string ffbOffReason = "not turned on yet (press FFB ON)";
+        private bool panicking;
+        // 0.15: transicoes registadas (para diagnostico: entrada no veiculo, motor, telemetria)
+        private string logVeh = ""; private int logMst = -99; private bool logTelOk; private string logSes = "";
 
         private void Panic(string why)
         {
-            enableBox.Checked = false;
+            ffbOffReason = why;
+            panicking = true;
+            try { enableBox.Checked = false; } finally { panicking = false; }
             engine.Halt();
             mixer.Reset();
             oscGuard.Reset();

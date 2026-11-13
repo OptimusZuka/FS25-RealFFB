@@ -106,6 +106,20 @@ namespace FS25RealFFB
             }
         }
 
+        private static string Manufacturer(int vid, string product)
+        {
+            switch (vid)
+            {
+                case 0x0EB7: return "Fanatec";
+                case 0x046D: return "Logitech";
+                case 0x044F: return "Thrustmaster";
+                case 0x346E: return "MOZA";
+            }
+            string p = (product ?? "").Trim();
+            int sp = p.IndexOf(' ');
+            return p.Length == 0 ? L.T("unknown") : (sp > 0 ? p.Substring(0, sp) : p) + " (" + L.T("from the device name") + ")";
+        }
+
         private void UpdateHardwareInfo()
         {
             if (hwInfo == null) return;
@@ -121,9 +135,21 @@ namespace FS25RealFFB
             sb.AppendLine(wheel.OpenProduct + "  (" + wheel.OpenVid.ToString("X4") + ":" + wheel.OpenPid.ToString("X4") + ")");
             sb.AppendLine(L.T("Interface") + ": DirectInput 8  |  " + L.T("Adapter") + ": " + (adapter != null ? adapter.Name : "-"));
             sb.AppendLine(L.T("Validation") + ": " + DeviceCatalog.LevelText(ce.Validation));
-            sb.AppendLine(string.Format(c, "{0}: {1:0.0} Nm ({2}) | {3}: {4:0} %", L.T("Peak torque"), settings.BaseNm,
+            // 0.15: fabricante, modelo, pico do fabricante, pico configurado e maximo permitido, separados
+            sb.AppendLine(L.T("Manufacturer") + ": " + Manufacturer(wheel.OpenVid, wheel.OpenProduct) + "  |  " + L.T("Model") + ": "
+                + (ce.CeilingNm > 0 ? ce.Model + " (" + (ce.IdentifiedBy == "usb" ? L.T("identified by USB ID") : L.T("identified by device name")) + ")"
+                   : settings.HwPeakNm > 0 ? settings.HwModel
+                   : L.T("not identified")));
+            sb.AppendLine(settings.HwPeakNm > 0
+                ? string.Format(c, "{0}: {1:0.0} Nm{2}", L.T("Manufacturer peak torque"), settings.HwPeakNm, ce.CeilingNm > 0 && ce.Sustained ? " (" + L.T("sustained rating") + ")" : "")
+                : L.T("Manufacturer peak torque") + ": " + L.T("unknown (choose it in Calibrate force)"));
+            sb.AppendLine(string.Format(c, "{0}: {1:0.0} Nm ({2}) | {3}: {4:0} %", L.T("Configured peak torque"), settings.BaseNm,
                 settings.TorqueSource == "catalog" ? L.T("from the catalog") : settings.TorqueSource == "user" ? L.T("set by you") : L.T("ASSUMED - please calibrate"),
                 L.T("Manufacturer FF"), settings.VendorFfPercent));
+            sb.AppendLine(string.Format(c, "{0}: {1:0.0} Nm{2}", L.T("Maximum allowed"), TorqueLimits.Ceiling(settings.HwPeakNm),
+                settings.HwPeakNm > 0 ? "" : " (" + L.T("model not identified") + ")"));
+            string below = TorqueLimits.BelowSpecWarning(settings.BaseNm, settings.HwPeakNm, settings.HwModel);
+            if (below.Length > 0) sb.AppendLine("! " + L.T(below));
             sb.AppendLine();
             sb.AppendLine(L.T("Effects") + ":");
             foreach (string n in Capabilities.Names) sb.AppendLine("   " + n + ": " + StatusMark(wheel.Caps.Get(n)));
@@ -139,6 +165,7 @@ namespace FS25RealFFB
         private void RunWheelTest()
         {
             if (wheel == null || !wheel.IsOpen) { Log("Wheel test: no wheel open."); return; }
+            bool wasOn = enableBox.Checked;
             Panic("wheel test (normal force feedback paused)");
             using (WheelTestWizard w = new WheelTestWizard(wheel, settings, Log))
             {
@@ -147,19 +174,55 @@ namespace FS25RealFFB
             }
             wheel.EmergencyStop();
             UpdateHardwareInfo();
-            Log("Wheel test finished. Turn FFB on again when ready.");
+            RestoreFfbAfter("wheel test", wasOn);
+        }
+
+        // 0.15: depois do teste/calibracao o FFB voltava a ficar desligado ate o utilizador carregar em "FFB ON".
+        // Num relatorio real o testador conduziu com o FFB desligado (ganho 0 %) sem saber porque. Agora volta ao
+        // estado anterior, mas so se estava ligado antes e o volante continua aberto e sem falhas.
+        private void RestoreFfbAfter(string what, bool wasOn)
+        {
+            if (wasOn && wheel != null && wheel.IsOpen)
+            {
+                engine.Halt(); mixer.Reset();
+                enableBox.Checked = true;
+                Log("FFB restored after the " + what + " (it was on before).");
+            }
+            else
+            {
+                ffbOffReason = what + " finished - press FFB ON to start force feedback";
+                Log(wasOn ? "FFB stays off after the " + what + ": the wheel is not open." : "FFB stays off after the " + what + " (it was off before).");
+            }
         }
 
         private void RunCalibration()
         {
             if (wheel == null || !wheel.IsOpen) { Log("Calibration: no wheel open."); return; }
+            bool wasOn = enableBox.Checked;
             Panic("calibration (normal force feedback paused)");
             CatalogEntry ce = DeviceCatalog.Find(wheel.OpenVid, wheel.OpenPid, wheel.OpenProduct);
             using (CalibrationWizard w = new CalibrationWizard(wheel, settings, ce))
             {
                 if (w.ShowDialog(this) == DialogResult.OK)
                 {
-                    settings.BaseNm = w.PeakNm;
+                    // 0.15: o assistente ja limita o valor ao teto; esta verificacao repete-a (nenhum caminho passa o teto)
+                    if (w.ChosenModel != null)
+                    {
+                        // o utilizador confirmou o modelo: o pico desse modelo passa a ser o teto deste volante
+                        settings.UserModel = w.ChosenModel.Model; settings.UserModelPeakNm = w.ChosenModel.PeakNm;
+                        settings.UserModelDevice = wheel.OpenVid.ToString("X4") + ":" + wheel.OpenPid.ToString("X4");
+                        settings.HwPeakNm = w.ChosenModel.PeakNm; settings.HwModel = w.ChosenModel.Model + " (chosen by you)";
+                        Log(string.Format(CultureInfo.InvariantCulture, "Calibration: model confirmed by the user: {0} ({1:0.0} Nm).", w.ChosenModel.Model, w.ChosenModel.PeakNm));
+                    }
+                    string why;
+                    double accepted = TorqueLimits.Validate(w.PeakNm, settings.HwPeakNm, settings.HwModel, out why);
+                    if (why.Length > 0)
+                    {
+                        MessageBox.Show(this, L.F("{0} Nm cannot be used: {1}\n\nThe peak torque was set to {2} Nm.", w.PeakNm.ToString("0.0"), why, accepted.ToString("0.0")),
+                            L.T("Calibrate force"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        Log(string.Format(CultureInfo.InvariantCulture, "Calibration: {0:0.0} Nm rejected ({1}); using {2:0.0} Nm.", w.PeakNm, why, accepted));
+                    }
+                    settings.BaseNm = accepted;
                     settings.VendorFfPercent = w.VendorFf;
                     settings.TorqueSource = "user";
                     SetSlider("Wheel torque (peak)", (int)Math.Round(settings.BaseNm * 10));
@@ -167,10 +230,13 @@ namespace FS25RealFFB
                     UpdateMaxSlider();
                     try { settings.Save(); } catch { }
                     Log(string.Format(CultureInfo.InvariantCulture, "Calibration: peak {0:0.0} Nm, manufacturer FF {1:0} %.", settings.BaseNm, settings.VendorFfPercent));
+                    string warn = TorqueLimits.BelowSpecWarning(settings.BaseNm, settings.HwPeakNm, settings.HwModel);
+                    if (warn.Length > 0) Log("WARNING: " + warn);
                 }
             }
             wheel.EmergencyStop();
             UpdateHardwareInfo();
+            RestoreFfbAfter("calibration", wasOn);
         }
 
         private void ExportCompatibilityReport()
