@@ -3,6 +3,43 @@
 ## [Unreleased] - 2026-11-13
 - **Docs:** Logitech G29, Logitech G27 and MOZA R5 are now listed as **confirmed** (tested on real hardware) in the README and the compatibility matrix. Thank you to TheNobunaga for tirelessly testing the mod and for all the feedback.
 
+## [0.15.0] - 2026-11-13 (beta)
+Torque calibration safety, MOZA models, force feedback that no longer stays off unnoticed, dedicated servers, and a more realistic engine start. Found through a tester's MOZA R5 reports.
+
+### What was wrong
+- **MOZA bases were not identified by model.** The catalogue only knew the brand, so a MOZA R5 got the "unknown base" value (20 Nm) and ended at 21 Nm. The app then sent about a quarter of the intended force, and the guided test did not move the wheel.
+- **Force feedback stayed OFF after the wheel test or the calibration.** Both pause force feedback and asked the user to switch it on again. A tester drove with FFB off (gain 0 %) without knowing why.
+- **On a dedicated server the game reports every wheel "in the air".** Wheel physics runs on the server, so the client never gets ground contact. The app took that as airborne and nearly removed the centering. Network speed steps were also read as impacts several times per second.
+- **Engine start: the same strong sequence for every vehicle.** Starter vibration, a strong jolt when the engine catches, then idle vibration were all intentional (0.12), but at tractor strength in trucks and pickups too, and the "catch" was a strong buzz at idle frequency.
+- "Maximum force" capped each effect, but the engine vibration was not part of the total, so the sum could exceed it.
+
+### Torque calibration and hardware limit
+- MOZA models in the catalogue with the manufacturer's torque (mozaracing.com): R3 3.9, R5 5.5, R9 9, R12 12, R16 16, R21 21 Nm (R21 Ultra: sustained rating). The R5 is identified by its USB ID (from a tester's report); the others by the exact model token in the device name. The brand alone never identifies a model.
+- **Hard ceiling:** for an identified model the configured peak torque can never be higher than the manufacturer's peak. Enforced in the slider (maximum), the calibration dialog (maximum and validation), configuration import and migration, and in the force calculation itself (the effective peak never exceeds the hardware value).
+- A value above the hardware is corrected with an explanation (log and message), never silently. A lower value is accepted (limited bases, e.g. CSL DD without Boost Kit) with a warning.
+- Unknown models: still assume 20 Nm, so forces start low, and the calibration dialog lets you choose your model from the catalogue. The chosen model then becomes that wheel's ceiling.
+- Hardware page shows manufacturer, model and how it was identified, the manufacturer's peak, the configured peak and the maximum allowed.
+- "Maximum force" is now a true ceiling for the sum of centering, friction, bumps, texture and engine. Vibrations keep at least 25 % of it.
+
+### Force feedback state
+- After the wheel test or the calibration, FFB returns to the state it had before, but only if the wheel is still open.
+- Why FFB is off is always shown in the live panel and logged ("FFB off - wheel test finished...", "turned off with the FFB button", "STOP button"...).
+- The log records telemetry lost and restored, entering and leaving vehicles, session type and every engine state change, with the engine force at that moment. Stats lines include the FFB state and reason.
+
+### Dedicated servers (multiplayer client)
+- The mod reports the session type (single player, host, client).
+- On a client, missing wheel contact is treated as **unknown**, not "in the air": centering works with neutral grip. No ground contact or surface is invented, so terrain texture and speed-based impact detection are off there (documented limitation). Single player is unchanged.
+
+### Engine start and engine feel
+- New **Engine start** slider (starter motor and catch), separate from **Engine vibration**. Each can be set to 0 without affecting the rest of the force feedback.
+- Engine feedback depends on the vehicle type (an approximation, because the game does not expose engine mounting): full in tractors (engine bolted to the chassis), less in large tractors, harvesters and loaders, about half in trucks (suspended cab), little in cars and pickups.
+- The catch is now a short low-frequency rock of the engine on its mounts (about 10 Hz) before it settles into idle. Before, it was a strong buzz at idle frequency.
+- The starter vibration stops after 6 s even if the game stays in "starting". Switching vehicles resets the engine state, so there is no false "catch" from the previous vehicle.
+
+### Tests
+- 72 new automated tests (simulated, no hardware): MOZA catalogue and identification, ceiling rejection, bypass attempts through configuration files and the force multiplier, final output magnitude, persistence of manual calibration, sum ceiling, engine start sequence for tractor and truck, repeated starts, vehicle switch, engine sliders, FFB activation/telemetry loss/vehicle exit transitions, dedicated-server parsing, centering and impacts.
+- **Not tested on physical hardware:** MOZA bases (the R5 data comes from a tester's diagnostic report), the new engine start feel, dedicated-server play.
+
 ## [0.14.0] - 2026-11-11 (beta)
 Automatic HidHide setup for every force feedback wheel, and a choice to remove HidHide when uninstalling.
 

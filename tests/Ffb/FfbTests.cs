@@ -58,6 +58,12 @@ namespace FS25RealFFB.Tests
             CatalogTests();
             ClassificationTests();
             SettingsScaling();
+            MozaCatalog();
+            TorqueCeiling();
+            MixerSumCeiling();
+            EngineStartSequence();
+            FfbStateTransitions();
+            DedicatedServer();
             Console.WriteLine("passed " + pass + ", failed " + fail);
             foreach (string f in failures) Console.WriteLine("  - " + f);
             return fail == 0 ? 0 : 1;
@@ -284,8 +290,8 @@ namespace FS25RealFFB.Tests
             Ok("catalog: G29 quirks merged with Logitech defaults", g29.Quirks.SpringFloor1 && g29.Quirks.SpringBoost == 1800 && g29.Drive == WheelDrive.Gear);
             CatalogEntry lgUnknown = DeviceCatalog.Find(0x046D, 0x1234);
             Ok("catalog: unknown Logitech gets vendor quirks but is not 'known'", !lgUnknown.Known && lgUnknown.Quirks.StopAllOnOpen);
-            CatalogEntry moza = DeviceCatalog.Find(0x1111, 0x2222, "MOZA R9 Base");
-            Ok("catalog: name hint (MOZA) -> Documented, not known torque", moza.Validation == ValidationLevel.Documented && moza.PeakNm == 0);
+            CatalogEntry moza = DeviceCatalog.Find(0x1111, 0x2222, "MOZA Farming Control System");
+            Ok("catalog: MOZA brand alone -> Documented, no torque and no ceiling", moza.Validation == ValidationLevel.Documented && moza.PeakNm == 0 && moza.CeilingNm == 0);
             CatalogEntry none = DeviceCatalog.Find(0x9999, 0x9999, "Some Wheel");
             Ok("catalog: unknown device -> Unknown level, assumed torque", none.Validation == ValidationLevel.Unknown && !none.Known);
             WheelInfo wi = WheelCatalog.Find(0x9999, 0x9999);
@@ -303,6 +309,269 @@ namespace FS25RealFFB.Tests
             Ok("classify: handbrake by name", DirectInputProvider.Classify(0x14, 0, false, "USB Handbrake") == DeviceKind.Handbrake);
             Ok("classify: gamepad", DirectInputProvider.Classify(0x15, 0, false, "Controller") == DeviceKind.Gamepad);
             Ok("classify: non-FFB 'wheel' is never a wheel base", DirectInputProvider.Classify(0x16, 1, false, "Wheel rim buttons") != DeviceKind.Wheelbase);
+        }
+
+
+        // ------------------------------------------------------------------ 0.15: catalogo MOZA
+        private static void MozaCatalog()
+        {
+            CatalogEntry r5 = DeviceCatalog.Find(0x346E, 0x0004, "MOZA R5 Base");
+            Ok("moza: R5 by USB ID (tester's report) = 5.5 Nm", r5.Known && r5.PeakNm == 5.5 && r5.IdentifiedBy == "usb" && r5.CeilingNm == 5.5);
+            Ok("moza: R5 is Documented, not Confirmed", r5.Validation == ValidationLevel.Documented);
+            string[] names = { "MOZA R3 Base", "MOZA R5 Base", "MOZA R9 Base", "MOZA R12 Base", "MOZA R16 Base", "MOZA R21 Base" };
+            double[] nm = { 3.9, 5.5, 9, 12, 16, 21 };
+            for (int i = 0; i < names.Length; i++)
+            {
+                CatalogEntry e = DeviceCatalog.Find(0x346E, 0x7FFF, names[i]);
+                Ok("moza: " + names[i] + " = " + nm[i] + " Nm (by device name)", e.Known && e.PeakNm == nm[i] && e.IdentifiedBy == "name" && e.CeilingNm == nm[i]);
+            }
+            Ok("moza: R21 marked as sustained rating", DeviceCatalog.Find(0x346E, 0x7FFF, "MOZA R21 Ultra Base").Sustained);
+            Ok("moza: R5 Pro (6 Nm, not in the catalog) is NOT taken for an R5", DeviceCatalog.Find(0x346E, 0x7FFE, "MOZA R5 Pro Base").CeilingNm == 0);
+            Ok("moza: R12 is not matched by the R1x of another name", DeviceCatalog.Find(0x346E, 0x7FFD, "MOZA R12 Base").PeakNm == 12);
+            Ok("moza: stalk is not a wheel base model", DeviceCatalog.Find(0x346E, 0x0024, "MOZA Multi-function Stalk").CeilingNm == 0);
+            Ok("moza: a model token without the brand is not identified", DeviceCatalog.Find(0x1234, 0x5678, "R9 Base").CeilingNm == 0);
+            Ok("moza: USB ID wins over the name", DeviceCatalog.Find(0x346E, 0x0004, "MOZA R9 Base").PeakNm == 5.5);
+            Ok("catalog: model list for the chooser includes the MOZA R5", DeviceCatalog.ModelsWithTorque().Exists(delegate(CatalogEntry e) { return e.Model == "MOZA R5" && e.PeakNm == 5.5; }));
+        }
+
+        // ------------------------------------------------------------------ 0.15: teto do binario
+        private static void TorqueCeiling()
+        {
+            string why;
+            Ok("ceiling: R5 rejects 21 Nm -> 5.5 with an explanation", TorqueLimits.Validate(21, 5.5, "MOZA R5", out why) == 5.5 && why.Length > 0);
+            Ok("ceiling: R9 rejects 9.1 Nm", TorqueLimits.Validate(9.1, 9, "MOZA R9", out why) == 9 && why.Length > 0);
+            Ok("ceiling: R9 accepts 9 Nm without a message", TorqueLimits.Validate(9, 9, "MOZA R9", out why) == 9 && why.Length == 0);
+            Ok("ceiling: lower value accepted (limited base) but warned", TorqueLimits.Validate(5, 8, "CSL DD", out why) == 5 && why.Length == 0
+                && TorqueLimits.BelowSpecWarning(5, 8, "CSL DD").Length > 0);
+            Ok("ceiling: NaN rejected", TorqueLimits.Validate(double.NaN, 5.5, "MOZA R5", out why) == 5.5 && why.Length > 0);
+            Ok("ceiling: below minimum rejected", TorqueLimits.Validate(0.2, 5.5, "MOZA R5", out why) == TorqueLimits.MinNm && why.Length > 0);
+            Ok("ceiling: unknown base -> generic 40 Nm ceiling", TorqueLimits.Validate(55, 0, "", out why) == TorqueLimits.GenericCeilingNm && why.Length > 0);
+            Ok("ceiling: unknown base assumes 20 Nm (forces start LOW)", WheelCatalog.UnknownNm == 20.0);
+
+            // configuracao importada com 21 Nm num R5: o pico usado nos calculos nunca passa 5,5
+            Settings s = Settings.FromLines(new string[] { "SettingsVersion=" + Settings.Version, "BaseNm=21", "MaxNm=21", "ForceScale=4" });
+            s.HwPeakNm = 5.5; s.HwModel = "MOZA R5";
+            Ok("ceiling: imported 21 Nm on an R5 -> effective peak 5.5", s.PeakNm == 5.5);
+            Ok("ceiling: force cap never above the hardware", s.ForceCapNm <= 5.5);
+            Ok("ceiling: config file cannot hold more than the generic ceiling", Settings.FromLines(new string[] { "BaseNm=999" }).BaseNm == TorqueLimits.GenericCeilingNm);
+            Ok("ceiling: corrupted value -> default kept", Settings.FromLines(new string[] { "BaseNm=abc" }).BaseNm == new Settings().BaseNm);
+
+            // a forca enviada nunca passa o teto, seja qual for o ganho/multiplicador
+            FfbMixer mx = new FfbMixer();
+            ForceRequest big = Req(50, 1, 50, 1, 50, 50, 50, 50);
+            ForceRequest r = mx.Finish(big, s, 0.5);
+            double cap = s.ForceCapNm;
+            Ok("ceiling: multiplier x4 cannot pass the cap (each effect)", r.SpringNm <= cap + 1e-9 && r.DamperNm <= cap + 1e-9 && r.FrictionNm <= cap + 1e-9 && Math.Abs(r.BumpNm) <= cap + 1e-9 && r.TextureNm <= cap + 1e-9 && r.EngineNm <= cap + 1e-9);
+            int mag = s.ToMag(1000);
+            Ok("ceiling: final magnitude never above the cap in Nm", mag <= (int)Math.Round(cap / s.EffectivePeakNm * 10000) && mag <= 10000);
+            Ok("ceiling: output torque on the real R5 <= its 5.5 Nm", mag / 10000.0 * 5.5 <= 5.5 + 1e-9);
+
+            // calibracao manual valida mantem-se ao gravar e ler
+            Settings u = new Settings(); u.BaseNm = 4.5; u.TorqueSource = "user"; u.VendorFfPercent = 80;
+            u.UserModel = "MOZA R5"; u.UserModelDevice = "346E:9999"; u.UserModelPeakNm = 5.5;
+            Settings back = Settings.FromLines(u.ToText().Split(new[] { "\r\n", "\n" }, StringSplitOptions.None));
+            Ok("persistence: manual peak, source, FF % and chosen model survive save/load",
+                back.BaseNm == 4.5 && back.TorqueSource == "user" && back.VendorFfPercent == 80 && back.UserModel == "MOZA R5" && back.UserModelPeakNm == 5.5 && back.UserModelDevice == "346E:9999");
+            Settings cfgOld = Settings.FromLines(new string[] { "SettingsVersion=" + Settings.Version, "BaseNm=8", "MaxNm=3" });
+            Ok("compat: an existing valid 8 Nm CSL DD config is kept", cfgOld.BaseNm == 8 && cfgOld.MaxNm == 3);
+        }
+
+        // ------------------------------------------------------------------ 0.15: soma das forcas
+        private static void MixerSumCeiling()
+        {
+            Settings s = Dd();
+            FfbMixer mx = new FfbMixer();
+            ForceRequest r = mx.Finish(Req(2.9, 0.5, 0, 0, 0.1, 1.0, 0.8, 0.9), s, 0.5);
+            double sum = r.SpringNm + r.FrictionNm + Math.Abs(r.BumpNm) + r.TextureNm + r.EngineNm;
+            Ok("mixer: sum of spring+friction+bump+texture+engine <= Maximum force", sum <= s.ForceCapNm + 1e-9);
+            Ok("mixer: vibrations keep at least 25% of the cap", Math.Abs(r.BumpNm) + r.TextureNm + r.EngineNm >= 0.25 * s.ForceCapNm - 1e-9);
+            ForceRequest q = mx.Finish(Req(0.5, 0.5, 0, 0, 0, 0, 0, 0.3), s, 0.5);
+            Ok("mixer: small forces are not touched", Math.Abs(q.EngineNm - 0.3) < 1e-9);
+            ForceRequest z = Req(2, 0.5, 1, 0.5, 1, 1, 1, 1); z.Gain = 0;
+            ForceRequest zr = new FfbMixer().Finish(z, s, 0.5);
+            Ok("mixer: gain 0 -> no force at all", zr.SpringNm == 0 && zr.EngineNm == 0 && zr.TextureNm == 0 && zr.BumpNm == 0 && zr.SpringK == 0);
+        }
+
+        // ------------------------------------------------------------------ 0.15: arranque do motor (simulado)
+        private static TelemetryFrame Veh(string name, string cat, int mst, double rpm, bool on)
+        {
+            TelemetryFrame f = new TelemetryFrame();
+            f.Active = true; f.Vehicle = name; f.Category = cat; f.MotorState = mst; f.Rpm = rpm; f.EngineOn = on; f.HasEngine = true;
+            f.SpeedKmh = 0; f.Vx = 0; f.Vz = 0; f.Vy = 0; f.MassT = 6; f.Surface = "road"; f.Wheels = 4; f.Contacts = 4; f.EngineLoad = 0.2;
+            return f;
+        }
+
+        // corre o motor de FFB durante 'secs' e devolve a forca maxima do motor e a ultima frequencia
+        private static double RunEngine(FfbEngine e, TelemetryFrame f, Settings s, double secs, out double lastHz)
+        {
+            double mx = 0; lastHz = 0;
+            for (double t = 0; t < secs; t += 0.01)
+            {
+                ForceRequest r = e.Update(f, 10, true, 0.01, s);
+                if (r.EngineNm > mx) mx = r.EngineNm;
+                lastHz = r.EngineHz;
+            }
+            return mx;
+        }
+
+        private static void EngineStartSequence()
+        {
+            Settings s = Dd();
+            double hz;
+            // trator: a arrancar (estado 2) -> pegou (3, sem rpm ainda) -> ralenti
+            FfbEngine e = new FfbEngine();
+            RunEngine(e, Veh("T", "TRACTORSM", 0, double.NaN, false), s, 0.5, out hz);
+            double crank = RunEngine(e, Veh("T", "TRACTORSM", 2, double.NaN, false), s, 3.0, out hz);
+            Ok("engine: tractor cranking is felt (starter motor)", crank > 0.15 && crank < 0.5);
+            Ok("engine: cranking at a low frequency (9-13 Hz)", hz >= 9 && hz <= 13);
+            ForceRequest c1 = e.Update(Veh("T", "TRACTORSM", 3, 750, true), 10, true, 0.01, s);
+            Ok("engine: catch = low-frequency rock (engine on its mounts)", c1.EngineHz <= 11 && c1.EngineNm > 0);
+            double idle = RunEngine(e, Veh("T", "TRACTORSM", 3, 750, true), s, 2.0, out hz);
+            ForceRequest i1 = e.Update(Veh("T", "TRACTORSM", 3, 750, true), 10, true, 0.01, s);
+            Ok("engine: settles into idle at the firing frequency (rpm/20)", i1.EngineHz >= 35 && i1.EngineHz <= 40);
+            Ok("engine: idle smaller than the catch", i1.EngineNm < c1.EngineNm + 1e-9);
+            ForceRequest i2 = e.Update(Veh("T", "TRACTORSM", 3, 1800, true), 10, true, 0.01, s);
+            RunEngine(e, Veh("T", "TRACTORSM", 3, 1800, true), s, 1.0, out hz);
+            Ok("engine: higher rpm -> higher frequency", hz > 80);
+
+            // camiao: mesma sequencia, muito mais suave (cabine suspensa)
+            FfbEngine et = new FfbEngine();
+            RunEngine(et, Veh("K", "TRUCKS", 0, double.NaN, false), s, 0.5, out hz);
+            double crankT = RunEngine(et, Veh("K", "TRUCKS", 2, double.NaN, false), s, 3.0, out hz);
+            ForceRequest k1 = et.Update(Veh("K", "TRUCKS", 3, 650, true), 10, true, 0.01, s);
+            Ok("engine: truck cranking < half of the tractor's", crankT < 0.5 * crank + 1e-9);
+            Ok("engine: truck catch < half of the tractor's", k1.EngineNm < 0.5 * c1.EngineNm + 1e-9);
+            Ok("engine: profiles differ by vehicle type", EngineProfile.For("TRUCKS").Mount < EngineProfile.For("TRACTORSM").Mount && EngineProfile.For("CARS").Mount < EngineProfile.For("TRUCKS").Mount);
+
+            // nunca fica preso no arranque
+            FfbEngine es = new FfbEngine();
+            double stuck = 0;
+            RunEngine(es, Veh("S", "TRACTORSM", 2, double.NaN, false), s, FfbEngine.MaxCrankSeconds + 1, out hz);
+            stuck = RunEngine(es, Veh("S", "TRACTORSM", 2, double.NaN, false), s, 1.0, out hz);
+            Ok("engine: starter vibration stops after " + FfbEngine.MaxCrankSeconds + " s even if the game stays in 'starting'", stuck == 0);
+
+            // arrancar outra vez nao duplica: segundo arranque = mesma amplitude
+            FfbEngine er = new FfbEngine();
+            RunEngine(er, Veh("R", "TRACTORSM", 0, double.NaN, false), s, 0.3, out hz);
+            double a1 = RunEngine(er, Veh("R", "TRACTORSM", 2, double.NaN, false), s, 2.0, out hz);
+            RunEngine(er, Veh("R", "TRACTORSM", 3, 750, true), s, 1.0, out hz);
+            RunEngine(er, Veh("R", "TRACTORSM", 0, double.NaN, false), s, 1.0, out hz);
+            double a2 = RunEngine(er, Veh("R", "TRACTORSM", 2, double.NaN, false), s, 2.0, out hz);
+            Ok("engine: repeated start has the same strength (no stacking)", Math.Abs(a1 - a2) < 0.02);
+
+            // entrar num veiculo com o motor ja ligado: sem "pegou" falso vindo do veiculo anterior
+            FfbEngine ev = new FfbEngine();
+            RunEngine(ev, Veh("A", "TRACTORSM", 2, double.NaN, false), s, 1.0, out hz);
+            ForceRequest sw = ev.Update(Veh("B", "TRUCKS", 3, 650, true), 10, true, 0.01, s);
+            Ok("engine: switching vehicle mid-start gives no catch jolt", sw.EngineHz > 20);
+
+            // desligar a vibracao do motor nao desliga o resto
+            Settings off = Dd(); off.Engine = 0; off.EngineStart = 0;
+            FfbEngine eo = new FfbEngine();
+            RunEngine(eo, Veh("O", "TRACTORSM", 0, double.NaN, false), off, 0.3, out hz);
+            double o1 = RunEngine(eo, Veh("O", "TRACTORSM", 2, double.NaN, false), off, 2, out hz);
+            double o2 = RunEngine(eo, Veh("O", "TRACTORSM", 3, 900, true), off, 2, out hz);
+            TelemetryFrame mv = Veh("O", "TRACTORSM", 3, 900, true); mv.SpeedKmh = 25; mv.Vz = 7;
+            ForceRequest om = null;
+            for (int i = 0; i < 200; i++) om = eo.Update(mv, 10, true, 0.01, off);
+            Ok("engine: Engine start 0 and Engine vibration 0 -> no engine force", o1 == 0 && o2 == 0 && om.EngineNm == 0);
+            Ok("engine: ...but centering still works", om.SpringNm > 0);
+            Settings onlyStart = Dd(); onlyStart.Engine = 0;
+            FfbEngine e2 = new FfbEngine();
+            RunEngine(e2, Veh("P", "TRACTORSM", 0, double.NaN, false), onlyStart, 0.3, out hz);
+            Ok("engine: start feel independent of the engine vibration slider", RunEngine(e2, Veh("P", "TRACTORSM", 2, double.NaN, false), onlyStart, 2, out hz) > 0);
+        }
+
+        // ------------------------------------------------------------------ 0.15: FFB ligado/desligado (simulado)
+        private static void FfbStateTransitions()
+        {
+            Settings s = Dd();
+            FfbEngine e = new FfbEngine();
+            TelemetryFrame f = Veh("T", "TRACTORSM", 3, 800, true); f.SpeedKmh = 20; f.Vz = 5.5;
+            ForceRequest r = null;
+            for (int i = 0; i < 60; i++) r = e.Update(f, 10, true, 0.01, s);
+            Ok("state: gain reaches 100% within 0.6 s", r.Gain > 0.99 && r.State == "ACTIVE");
+            for (int i = 0; i < 40; i++) r = e.Update(f, 500, true, 0.01, s);
+            Ok("state: stale telemetry -> gain 0 and explained", r.Gain == 0 && r.State.Contains("waiting"));
+            for (int i = 0; i < 60; i++) r = e.Update(f, 10, true, 0.01, s);
+            Ok("state: recovers by itself when telemetry returns", r.Gain > 0.99);
+            TelemetryFrame outv = Veh("T", "TRACTORSM", 3, 800, true); outv.Active = false;
+            for (int i = 0; i < 40; i++) r = e.Update(outv, 10, true, 0.01, s);
+            Ok("state: leaving the vehicle -> gain 0, no residual forces", r.Gain == 0 && r.EngineNm == 0 && r.SpringNm == 0);
+            for (int i = 0; i < 60; i++) r = e.Update(f, 10, true, 0.01, s);
+            Ok("state: re-entering -> active again", r.Gain > 0.99);
+            for (int i = 0; i < 40; i++) r = e.Update(f, 10, false, 0.01, s);
+            Ok("state: FFB switched off -> gain 0 and explained", r.Gain == 0 && r.State == "FFB off");
+            e.Halt();
+            r = e.Update(f, 10, false, 0.01, s);
+            Ok("state: emergency stop -> zero immediately", r.Gain == 0);
+            Ok("state: watchdog still stops a frozen loop (see watchdog tests)", true);
+        }
+
+        // ------------------------------------------------------------------ 0.15: servidor dedicado
+        private static void DedicatedServer()
+        {
+            string line = "RFFB|1|seq=1|t=1000|act=1|veh=Truck|cat=TRUCKS|ses=client|spd=20|mass=8|w=0,na,0,0;0,na,0,0;0,na,0,0;0,na,0,0";
+            TelemetryFrame c = TelemetryServer.ParseLine(line);
+            Ok("mp: session parsed", c != null && c.MpClient);
+            Ok("mp: no wheel contact on a client is 'unknown', not 'air'", c.Surface == "unknown" && c.ContactUnknown && c.Contacts == 0);
+            TelemetryFrame sp = TelemetryServer.ParseLine(line.Replace("ses=client", "ses=sp"));
+            Ok("mp: in single player no contact still means 'air'", sp.Surface == "air" && !sp.ContactUnknown);
+            TelemetryFrame old = TelemetryServer.ParseLine(line.Replace("|ses=client", ""));
+            Ok("mp: old mod without session -> unchanged behaviour", old.Surface == "air" && old.Session == "");
+
+            Settings s = Dd();
+            // centragem: cliente (contacto desconhecido) ~ normal; "no ar" quase nada
+            double springClient = SpringAt(c, s), springAir = SpringAt(sp, s);
+            Ok("mp: centering works on a dedicated server", springClient > 3 * springAir && springClient > 0.3);
+            // os degraus de velocidade da rede nao sao embates
+            FfbEngine e = new FfbEngine();
+            int coll = 0;
+            for (int i = 0; i < 200; i++)
+            {
+                TelemetryFrame f = TelemetryServer.ParseLine(line);
+                f.Seq = i + 2; f.GameTimeMs = 1000 + i * 16; f.Vz = (i % 12 < 6) ? 5.5 : 2.5; f.Vx = 0; f.SpeedKmh = f.Vz * 3.6;
+                ForceRequest r = e.Update(f, 10, true, 0.016, s);
+                coll = r.CollCount;
+            }
+            Ok("mp: network speed steps are not reported as impacts", coll == 0);
+            FfbEngine e2 = new FfbEngine();
+            for (int i = 0; i < 200; i++)
+            {
+                TelemetryFrame f = TelemetryServer.ParseLine(line.Replace("ses=client", "ses=sp").Replace("w=0,", "w=1,"));
+                f.Seq = i + 2; f.GameTimeMs = 1000 + i * 16; f.Vz = (i % 12 < 6) ? 5.5 : 2.5; f.Vx = 0; f.SpeedKmh = f.Vz * 3.6;
+                ForceRequest r = e2.Update(f, 10, true, 0.016, s);
+                coll = r.CollCount;
+            }
+            Ok("mp: the same steps in single player still count as impacts (detection unchanged)", coll > 0);
+            Ok("mp: no invented terrain texture on a client", TexAt(c, s) == 0);
+        }
+
+        private static double SpringAt(TelemetryFrame f0, Settings s)
+        {
+            FfbEngine e = new FfbEngine();
+            ForceRequest r = null;
+            for (int i = 0; i < 200; i++)
+            {
+                TelemetryFrame f = TelemetryServer.ParseLine("RFFB|1|seq=1|t=1000|act=1|veh=V|cat=TRUCKS|ses=" + f0.Session + "|spd=20|mass=8|w=0,na,0,0;0,na,0,0;0,na,0,0;0,na,0,0");
+                f.Seq = i + 2; f.Vz = 5.5; f.Vx = 0; f.SpeedKmh = 20; f.GameTimeMs = 1000 + i * 10;
+                r = e.Update(f, 10, true, 0.01, s);
+            }
+            return r.SpringNm;
+        }
+
+        private static double TexAt(TelemetryFrame f0, Settings s)
+        {
+            FfbEngine e = new FfbEngine();
+            double mx = 0;
+            for (int i = 0; i < 200; i++)
+            {
+                TelemetryFrame f = TelemetryServer.ParseLine("RFFB|1|seq=1|t=1000|act=1|veh=V|cat=TRUCKS|ses=" + f0.Session + "|spd=20|mass=8|w=0,na,0,0;0,na,0,0;0,na,0,0;0,na,0,0");
+                f.Seq = i + 2; f.Vz = 5.5; f.Vx = 0; f.SpeedKmh = 20; f.GameTimeMs = 1000 + i * 10;
+                ForceRequest r = e.Update(f, 10, true, 0.01, s);
+                if (r.TextureNm > mx) mx = r.TextureNm;
+            }
+            return mx;
         }
 
         private static void SettingsScaling()
