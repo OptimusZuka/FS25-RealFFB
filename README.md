@@ -18,7 +18,7 @@
   <a href="docs/TROUBLESHOOTING.md">Troubleshooting</a>
 </p>
 
-> 🙏 **Special thanks to TheNobunaga**, who tirelessly tested the mod build after build and kept sending honest, detailed feedback. Thanks to him, the force feedback is finely tuned and several wheels are now confirmed compatible: the Logitech **G27**, the MOZA **R5** and, above all, the Logitech **G29**, the wheel most of the community drives with.
+> 🙏 **Special thanks to TheNobunaga**, who tirelessly tested the mod build after build and kept sending honest, detailed feedback. Thanks to him, the force feedback is finely tuned and the Logitech **G29**, the wheel most of the community drives with, is confirmed compatible. Thanks also to **barbudo_nippon** ([twitch.tv/barbudo_nippon](https://twitch.tv/barbudo_nippon)), who tested the Logitech **G27**, and to **Birchmachine**, who tested the MOZA **R5**.
 
 ---
 
