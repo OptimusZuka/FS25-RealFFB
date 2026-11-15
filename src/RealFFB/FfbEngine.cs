@@ -369,7 +369,7 @@ namespace FS25RealFFB
                 crankPhaseN += dt * 2 * Math.PI * 2.6;
                 double pulse = 0.65 + 0.35 * Math.Abs(Math.Sin(crankPhaseN));
                 double rampIn = Clamp(crankT / 0.15, 0, 1);
-                o.EngineNm = startAmp * (s.GearDriven ? 0.71 : 0.39) * pulse * rampIn;
+                o.EngineNm = startAmp * (s.GearDriven ? 0.45 : 0.39) * pulse * rampIn;
                 double chz = (s.GearDriven ? 9.0 : 11.0) + 1.5 * Math.Sin(crankPhaseN * 0.37);
                 o.EngineHz = Math.Round(chz);
             }
@@ -395,10 +395,12 @@ namespace FS25RealFFB
                 double ehz = Clamp(rpmSm / 20.0, 15, 150);
                 if (s.GearDriven)
                 {
-                    // Engrenagens: forcas abaixo de ~0,4 Nm perdem-se na folga e no atrito interno, por isso
-                    // o motor tem uma base maior (ralenti ~0,45 Nm com o slider a 50%) e frequencia mais baixa
-                    // (ralenti ~17 Hz, regime alto ~44 Hz).
-                    o.EngineNm = s.Engine * ep.Mount * (0.9 + 0.25 * rpmN + 0.15 * load + 0.25 * rev) * engMove;
+                    // Engrenagens: frequencia mais baixa (ralenti ~17 Hz, regime alto ~44 Hz).
+                    // 0.15.1: amplitude bem menor. A 0.12 usava uma base de 0,9 (ralenti ~0,6 Nm com o slider a
+                    // 50 %), pensada para passar a folga das engrenagens; com o pico certo (G27 2,5 Nm) isso era
+                    // ~25-30 % do motor a inverter 15-20 vezes por segundo: as engrenagens batiam e o volante
+                    // ficava "extremamente barulhento" parado (relato de um G27). Agora ~0,2 Nm no ralenti.
+                    o.EngineNm = s.Engine * ep.Mount * (0.30 + 0.20 * rpmN + 0.10 * load + 0.15 * rev) * engMove;
                     ehz = Clamp(rpmSm / 50.0, 14, 45);
                 }
                 ehz = Math.Round(ehz);
@@ -407,7 +409,7 @@ namespace FS25RealFFB
                 // ralenti em ~0,3 s. Antes era um reforco a frequencia do ralenti (sentia-se um "zumbido" forte).
                 if (catchEnv > 0.02)
                 {
-                    double rock = startAmp * (s.GearDriven ? 0.57 : 0.43) * catchEnv;
+                    double rock = startAmp * (s.GearDriven ? 0.40 : 0.43) * catchEnv;
                     if (catchEnv > 0.35) { o.EngineNm = Math.Max(o.EngineNm, rock); o.EngineHz = s.GearDriven ? 9 : 10; }
                     else o.EngineNm += rock * 0.5;
                 }

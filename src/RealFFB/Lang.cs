@@ -88,6 +88,7 @@ namespace FS25RealFFB
             "Remove selected", "Remover selecionado", "Quitar seleccionado", "Retirer la sélection",
             "Import all from FS25 (inputBinding.xml)", "Importar tudo do FS25 (inputBinding.xml)", "Importar todo de FS25 (inputBinding.xml)", "Tout importer de FS25 (inputBinding.xml)",
             "Turn FFB on automatically when the app opens", "Ligar o FFB automaticamente ao abrir o app", "Activar el FFB automáticamente al abrir la app", "Activer le FFB automatiquement à l'ouverture",
+            "Also open FS25 when the app is opened from the desktop shortcut", "Abrir também o FS25 quando o app é aberto pelo atalho do ambiente de trabalho", "Abrir también FS25 cuando la app se abre desde el acceso directo del escritorio", "Ouvrir aussi FS25 quand l'app est lancée depuis le raccourci du bureau",
             "Manage HidHide automatically (wheel hidden only while the app is open)", "Gerenciar o HidHide sozinho (volante escondido só com o app aberto)", "Gestionar HidHide automáticamente (volante oculto solo con la app abierta)", "Gérer HidHide automatiquement (volant masqué seulement app ouverte)",
             "Use the wheel's 2nd interface", "Usar a 2ª interface do volante", "Usar la 2.ª interfaz del volante", "Utiliser la 2e interface du volant",
             "Save settings", "Salvar configuração", "Guardar configuración", "Enregistrer les réglages",

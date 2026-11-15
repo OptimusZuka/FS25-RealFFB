@@ -18,6 +18,13 @@ jobs:
       - name: Build
         shell: cmd
         run: build.bat notest
+      - name: Vehicle view images (simulated telemetry)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force shots | Out-Null
+          Start-Process -FilePath dist\app\RealFFB.exe -ArgumentList '--readme-shots', "$PWD\shots" -Wait
+          Get-ChildItem shots
+          if (Test-Path shots\error.txt) { Get-Content shots\error.txt; exit 1 }
       - name: Capture the window
         shell: pwsh
         run: |
@@ -73,5 +80,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/screenshot-app.png
+          if (Test-Path shots\vehicle-views.png) { Copy-Item shots\vehicle-views.png docs\images\vehicle-views.png -Force; git add docs/images/vehicle-views.png }
           git commit -m "UI screenshot from CI"
           git push origin HEAD:screenshot

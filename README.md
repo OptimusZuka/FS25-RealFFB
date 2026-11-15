@@ -32,7 +32,16 @@ Farming Simulator 25 supports steering wheels, but its force feedback is almost 
 
 <p align="center">
   <img src="docs/screenshot-app.png" alt="FS25 RealFFB: settings, live commands and forces" width="900">
-  <br><sub>Real screenshot of the v0.13 interface: settings on the left, live commands and forces on the right. Captured automatically on GitHub's build server, with no wheel and no game, which is why it shows "HidHide is not installed" and "NOT OPEN".</sub>
+  <br><sub>Real screenshot of the v0.15.1 interface: settings on the left, live commands and forces on the right. Captured automatically on GitHub's build server, with no wheel and no game, which is why it shows "HidHide is not installed" and "NOT OPEN".</sub>
+</p>
+
+## Live vehicle view
+
+The app draws the vehicle you are driving, seen from above, with each wheel in the position the game reports. Every part lights up where the force at your wheel comes from: **blue** steering and centering, **orange** suspension bumps on that exact wheel, **green** the ground surface under the tyres, **red** the engine. A collision flashes at the point of impact. The bars at the bottom show how strong each one is right now.
+
+<p align="center">
+  <img src="docs/images/vehicle-views.png" alt="Live vehicle view for a tractor, a combine harvester, a truck and a pickup, showing where each force comes from" width="900">
+  <br><sub>Drawn by the RealFFB app itself from <b>simulated</b> telemetry (a tractor and a combine in a field, a truck on the road, a pickup on gravel, with a pothole under one wheel), with the forces computed by the app's FFB engine. Not an in-game screenshot. Generated automatically on GitHub's build server.</sub>
 </p>
 
 ## What you feel
