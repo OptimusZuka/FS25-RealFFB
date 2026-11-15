@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/tag/v0.15.1"><b>⬇ Download v0.15.1 (beta)</b></a> ·
+  <a href="../../releases/tag/v0.15.2"><b>⬇ Download v0.15.2 (beta)</b></a> ·
   <a href="docs/INSTALL.md">Installation guide</a> ·
   <a href="docs/dev/COMPATIBILITY-MATRIX.md">Supported wheels</a> ·
   <a href="docs/TROUBLESHOOTING.md">Troubleshooting</a>
@@ -32,7 +32,7 @@ Farming Simulator 25 supports steering wheels, but its force feedback is almost 
 
 <p align="center">
   <img src="docs/screenshot-app.png" alt="FS25 RealFFB: settings, live commands and forces" width="900">
-  <br><sub>Real screenshot of the v0.15.1 interface: settings on the left, live commands and forces on the right. Captured automatically on GitHub's build server, with no wheel and no game, which is why it shows "HidHide is not installed" and "NOT OPEN".</sub>
+  <br><sub>Real screenshot of the v0.15.2 interface: settings on the left, live commands and forces on the right. Captured automatically on GitHub's build server, with no wheel and no game, which is why it shows "HidHide is not installed" and "NOT OPEN".</sub>
 </p>
 
 ## Live vehicle view
@@ -91,7 +91,7 @@ Own a wheel that is not confirmed yet? Open the app → **Hardware** → **Test 
 
 ## Install
 
-1. Open the **[latest release (v0.15.1)](../../releases/tag/v0.15.1)** and download `FS25_RealFFB_Setup_0.15.1.exe`.
+1. Open the **[latest release (v0.15.2)](../../releases/tag/v0.15.2)** and download `FS25_RealFFB_Setup_0.15.2.exe`.
 2. Run it and follow the steps. The installer finds the game, installs HidHide and sets up your wheel by itself. Then unplug and replug the wheel's USB cable once.
 3. Open the **FS25 RealFFB** shortcut. It starts the app and the game.
 4. In the game, enable the **Real FFB Telemetry** mod in your savegame.
