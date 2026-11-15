@@ -89,6 +89,8 @@ namespace FS25RealFFB
             // autorizada no HidHide, por isso ve o volante mesmo escondido. So enumera (nao adquire nada).
             string[] cl = Environment.GetCommandLineArgs();
             for (int i = 1; i + 1 < cl.Length; i++)
+                if (cl[i] == "--readme-shots") { try { ReadmeShots.Run(cl[i + 1]); } catch (Exception ex) { try { System.IO.File.WriteAllText(System.IO.Path.Combine(cl[i + 1], "error.txt"), ex.ToString()); } catch { } } return; }
+            for (int i = 1; i + 1 < cl.Length; i++)
                 if (cl[i] == "--list-wheels")
                 {
                     try
