@@ -60,31 +60,18 @@ namespace FS25RealFFB
             o.EngineNm = Cap(o.EngineNm, cap);
             if (o.BumpNm > cap) o.BumpNm = cap; else if (o.BumpNm < -cap) o.BumpNm = -cap;
 
-            // 0.15: teto da SOMA. Os efeitos tocam ao mesmo tempo na base; cada um estava limitado a "cap", mas a
-            // vibracao do motor nao entrava no orcamento e a soma podia passar a "Maximum force". Agora a soma dos
-            // efeitos de posicao/vibracao nunca passa o teto: cortam-se primeiro as vibracoes (motor, textura,
-            // pancada) e so depois a centragem/atrito. (O amortecimento depende da velocidade do volante e tem o
-            // seu proprio teto acima.)
+            // 0.15: teto da SOMA (a soma dos efeitos de posicao/vibracao nunca passa "Maximum force").
+            // 0.15.1: a centragem/atrito NUNCA sao reduzidos por causa das vibracoes. Na 0.15 eram cortados no
+            // instante em que o motor, a textura ou uma pancada subiam (e sem o limite de variacao): o volante
+            // ficava leve de repente e voltava devagar ("a sensibilidade muda sozinha", relato de um G27).
+            // Agora as vibracoes usam so a folga que sobra; a centragem e sempre igual a da fisica.
             double vib = o.EngineNm + o.TextureNm + Math.Abs(o.BumpNm);
             double hold = o.SpringNm + o.FrictionNm;
-            if (hold + vib > cap + 1e-9)
+            double vibRoom = Math.Max(0, cap - hold);
+            if (vib > vibRoom + 1e-9 && vib > 0)
             {
-                // as vibracoes ficam com pelo menos 25 % do teto (como antes: um solavanco le-se mesmo com a
-                // centragem no maximo); a centragem/atrito ficam com o resto.
-                double vibRoom = Math.Max(0.25 * cap, cap - hold);
-                if (vib > vibRoom && vib > 0)
-                {
-                    double k = vibRoom / vib;
-                    o.EngineNm *= k; o.TextureNm *= k; o.BumpNm *= k;
-                    vib = vibRoom;
-                }
-                double holdRoom = Math.Max(0, cap - vib);
-                if (hold > holdRoom && hold > 0)
-                {
-                    double k = holdRoom / hold;
-                    o.SpringNm *= k; o.FrictionNm *= k;
-                    lastSpringNm = o.SpringNm;
-                }
+                double k = vibRoom / vib;
+                o.EngineNm *= k; o.TextureNm *= k; o.BumpNm *= k;
             }
             if (gain <= 0) { o.SpringK = 0; o.DamperK = 0; }
             o.SpringK = Math.Max(0, Math.Min(1, o.SpringK));

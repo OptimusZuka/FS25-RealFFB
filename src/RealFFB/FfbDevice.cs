@@ -203,6 +203,19 @@ namespace FS25RealFFB
         // Reforco da mola dos volantes com engrenagens (compensa o atrito interno). Definido pela app
         // conforme o catalogo; por omissao segue a marca, como antes da 0.10.0.
         public bool GearBoost = true;
+        // 0.15.1: teto da saturacao da mola (unidades DirectInput), atualizado pela app a cada ciclo
+        public volatile int SpringSatCap = 10000;
+
+        // 0.15.1: reforco da mola para volantes de engrenagens (quirk SpringBoost). Proporcional (no maximo
+        // duplica a saturacao pedida) e nunca acima do teto da app; se o pedido ja estiver acima do teto
+        // (nao deve acontecer) fica como esta.
+        public static int BoostedSpringSat(int sat, int boost, int cap)
+        {
+            if (sat <= 0 || boost <= 0) return sat;
+            int b = sat + Math.Min(boost, sat);
+            if (b > 10000) b = 10000;
+            return Math.Min(b, Math.Max(sat, cap));
+        }
 
         private static int Vid(DIDEVICEINSTANCEW d) { return (int)(BitConverter.ToUInt32(d.guidProduct.ToByteArray(), 0) & 0xFFFF); }
         private static int Pid(DIDEVICEINSTANCEW d) { return (int)(BitConverter.ToUInt32(d.guidProduct.ToByteArray(), 0) >> 16); }
@@ -567,7 +580,10 @@ namespace FS25RealFFB
                 // (centrava parado). Manter sempre uma mola minima ativa (forca desprezavel)...
                 if (coef <= 0 || sat <= 0) { coef = 1; sat = 1; }
                 // ...e, a andar, compensar o atrito interno das engrenagens (forcas pequenas perdiam-se).
-                else if (GearBoost && quirks.SpringBoost > 0) sat = Clamp(sat + quirks.SpringBoost, 0, 10000);
+                // 0.15.1: o reforco cresce com a forca (no maximo duplica-a) em vez de saltar logo +18 % assim que
+                // aparece qualquer mola, e nunca passa o teto da app ("Maximum force" / pico): antes era somado
+                // DEPOIS do misturador e podia passar o teto.
+                else if (GearBoost && quirks.SpringBoost > 0) sat = BoostedSpringSat(sat, quirks.SpringBoost, SpringSatCap);
             }
             WriteCondition(coef, sat, offset);
             Apply(SlotSpring, ((long)coef << 40) ^ ((long)sat << 20) ^ (long)(offset & 0xFFFFF), condBuf, 24);

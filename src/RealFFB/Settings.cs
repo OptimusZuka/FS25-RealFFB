@@ -38,6 +38,7 @@ namespace FS25RealFFB
         public bool KeysOn = false;
         public bool AutoHide = true;
         public bool PerVehicle = true;  // afinacoes de FFB guardadas por veiculo
+        public bool OpenGame = true;   // 0.15.1: o atalho do ambiente de trabalho tambem abre o FS25
         public bool AutoFfb = true;    // FFB ativo logo ao abrir a app   // liga o HidHide ao abrir a app e desliga ao fechar   // comandos -> teclas (so sem HidHide)
         public double SteerSens = 1.0;     // 1.0 = rotacao total da base = esbarro total do trator
         public bool SteerInvert = false;
@@ -163,6 +164,7 @@ namespace FS25RealFFB
             sb.AppendLine("KeysOn=" + (KeysOn ? "1" : "0"));
             sb.AppendLine("AutoHide=" + (AutoHide ? "1" : "0"));
             sb.AppendLine("AutoFfb=" + (AutoFfb ? "1" : "0"));
+            sb.AppendLine("OpenGame=" + (OpenGame ? "1" : "0"));
             sb.AppendLine("PerVehicle=" + (PerVehicle ? "1" : "0"));
             sb.AppendLine("SteerSens=" + SteerSens.ToString(c));
             sb.AppendLine("SteerInvert=" + (SteerInvert ? "1" : "0"));
@@ -226,6 +228,7 @@ namespace FS25RealFFB
                         case "KeysOn": s.KeysOn = v == "1"; break;
                         case "AutoHide": s.AutoHide = v == "1"; break;
                         case "AutoFfb": s.AutoFfb = v == "1"; break;
+                        case "OpenGame": s.OpenGame = v == "1"; break;
                         case "PerVehicle": s.PerVehicle = v == "1"; break;
                         case "SteerSens": if (isNum) s.SteerSens = Math.Max(0.5, Math.Min(4, d)); break;
                         case "SteerInvert": s.SteerInvert = v == "1"; break;

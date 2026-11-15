@@ -1,4 +1,4 @@
-// Copyright (c) 2026 OptimusZuka. All rights reserved.
+﻿// Copyright (c) 2026 OptimusZuka. All rights reserved.
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -42,6 +42,9 @@ namespace FS25RealFFB
             BackColor = Theme.Bg;
             SetStyle(ControlStyles.ResizeRedraw | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
         }
+
+        // 0.15.1: desenhar fora do ecra (capturas do README: ReadmeShots)
+        public void PaintTo(Graphics g) { OnPaint(new PaintEventArgs(g, ClientRectangle)); }
 
         private static double Follow(double g, double target)
         {

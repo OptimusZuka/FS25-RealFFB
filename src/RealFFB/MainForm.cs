@@ -89,6 +89,8 @@ namespace FS25RealFFB
             // autorizada no HidHide, por isso ve o volante mesmo escondido. So enumera (nao adquire nada).
             string[] cl = Environment.GetCommandLineArgs();
             for (int i = 1; i + 1 < cl.Length; i++)
+                if (cl[i] == "--readme-shots") { try { ReadmeShots.Run(cl[i + 1]); } catch (Exception ex) { try { System.IO.File.WriteAllText(System.IO.Path.Combine(cl[i + 1], "error.txt"), ex.ToString()); } catch { } } return; }
+            for (int i = 1; i + 1 < cl.Length; i++)
                 if (cl[i] == "--list-wheels")
                 {
                     try
@@ -117,7 +119,7 @@ namespace FS25RealFFB
                 {
                     // Ja ha uma RealFFB aberta: duas ao mesmo tempo disputam a base e a telemetria.
                     foreach (string arg in Environment.GetCommandLineArgs())
-                        if (arg == "--jogar") { try { Process.Start("steam://rungameid/2300320"); } catch { } }
+                        if (arg == "--jogar") { try { if (Settings.Load().OpenGame) Process.Start("steam://rungameid/2300320"); } catch { } }
                     return;
                 }
                 RunApp();
@@ -529,6 +531,10 @@ namespace FS25RealFFB
             CheckBox autoFfb = Theme.Check(L.T("Turn FFB on automatically when the app opens"), settings.AutoFfb, W);
             autoFfb.CheckedChanged += delegate { settings.AutoFfb = autoFfb.Checked; try { settings.Save(); } catch { } };
             flow.Controls.Add(autoFfb);
+            // 0.15.1: escolher se o atalho "FS25 com FFB" tambem abre o jogo (pedido de um utilizador)
+            CheckBox openGame = Theme.Check(L.T("Also open FS25 when the app is opened from the desktop shortcut"), settings.OpenGame, W);
+            openGame.CheckedChanged += delegate { settings.OpenGame = openGame.Checked; try { settings.Save(); } catch { } };
+            flow.Controls.Add(openGame);
             CheckBox hideBox = Theme.Check(L.T("Manage HidHide automatically (wheel hidden only while the app is open)"), settings.AutoHide, W);
             hideBox.CheckedChanged += delegate
             {
@@ -851,8 +857,12 @@ namespace FS25RealFFB
             if (!sliders.TryGetValue("Maximum force", out t)) return;
             int max = Math.Max(6, (int)Math.Round(settings.PeakNm * 10));
             if (settings.MaxNm > settings.PeakNm) settings.MaxNm = settings.PeakNm;
-            t.Maximum = max;
+            // 0.15.1: baixar primeiro o valor e so depois o limite. Ao contrario, o TrackBar corta o valor sem
+            // avisar (sem ValueChanged) e o texto ficava antigo: "Forca maxima 2,3 Nm" com pico de 2,0 Nm.
+            int want = Math.Max(t.Minimum, Math.Min(max, (int)Math.Round(settings.MaxNm * 10)));
             if (t.Value > max) t.Value = max;
+            t.Maximum = max;
+            if (t.Value != want) t.Value = want;
         }
 
         // 0.15: pico configurado corrigido para o pico do hardware, com explicacao (nunca em silencio)
@@ -1137,7 +1147,7 @@ namespace FS25RealFFB
                 try { if (!IsDisposed && IsHandleCreated) BeginInvoke(new Action<Updater.Release>(ShowUpdate), r); } catch { }
             });
             foreach (string a in Environment.GetCommandLineArgs())
-                if (a == "--jogar") LaunchGame();
+                if (a == "--jogar" && settings.OpenGame) LaunchGame();
         }
 
         // Atalho "FS25 com FFB" com o icone do proprio jogo (lido do executavel instalado).
@@ -1291,6 +1301,7 @@ namespace FS25RealFFB
             engine.BrakeInput = brkOut;
             engine.WheelPos = (wheel != null && wheel.IsOpen) ? wheel.Axes[0] / 10000.0 : double.NaN;
             engine.CenterFactor = CenteringNow(f, age);
+            if (wheel != null) wheel.SpringSatCap = settings.ToMag(settings.ForceCapNm);
             ForceRequest req = engine.Update(f, age, enableBox.Checked && device.IsOpen, dt, settings);
             if (!enableBox.Checked) req.State = "FFB off - " + ffbOffReason;
             else if (!device.IsOpen) req.State = "FFB on, but no wheel is open";
