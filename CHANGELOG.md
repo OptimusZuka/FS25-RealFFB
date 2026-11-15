@@ -1,7 +1,28 @@
 # Changelog
 
-## [Unreleased] - 2026-11-13
+## [0.15.1] - 2026-11-15 (beta)
+Fixes for gear-driven wheels (Logitech G27/G29 and similar), from a G27 user's report on 0.15.0: very noisy wheel with the tractor stopped, and steering that "suddenly gets lighter/more sensitive" while driving. Found by code audit; not yet confirmed on a real G27.
+
+### What was wrong
+- **Centering was cut whenever vibrations rose.** The 0.15 "Maximum force" sum ceiling reduced centering and friction to make room for the engine, texture or a bump, and skipped the smoothing limit when doing so. The wheel went light for a moment and came back slowly.
+- **The Logitech spring boost bypassed the ceiling.** The extra spring force for gear wheels was added after the app's limits, and jumped in at full strength (about 18 % of the peak) as soon as any centering existed.
+- **Spring stiffness on gear wheels was too high with a correct peak.** With the right peak torque (G27 2.5 Nm) the stiffness multiplier reached about 2.7x, enough to make the centre chatter.
+- **Engine vibration on gear wheels was too strong.** At idle it was about a quarter of the wheel's torque, reversing 15-20 times per second, so the gears rattled loudly with the vehicle stopped.
+- The "Maximum force" slider could show an old value above the peak (e.g. 2.3 Nm with a 2.0 Nm peak) after the peak was lowered. Display only; the force used was already limited.
+
+### Changes
+- Centering and friction are never reduced because of vibrations; engine, texture and bumps only use the room left under "Maximum force".
+- Spring boost grows with the centering force (at most doubles it) and never goes above the app's ceiling.
+- Gear wheels: spring stiffness multiplier limited to 2x.
+- Gear wheels: engine idle vibration about a third of before; starter and "catch" about two thirds.
+- "Maximum force" slider always shows the value actually in use.
+- New option (Settings): "Also open FS25 when the app is opened from the desktop shortcut". On by default, as before.
 - **Docs:** Logitech G29, Logitech G27 and MOZA R5 are now listed as **confirmed** (tested on real hardware) in the README and the compatibility matrix. Thank you to TheNobunaga for tirelessly testing the mod and for all the feedback.
+- New automated checks: centering identical with and without vibrations, spring boost under the ceiling, gear-wheel engine idle and cranking under 12 % of the peak, gear spring multiplier cap.
+
+### Not verified
+- These fixes have not yet been tested on a physical G27/G29. The expected behaviour comes from the code and the automated checks only.
+
 
 ## [0.15.0] - 2026-11-13 (beta)
 Torque calibration safety, MOZA models, force feedback that no longer stays off unnoticed, dedicated servers, and a more realistic engine start. Found through a tester's MOZA R5 reports.

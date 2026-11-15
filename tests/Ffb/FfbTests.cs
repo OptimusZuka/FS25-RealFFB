@@ -61,6 +61,7 @@ namespace FS25RealFFB.Tests
             MozaCatalog();
             TorqueCeiling();
             MixerSumCeiling();
+            GearEngineQuiet();
             EngineStartSequence();
             FfbStateTransitions();
             DedicatedServer();
@@ -120,7 +121,10 @@ namespace FS25RealFFB.Tests
             Ok("parity: sine period 33333 us", o.SinePeriodUs == 33333);
             Settings g = Gear();
             FfbOutput og = new DiConditionMapper().Map(Req(1.0, 0.5, 0, 0, 0, 0, 0, 0), 0.2, 0.01, g);
-            Ok("parity: gear spring coef = min(10000, 5000*sqrt(8/2.2)*1.5)", og.SpringCoef == 10000);
+            Ok("parity: gear spring coef = 5000*min(2, sqrt(8/2.2)*1.5) = 10000", og.SpringCoef == 10000);
+            Settings g25 = Gear(); g25.BaseNm = 2.5; g25.MaxNm = 2.5;
+            FfbOutput og25 = new DiConditionMapper().Map(Req(1.0, 0.3, 0, 0, 0, 0, 0, 0), 0.2, 0.01, g25);
+            Ok("gear spring: multiplier capped at 2x (G27 2.5 Nm, K 0.3 -> 6000, not 8100)", og25.SpringCoef == 6000);
             // centragem moldada (DD): o centro desloca-se para o lado do centro real, nunca troca o sinal
             DiConditionMapper dm = new DiConditionMapper();
             FfbOutput od = dm.Map(Req(1.0, 0.5, 0, 0, 0, 0, 0, 0), 0.3, 0.01, s);
@@ -384,7 +388,26 @@ namespace FS25RealFFB.Tests
             ForceRequest r = mx.Finish(Req(2.9, 0.5, 0, 0, 0.1, 1.0, 0.8, 0.9), s, 0.5);
             double sum = r.SpringNm + r.FrictionNm + Math.Abs(r.BumpNm) + r.TextureNm + r.EngineNm;
             Ok("mixer: sum of spring+friction+bump+texture+engine <= Maximum force", sum <= s.ForceCapNm + 1e-9);
-            Ok("mixer: vibrations keep at least 25% of the cap", Math.Abs(r.BumpNm) + r.TextureNm + r.EngineNm >= 0.25 * s.ForceCapNm - 1e-9);
+            Ok("mixer: centering never cut because of vibrations", Math.Abs(r.SpringNm - 2.9) < 1e-9 && Math.Abs(r.FrictionNm - 0.1) < 1e-9);
+            // 0.15.1 (relato G27): a centragem tem de ser a mesma com e sem vibracoes
+            FfbMixer m1 = new FfbMixer(), m2 = new FfbMixer();
+            double sp1 = 0, sp2 = 0;
+            for (int i = 0; i < 100; i++)
+            {
+                sp1 = m1.Finish(Req(1.8, 0.5, 0, 0, 0.1, 0, 0, 0), s, 0.01).SpringNm;
+                sp2 = m2.Finish(Req(1.8, 0.5, 0, 0, 0.1, (i % 7 == 0) ? 1.5 : 0, 0.8, 0.9), s, 0.01).SpringNm;
+                if (Math.Abs(sp1 - sp2) > 1e-9) break;
+            }
+            Ok("mixer: centering identical with and without engine/texture/bumps", Math.Abs(sp1 - sp2) < 1e-9);
+            Settings gs = Gear();
+            ForceRequest gr = new FfbMixer().Finish(Req(1.5, 0.5, 0, 0, 0.2, 1.0, 0.5, 0.6), gs, 0.5);
+            double gsum = gr.SpringNm + gr.FrictionNm + Math.Abs(gr.BumpNm) + gr.TextureNm + gr.EngineNm;
+            Ok("mixer (gear): sum <= Maximum force", gsum <= gs.ForceCapNm + 1e-9);
+            // reforco da mola (quirk SpringBoost) nunca passa o teto e nao salta com molas pequenas
+            Ok("spring boost: small spring at most doubled", FfbDevice.BoostedSpringSat(300, 1800, 10000) == 600);
+            Ok("spring boost: never above the app cap", FfbDevice.BoostedSpringSat(5000, 1800, 6000) == 6000);
+            Ok("spring boost: normal case adds the boost", FfbDevice.BoostedSpringSat(3000, 1800, 10000) == 4800);
+            Ok("spring boost: zero stays zero", FfbDevice.BoostedSpringSat(0, 1800, 10000) == 0);
             ForceRequest q = mx.Finish(Req(0.5, 0.5, 0, 0, 0, 0, 0, 0.3), s, 0.5);
             Ok("mixer: small forces are not touched", Math.Abs(q.EngineNm - 0.3) < 1e-9);
             ForceRequest z = Req(2, 0.5, 1, 0.5, 1, 1, 1, 1); z.Gain = 0;
@@ -412,6 +435,20 @@ namespace FS25RealFFB.Tests
                 lastHz = r.EngineHz;
             }
             return mx;
+        }
+
+        private static void GearEngineQuiet()
+        {
+            // 0.15.1 (relato G27 "extremamente barulhento" parado): motor no ralenti num volante de engrenagens
+            Settings s = Gear(); s.BaseNm = 2.5; s.MaxNm = 2.5; s.Engine = 0.5; s.EngineStart = 0.5;
+            FfbEngine e = new FfbEngine(); double hz;
+            RunEngine(e, Veh("T", "TRACTORSM", 0, double.NaN, false), s, 0.5, out hz);
+            double crank = RunEngine(e, Veh("T", "TRACTORSM", 2, double.NaN, false), s, 3.0, out hz);
+            RunEngine(e, Veh("T", "TRACTORSM", 3, 750, true), s, 4.0, out hz);
+            double idle = RunEngine(e, Veh("T", "TRACTORSM", 3, 750, true), s, 2.0, out hz);
+            Ok("gear engine: idle <= 12% of the peak", idle <= 0.12 * s.PeakNm);
+            Ok("gear engine: idle still felt", idle > 0.03);
+            Ok("gear engine: cranking <= 12% of the peak", crank <= 0.12 * s.PeakNm);
         }
 
         private static void EngineStartSequence()

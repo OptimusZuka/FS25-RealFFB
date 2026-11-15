@@ -33,7 +33,10 @@ namespace FS25RealFFB
             FfbOutput o = new FfbOutput();
             o.CopyInfo(r);
             double cf = Math.Sqrt(TunedBaseNm / Math.Max(1.0, s.PeakNm));
-            o.SpringCoef = (int)Math.Min(10000, (int)(10000 * r.SpringK) * cf * (s.GearDriven ? 1.5 : 1.0));
+            // 0.15.1: em volantes de engrenagens o multiplicador total fica limitado a 2x. Com o pico certo
+            // (G27 2,5 Nm) sqrt(8/2,5)*1,5 dava ~2,7x: uma mola tao dura que vibrava/batia no centro.
+            double gm = s.GearDriven ? Math.Min(2.0, cf * 1.5) : cf;
+            o.SpringCoef = (int)Math.Min(10000, (int)(10000 * r.SpringK) * gm);
             o.SpringSat = s.ToMag(r.SpringNm);
             o.SpringOffset = (int)Math.Round(Clamp(r.SpringOffset, -1, 1) * 10000);
             o.DamperCoef = (int)(10000 * r.DamperK);
