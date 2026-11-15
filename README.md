@@ -32,7 +32,7 @@ Farming Simulator 25 supports steering wheels, but its force feedback is almost 
 
 <p align="center">
   <img src="docs/screenshot-app.png" alt="FS25 RealFFB: settings, live commands and forces" width="900">
-  <br><sub>Real screenshot of the v0.15.2 interface: settings on the left, live commands and forces on the right. Captured automatically on GitHub's build server, with no wheel and no game, which is why it shows "HidHide is not installed" and "NOT OPEN".</sub>
+  <br><sub>Real screenshot of the v0.15.1 interface: settings on the left, live commands and forces on the right. Captured automatically on GitHub's build server, with no wheel and no game, which is why it shows "HidHide is not installed" and "NOT OPEN".</sub>
 </p>
 
 ## Live vehicle view
