@@ -1,4 +1,4 @@
-// RealFFB.Setup.exe - ajudante do instalador (chamado pelo Inno Setup, pela app e na desinstalacao).
+﻿// RealFFB.Setup.exe - ajudante do instalador (chamado pelo Inno Setup, pela app e na desinstalacao).
 // Cada comando faz uma coisa, regista o que alterou e escreve o resultado em --out (ini [r]).
 //
 //   detect            estado do sistema, FS25, Fanatec, HidHide
@@ -144,6 +144,7 @@ namespace RealFFBSetup
             string game = GameLocator.Find(out src);
             res.Add("game_dir", game ?? "");
             res.Add("game_source", src);
+            res.Add("game_store", src == "Microsoft Store / Xbox app" ? "1" : "0");
             string profile = GameLocator.ProfileDir();
             res.Add("profile_dir", profile);
             res.Add("mods_dir", ModsDir(profile));

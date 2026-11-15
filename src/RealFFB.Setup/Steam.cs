@@ -1,4 +1,4 @@
-// Localizar o Farming Simulator 25: Steam (qualquer disco e biblioteca), GIANTS, Epic, ou pasta manual.
+﻿// Localizar o Farming Simulator 25: Steam (qualquer disco e biblioteca), GIANTS, Epic, ou pasta manual.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -47,7 +47,12 @@ namespace RealFFBSetup
 
         public static bool IsValidGameDir(string dir)
         {
-            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir)) return false;
+            if (string.IsNullOrEmpty(dir)) return false;
+            // 0.15.2: edicao Microsoft Store / app Xbox: a pasta do jogo e protegida (WindowsApps) e pode nao ter
+            // o .exe visivel; vale a pasta que o proprio Windows regista para o pacote.
+            string sd = GameEdition.StoreGameDir();
+            if (sd != null && string.Equals(dir.TrimEnd('\\'), sd.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)) return true;
+            if (!Directory.Exists(dir)) return false;
             return File.Exists(Path.Combine(dir, "FarmingSimulator2025.exe")) || File.Exists(Path.Combine(dir, @"x64\FarmingSimulator2025Game.exe"));
         }
 
@@ -86,14 +91,17 @@ namespace RealFFBSetup
                 Path.Combine(pf, "Farming Simulator 2025"), Path.Combine(pfx, "Farming Simulator 2025"),
                 Path.Combine(pf, @"Epic Games\FarmingSimulator25"), Path.Combine(pf, @"Epic Games\FarmingSimulator2025") };
             foreach (string g in guesses) if (IsValidGameDir(g)) { source = "instalacao fora da Steam"; return g; }
+            string store = GameEdition.StoreGameDir();
+            if (store != null) { source = "Microsoft Store / Xbox app"; return store; }
             source = steam == null ? "Steam nao encontrada e jogo fora das pastas habituais" : "FS25 nao encontrado nas bibliotecas da Steam";
             return null;
         }
 
         // Pasta de perfil (game.xml, mods). Respeita Documentos redirecionados (OneDrive).
+        // 0.15.2: tambem a edicao Microsoft Store / app Xbox (ver GameEdition)
         public static string ProfileDir()
         {
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), @"My Games\FarmingSimulator2025");
+            return GameEdition.ProfileDir();
         }
     }
 }

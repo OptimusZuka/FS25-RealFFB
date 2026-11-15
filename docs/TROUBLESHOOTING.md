@@ -16,6 +16,7 @@ Logs are in `%APPDATA%\FS25 RealFFB\` (`RealFFB_log.txt`, `setup_log.txt`). Back
 | `HidHide configuration: INCOMPLETE` | one of the lines above failed; the line also shows the last setup result | follow that line |
 | `Other HidHide entries` | entries set by you or another program | nothing: FS25 RealFFB never changes them |
 | `Farming Simulator 25: not found` | installed outside Steam in an unusual folder | run the installer and choose the folder |
+| Microsoft Store / Xbox app / Game Pass edition: mod not found by the game | that edition keeps its profile in `%LOCALAPPDATA%\Packages\GIANTSSoftware.FarmingSimulator25PC_...\LocalCache\Local` (mods, game.xml), not in Documents | install 0.15.2 or later; open FS25 once before installing so the folder exists |
 | `Mod RealFFB: installed in the wrong folder` | the zip was copied by hand somewhere else | delete that copy; run the installer |
 | `game.xml: invalid settings` | the game or another program reset `game.xml` | close FS25 and use *Configure devices* |
 | `game.xml: does not exist yet` | FS25 was never opened on this account | open the game once, close it, use *Configure devices* |

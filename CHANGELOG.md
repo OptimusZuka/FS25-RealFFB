@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.15.2] - 2026-11-15 (beta)
+Support for the **Microsoft Store / Xbox app / PC Game Pass** edition of FS25 (GitHub issue #3).
+
+### What was wrong
+- The installer and the app only knew the Steam/Epic/GIANTS layout: profile, `game.xml` and `mods` in `Documents\My Games\FarmingSimulator2025`, game opened through Steam. The Microsoft Store edition keeps them in `%LOCALAPPDATA%\Packages\GIANTSSoftware.FarmingSimulator25PC_...\LocalCache\Local`, and its game folder is protected by Windows. So the installer could not find the game, put the mod where that edition never looks, and the app opened Steam.
+
+### Changes
+- The installer finds the Microsoft Store / Xbox app edition and accepts it without asking for the game folder.
+- Mod, `game.xml` adjustments, the command bridge (`modSettings`) and the button mapper use that edition's folder.
+- If both editions are installed, the one used most recently (newest game log) is used.
+- "Open FS25" and the desktop shortcut open the Microsoft Store edition through Windows (no Steam).
+- Steam, Epic and GIANTS installations work exactly as before.
+
+### Not verified
+- Not yet tested by a player on the Microsoft Store edition. The folder locations come from GIANTS forum guidance and Microsoft's documentation; whether that edition lets the mod talk to the app (named pipe) can only be confirmed on a real install. If it does not work, send `%APPDATA%\FS25 RealFFB\setup_log.txt` and `RealFFB_log.txt`.
+
 ## [0.15.1] - 2026-11-15 (beta)
 Fixes for gear-driven wheels (Logitech G27/G29 and similar), from a G27 user's report on 0.15.0: very noisy wheel with the tractor stopped, and steering that "suddenly gets lighter/more sensitive" while driving. Found by code audit; not yet confirmed on a real G27.
 

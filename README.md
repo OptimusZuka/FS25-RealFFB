@@ -124,6 +124,8 @@ Nothing to compile, no Python, no Visual Studio. The installer:
 
 **Is it free?** Yes, FS25 RealFFB is free to download and use for personal, non-commercial use.
 
+**Does it work with the Microsoft Store / Xbox app / Game Pass edition?** From 0.15.2 the installer and the app find that edition too (its profile and mods are in a different folder from Steam's). Open FS25 once before installing. Not yet confirmed by a player on that edition.
+
 **Does it change the game files or my savegames?** No. It is a normal FS25 mod plus a separate app. The installer adjusts the joystick, vibration and force feedback options in `game.xml`, keeps a backup and restores it when you uninstall.
 
 **Does it work in multiplayer?** The mod reads only the vehicle you are driving on your own PC.

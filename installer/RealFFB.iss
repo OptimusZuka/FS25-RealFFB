@@ -431,7 +431,8 @@ end;
 
 function IsValidGame(Dir: String): Boolean;
 begin
-  Result := FileExists(AddBackslash(Dir) + 'FarmingSimulator2025.exe') or FileExists(AddBackslash(Dir) + 'x64\FarmingSimulator2025Game.exe');
+  Result := FileExists(AddBackslash(Dir) + 'FarmingSimulator2025.exe') or FileExists(AddBackslash(Dir) + 'x64\FarmingSimulator2025Game.exe')
+    or ((R('game_store') = '1') and (CompareText(Dir, R('game_dir')) = 0));
 end;
 
 function GetModsDir(Param: String): String;
