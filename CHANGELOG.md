@@ -11,7 +11,7 @@ Fixes for gear-driven wheels (Logitech G27/G29 and similar), from a G27 user's r
 - The "Maximum force" slider could show an old value above the peak (e.g. 2.3 Nm with a 2.0 Nm peak) after the peak was lowered. Display only; the force used was already limited.
 
 ### Changes
-- Centering and friction are never reduced because of vibrations; engine, texture and bumps only use the room left under "Maximum force".
+- Centering and friction are never reduced because of vibrations. They always stay within 85 % of "Maximum force", so bumps, texture and engine keep at least 15 % and are still felt with strong centering. The limit depends only on the centering itself, so it never jumps.
 - Spring boost grows with the centering force (at most doubles it) and never goes above the app's ceiling.
 - Gear wheels: spring stiffness multiplier limited to 2x.
 - Gear wheels: engine idle vibration about a third of before; starter and "catch" about two thirds.
@@ -19,6 +19,16 @@ Fixes for gear-driven wheels (Logitech G27/G29 and similar), from a G27 user's r
 - New option (Settings): "Also open FS25 when the app is opened from the desktop shortcut". On by default, as before.
 - **Docs:** Logitech G29, Logitech G27 and MOZA R5 are now listed as **confirmed** (tested on real hardware) in the README and the compatibility matrix. Thank you to TheNobunaga for tirelessly testing the mod and for all the feedback.
 - New automated checks: centering identical with and without vibrations, spring boost under the ceiling, gear-wheel engine idle and cranking under 12 % of the peak, gear spring multiplier cap.
+
+### If something feels different (all in the app, Force feedback page)
+- **Wheel (G27/G29) feels too light or loose in the centre:** raise "Centering / self-aligning" by 10-15 %. If it is still loose at low speed, raise "Standstill weight (friction)" a little (5 % steps).
+- **Engine vibration too weak:** raise "Engine vibration" (it is now about a third of 0.15 on gear wheels; 80-100 % is close to the old feel). Starting the engine has its own slider, "Engine start".
+- **Still noisy with the vehicle stopped:** lower "Engine vibration" and "Engine start" first, then "Terrain texture".
+- **Bumps too weak with strong centering:** raise "Maximum force" (the reserve for bumps is 15 % of it) or "Suspension bumps".
+- **Forces too strong or too weak overall:** use "Force multiplier" or "Maximum force". Keep "Wheel torque (peak)" at your wheel's real value (G27 2.5 Nm, G29 2.2 Nm); a lower peak makes every force stronger.
+- **You don't want FS25 to open with the app:** System page, untick "Also open FS25 when the app is opened from the desktop shortcut".
+- "Restore default settings" brings everything back to the defaults.
+- If it is still wrong, send the log (`%APPDATA%\FS25 RealFFB\RealFFB_log.txt`) and say which wheel you use.
 
 ### Not verified
 - These fixes have not yet been tested on a physical G27/G29. The expected behaviour comes from the code and the automated checks only.

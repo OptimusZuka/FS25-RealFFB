@@ -65,8 +65,17 @@ namespace FS25RealFFB
             // instante em que o motor, a textura ou uma pancada subiam (e sem o limite de variacao): o volante
             // ficava leve de repente e voltava devagar ("a sensibilidade muda sozinha", relato de um G27).
             // Agora as vibracoes usam so a folga que sobra; a centragem e sempre igual a da fisica.
-            double vib = o.EngineNm + o.TextureNm + Math.Abs(o.BumpNm);
+            // Reserva fixa de 15 % para as vibracoes: a centragem+atrito ficam sempre ate 85 % do teto. Depende
+            // SO da propria centragem (nunca das vibracoes desse instante), por isso nao ha saltos: as pancadas
+            // continuam a sentir-se mesmo com a centragem no maximo.
             double hold = o.SpringNm + o.FrictionNm;
+            double holdMax = 0.85 * cap;
+            if (hold > holdMax && hold > 0)
+            {
+                double kh = holdMax / hold;
+                o.SpringNm *= kh; o.FrictionNm *= kh; hold = holdMax;
+            }
+            double vib = o.EngineNm + o.TextureNm + Math.Abs(o.BumpNm);
             double vibRoom = Math.Max(0, cap - hold);
             if (vib > vibRoom + 1e-9 && vib > 0)
             {

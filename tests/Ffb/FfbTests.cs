@@ -388,7 +388,8 @@ namespace FS25RealFFB.Tests
             ForceRequest r = mx.Finish(Req(2.9, 0.5, 0, 0, 0.1, 1.0, 0.8, 0.9), s, 0.5);
             double sum = r.SpringNm + r.FrictionNm + Math.Abs(r.BumpNm) + r.TextureNm + r.EngineNm;
             Ok("mixer: sum of spring+friction+bump+texture+engine <= Maximum force", sum <= s.ForceCapNm + 1e-9);
-            Ok("mixer: centering never cut because of vibrations", Math.Abs(r.SpringNm - 2.9) < 1e-9 && Math.Abs(r.FrictionNm - 0.1) < 1e-9);
+            Ok("mixer: centering+friction at most 85% of the cap (fixed reserve)", r.SpringNm + r.FrictionNm <= 0.85 * s.ForceCapNm + 1e-9);
+            Ok("mixer: vibrations keep at least 15% of the cap", Math.Abs(r.BumpNm) + r.TextureNm + r.EngineNm >= 0.15 * s.ForceCapNm - 1e-9);
             // 0.15.1 (relato G27): a centragem tem de ser a mesma com e sem vibracoes
             FfbMixer m1 = new FfbMixer(), m2 = new FfbMixer();
             double sp1 = 0, sp2 = 0;
