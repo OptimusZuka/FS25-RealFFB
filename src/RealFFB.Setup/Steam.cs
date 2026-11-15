@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
+using FS25RealFFB;
 
 namespace RealFFBSetup
 {
