@@ -129,7 +129,7 @@ namespace FS25RealFFB
                     using (Graphics g = Graphics.FromImage(bmp)) v.PaintTo(g);
                 }
             }
-            info = string.Format(CultureInfo.InvariantCulture, "centering {0:0.00} Nm | surface {1:0.00} Nm | bumps {2:0.00} Nm | engine {3:0.00} Nm",
+            info = string.Format(CultureInfo.InvariantCulture, "peaks: centering {0:0.00} Nm | surface {1:0.00} Nm | bumps {2:0.00} Nm | engine {3:0.00} Nm",
                 maxSpring, maxTex, maxBump, maxEng);
             v.Dispose();
             return bmp;
