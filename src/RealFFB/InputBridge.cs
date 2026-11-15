@@ -1,4 +1,4 @@
-// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
+﻿// FS25 RealFFB - Copyright (c) 2026 OptimusZuka. All rights reserved. See LICENSE.
 // FS25 Real FFB - ponte de comandos: a app tem a base em exclusivo (para o FFB funcionar),
 // por isso e ela que entrega direcao e pedais ao jogo.
 // Canal: ficheiro XML pequeno em modSettings, que o mod le a cada frame com a API XML do
@@ -23,8 +23,7 @@ namespace FS25RealFFB
         public InputBridge(Action<string> log)
         {
             this.log = log;
-            string dir = Path.Combine(Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                "My Games"), "FarmingSimulator2025"), "modSettings");
+            string dir = Path.Combine(GameEdition.ProfileDir(), "modSettings");   // 0.15.2: tambem Store/Xbox
             try { Directory.CreateDirectory(dir); } catch { }
             path = Path.Combine(dir, "FS25_RealFFB_input.xml");
             tmp = path + ".tmp";

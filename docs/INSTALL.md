@@ -38,7 +38,7 @@ The installer starts in English. You can choose Português, Español or Françai
 | Step | What it does | Changes anything? |
 |---|---|---|
 | 1. System | checks for 64-bit Windows 10/11 | no |
-| 2. FS25 | searches every Steam library (all drives) and the usual folders of other stores; asks for the folder if not found | no |
+| 2. FS25 | searches every Steam library (all drives), the usual folders of other stores and the Microsoft Store / Xbox app edition; asks for the folder if not found | no |
 | 3. Wheel | lists the connected wheel bases: every device that Windows reports with force feedback, any brand | no |
 | 4. HidHide | if missing or outdated, downloads the official installer from `github.com/nefarius/HidHide`, checks Nefarius' digital signature and the SHA-256 published by GitHub, and runs it unmodified (UAC) | installs the driver |
 | 5. Devices | allows RealFFB.exe in HidHide (always), finds the wheel base, shows exactly what will be hidden, applies it when you click **Apply**, then reads HidHide again to check | allows RealFFB.exe, hides only the wheel base, adjusts `game.xml` (with a backup) |
@@ -65,7 +65,7 @@ If something goes wrong, run **Start → FS25 RealFFB - Configure devices** (it 
 
 ## 4. First use
 
-1. Open **FS25 RealFFB** (desktop shortcut). The app starts FS25 through Steam.
+1. Open **FS25 RealFFB** (desktop shortcut). The app starts FS25 through Steam, or through the Xbox app for the Microsoft Store / Game Pass edition (can be turned off in System).
 2. In the game, under *Mods*, enable **Real FFB Telemetry** for your savegame.
 3. In the app, check steering and pedals (use the *Detect* buttons) and tune the force. Optional: turn on **Realistic centering** on the first page.
 4. Logitech: turn off the centering spring in G HUB.

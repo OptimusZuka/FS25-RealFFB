@@ -62,6 +62,8 @@ namespace FS25RealFFB.Tests
             TorqueCeiling();
             MixerSumCeiling();
             GearEngineQuiet();
+            Ok("store: profile under the GIANTS Store package is recognised", GameEdition.IsStoreProfile(@"C:\Users\x\AppData\Local\Packages\GIANTSSoftware.FarmingSimulator25PC_fa8jxm5fj0esw\LocalCache\Local"));
+            Ok("store: Documents profile is not the Store edition", !GameEdition.IsStoreProfile(@"C:\Users\x\Documents\My Games\FarmingSimulator2025"));
             EngineStartSequence();
             FfbStateTransitions();
             DedicatedServer();

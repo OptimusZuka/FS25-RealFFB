@@ -119,7 +119,7 @@ namespace FS25RealFFB
                 {
                     // Ja ha uma RealFFB aberta: duas ao mesmo tempo disputam a base e a telemetria.
                     foreach (string arg in Environment.GetCommandLineArgs())
-                        if (arg == "--jogar") { try { if (Settings.Load().OpenGame) Process.Start("steam://rungameid/2300320"); } catch { } }
+                        if (arg == "--jogar") { try { if (Settings.Load().OpenGame) GameEdition.Launch(); } catch { } }
                     return;
                 }
                 RunApp();
@@ -1243,7 +1243,7 @@ namespace FS25RealFFB
 
         private void LaunchGame()
         {
-            try { Process.Start("steam://rungameid/2300320"); Log("Opening FS25 through Steam..."); }
+            try { Log(GameEdition.Launch()); }
             catch (Exception ex) { Log("Could not open FS25: " + ex.Message); }
         }
 

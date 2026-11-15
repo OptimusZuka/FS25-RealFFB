@@ -45,7 +45,7 @@ if errorlevel 1 (
 )
 
 echo [3/6] RealFFB.Setup.exe
-"%CSC%" %COMMON% /target:winexe /r:System.Management.dll /r:System.Web.Extensions.dll /resource:assets\logo.png,RealFFB.logo.png /out:dist\app\RealFFB.Setup.exe build\Version.g.cs src\RealFFB.Setup\*.cs src\RealFFB\DirectInput.cs > build\setup_log.txt 2>&1
+"%CSC%" %COMMON% /target:winexe /r:System.Management.dll /r:System.Web.Extensions.dll /resource:assets\logo.png,RealFFB.logo.png /out:dist\app\RealFFB.Setup.exe build\Version.g.cs src\RealFFB.Setup\*.cs src\RealFFB\DirectInput.cs src\RealFFB\GameEdition.cs > build\setup_log.txt 2>&1
 if errorlevel 1 ( type build\setup_log.txt & echo [ERROR] RealFFB.Setup.exe & exit /b 1 )
 
 echo [4/6] installer tests

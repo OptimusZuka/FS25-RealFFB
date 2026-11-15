@@ -294,7 +294,7 @@ namespace FS25RealFFB
 
         public void ImportFromGame()
         {
-            string file = Path.Combine(Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "My Games"), "FarmingSimulator2025"), "inputBinding.xml");
+            string file = Path.Combine(GameEdition.ProfileDir(), "inputBinding.xml");
             if (!File.Exists(file)) { log("Import: not found " + file); return; }
             string xml = File.ReadAllText(file);
             Regex actRx = new Regex("<actionBinding action=\"([^\"]+)\">(.*?)</actionBinding>", RegexOptions.Singleline);
