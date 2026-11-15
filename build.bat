@@ -49,7 +49,7 @@ echo [3/6] RealFFB.Setup.exe
 if errorlevel 1 ( type build\setup_log.txt & echo [ERROR] RealFFB.Setup.exe & exit /b 1 )
 
 echo [4/6] installer tests
-"%CSC%" /nologo /platform:x64 /target:exe /main:RealFFBSetupTests.TestMain /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Management.dll /r:System.Web.Extensions.dll /out:build\SetupTests.exe src\RealFFB.Setup\*.cs src\RealFFB\DirectInput.cs tests\SetupTests.cs > build\tests_log.txt 2>&1
+"%CSC%" /nologo /platform:x64 /target:exe /main:RealFFBSetupTests.TestMain /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Management.dll /r:System.Web.Extensions.dll /out:build\SetupTests.exe src\RealFFB.Setup\*.cs src\RealFFB\DirectInput.cs src\RealFFB\GameEdition.cs tests\SetupTests.cs > build\tests_log.txt 2>&1
 if errorlevel 1 ( type build\tests_log.txt & echo [ERROR] building the tests & exit /b 1 )
 if /i "%1"=="notest" goto mod
 build\SetupTests.exe
