@@ -19,13 +19,23 @@ namespace FS25RealFFB
     internal sealed class DiConditionMapper
     {
         public const double TunedBaseNm = 8.0;
-        private const double CenterShapeU = 800.0;
+        // 0.16: 800 -> 1200. A forca maxima chega mais tarde (~50 graus num volante de 900), por isso perto do
+        // centro ha menos forca e o regresso abranda no fim, como num veiculo real (antes o volante era
+        // "atirado" com forca quase constante ate ~15 graus do centro).
+        private const double CenterShapeU = 1200.0;
         private double prevPos = double.NaN, turnFac = 1.0, lastVel, lastDt = 0.016;
 
         private static double Clamp(double v, double lo, double hi) { return v < lo ? lo : (v > hi ? hi : v); }
         private static bool Ok(double v) { return !double.IsNaN(v) && !double.IsInfinity(v); }
 
         public void Reset() { prevPos = double.NaN; turnFac = 1.0; lastVel = 0; }
+
+        // Velocidade maxima de regresso ao centro (fracao do curso do eixo por segundo; eixo +-1 = meio curso).
+        // 0 % ~ 27 graus/s, 30 % (fabrica) ~ 95 graus/s, 100 % ~ 250 graus/s, num volante de 900 graus.
+        public static double ReturnCap(double returnSpeed)
+        {
+            return 0.06 + 0.5 * Clamp(returnSpeed, 0, 1);
+        }
 
         public FfbOutput Map(ForceRequest r, double wheelPos, double dt, Settings s)
         {
@@ -52,16 +62,23 @@ namespace FS25RealFFB
                 int sat = o.SpringSat;
                 o.SpringOffset = ShapeCentering(o.SpringCoef, ref sat, wheelPos, s.ToMag(s.ForceCapNm));
                 o.SpringSat = sat;
-                // travao so a chegada ao centro (ultimos ~25 graus, volante a chegar depressa)
+                // travao a chegada ao centro (ultimos ~25 graus, volante a chegar depressa) e, desde a 0.16,
+                // limite de VELOCIDADE de regresso em todo o curso: se o volante volta ao centro mais depressa
+                // do que o slider "Velocidade de regresso" permite, entra amortecimento. So atua a voltar ao
+                // centro (nunca ao virar para fora) e so quando o volante esta solto/a fugir da mao.
                 if (o.SpringCoef > 0 && Ok(wheelPos))
                 {
                     double nearC = 1 - Clamp(Math.Abs(wheelPos) / 0.046, 0, 1);
                     double fast = Clamp((Math.Abs(lastVel) - 0.15) / 0.45, 0, 1);
                     double add = nearC * fast;
+                    double toward = -lastVel * Math.Sign(wheelPos);
+                    double vCap = ReturnCap(s.ReturnSpeed);
+                    double over = Clamp((toward - vCap) / (0.5 * vCap), 0, 1);
+                    if (over > add) add = over;
                     if (add > 0)
                     {
                         o.DamperCoef = (int)Math.Max(o.DamperCoef, 6000 * add);
-                        o.DamperSat = Math.Max(o.DamperSat, s.ToMag(0.6 * add));
+                        o.DamperSat = Math.Max(o.DamperSat, s.ToMag(Math.Min(s.ForceCapNm, Math.Max(0.6, r.SpringNm + 0.2)) * add));
                     }
                 }
             }
@@ -78,7 +95,10 @@ namespace FS25RealFFB
             lastVel = vel;
             double toward = -vel * Math.Sign(x);
             double fade = Clamp((ax / 10000.0 - 0.02) / 0.10, 0, 1);
-            double tgt = 1.0 + 0.8 * Clamp(toward / 0.15, 0, 1) * fade;
+            // 0.16: sem "ajuda ao regresso". Ate a 0.15 a mola ganhava ate +80 % quando o volante voltava ao
+            // centro (para vencer o Natural Damper da base): quanto mais depressa voltava, mais era empurrado,
+            // e o regresso ficava muito mais rapido do que num veiculo real (relato do criador, CSL DD).
+            double tgt = 1.0 + 0.0 * Clamp(toward / 0.15, 0, 1) * fade;
             turnFac += (tgt - turnFac) * Clamp(lastDt / 0.08, 0, 1);
             // 0.13: a ajuda ao regresso nunca passa o teto ("Maximum force" / pico): antes podia chegar a 1,8x
             satU = (int)Math.Min(capU, satU * turnFac);

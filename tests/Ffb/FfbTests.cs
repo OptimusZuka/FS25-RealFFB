@@ -132,6 +132,25 @@ namespace FS25RealFFB.Tests
             FfbOutput od = dm.Map(Req(1.0, 0.5, 0, 0, 0, 0, 0, 0), 0.3, 0.01, s);
             Ok("shaped centering: offset between centre and wheel (sign kept)", od.SpringOffset > 0 && od.SpringOffset < 3000);
             Ok("shaped centering: saturation never above the cap", od.SpringSat <= s.ToMag(s.ForceCapNm));
+            // 0.16: sem ajuda ao regresso - voltar depressa ao centro nao aumenta a forca da mola
+            DiConditionMapper dr = new DiConditionMapper();
+            FfbOutput r0 = dr.Map(Req(1.0, 0.5, 0, 0, 0, 0, 0, 0), 0.40, 0.01, s);
+            FfbOutput r1 = null;
+            for (int i = 1; i <= 10; i++) r1 = dr.Map(Req(1.0, 0.5, 0, 0, 0, 0, 0, 0), 0.40 - 0.006 * i, 0.01, s);  // 0,6 eixo/s
+            Ok("return: no extra spring force while returning (assist removed)", r1.SpringSat <= r0.SpringSat);
+            Ok("return: fast return (0.6 axis/s) engages the return damper", r1.DamperCoef >= 5000 && r1.DamperSat > 0);
+            // a virar para fora a mesma velocidade: sem travao (o peso ao virar nao muda)
+            DiConditionMapper dt2 = new DiConditionMapper();
+            FfbOutput t1 = null;
+            for (int i = 0; i <= 10; i++) t1 = dt2.Map(Req(1.0, 0.5, 0, 0, 0, 0, 0, 0), 0.20 + 0.006 * i, 0.01, s);
+            Ok("return: turning outward never engages the return damper", t1.DamperCoef == 0);
+            // regresso lento (0,1 eixo/s, abaixo do limite de fabrica) sem travao
+            DiConditionMapper ds = new DiConditionMapper();
+            FfbOutput sl = null;
+            for (int i = 0; i <= 10; i++) sl = ds.Map(Req(1.0, 0.5, 0, 0, 0, 0, 0, 0), 0.40 - 0.001 * i, 0.01, s);
+            Ok("return: slow return below the limit is not braked", sl.DamperCoef == 0);
+            Ok("return: limit 0% < 30% < 100%", DiConditionMapper.ReturnCap(0) < DiConditionMapper.ReturnCap(0.3) && DiConditionMapper.ReturnCap(0.3) < DiConditionMapper.ReturnCap(1));
+            Settings sr = new Settings(); Ok("return: default return speed 30%", Math.Abs(sr.ReturnSpeed - 0.30) < 1e-9);
         }
 
         // ------------------------------------------------------------------ contrato dos adaptadores

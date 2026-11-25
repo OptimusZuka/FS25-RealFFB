@@ -30,6 +30,7 @@ namespace FS25RealFFB
             { "Engine start", "Starter motor and the moment the engine catches. Scaled by vehicle type: strong in tractors (engine bolted to the chassis), light in trucks and pickups (suspended cab). 0 = off; engine vibration is a separate slider." },
             { "Centering / self-aligning", "How strongly the wheel returns to centre while moving. Grows with speed; zero at a standstill." },
             { "Damping", "Resistance to fast wheel movements while driving. Higher = calmer, slower wheel." },
+            { "Return speed", "How fast the wheel may return to the centre when you let go (direct drive wheels). Lower = slower, heavier return, like a real truck or tractor. Does not change the weight when you turn the wheel yourself." },
             { "Standstill weight (friction)", "Weight of the hydraulic steering when stopped or crawling. Fades as speed rises." },
             { "Reference speed", "Speed at which centering and damping reach full strength." },
             { "Suspension bumps", "Strength of bumps, potholes and impacts." },
@@ -428,6 +429,8 @@ namespace FS25RealFFB
                 delegate(int v) { settings.Center = v / 100.0; }, Pct));
             flow.Controls.Add(Slider("Damping", 0, 100, (int)(settings.Damping * 100),
                 delegate(int v) { settings.Damping = v / 100.0; }, Pct));
+            flow.Controls.Add(Slider("Return speed", 0, 100, (int)Math.Round(settings.ReturnSpeed * 100),
+                delegate(int v) { settings.ReturnSpeed = v / 100.0; try { settings.Save(); } catch { } }, Pct));
             flow.Controls.Add(Slider("Standstill weight (friction)", 0, 100, (int)(settings.Friction * 100),
                 delegate(int v) { settings.Friction = v / 100.0; }, Pct));
             flow.Controls.Add(Slider("Reference speed", 5, 80, (int)settings.RefSpeedKmh,

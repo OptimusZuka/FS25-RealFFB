@@ -28,7 +28,8 @@ namespace FS25RealFFB
         public double Bumps = 0.60;
         public double Texture = 0.60;
         public double Engine = 0.50;
-        public double EngineStart = 0.70;  // 0.15: arranque (motor de arranque + "pegou"), independente da vibracao do motor
+        public double EngineStart = 0.70;
+        public double ReturnSpeed = 0.30;  // 0.16: velocidade maxima de regresso ao centro (direct drive)  // 0.15: arranque (motor de arranque + "pegou"), independente da vibracao do motor
         public double RefSpeedKmh = 30;
         public bool InvertBumps = false;
         public bool AltInterface = false;
@@ -144,6 +145,7 @@ namespace FS25RealFFB
             sb.AppendLine("VendorFfPercent=" + VendorFfPercent.ToString(c));
             sb.AppendLine("TorqueSource=" + TorqueSource);
             sb.AppendLine("EngineStart=" + EngineStart.ToString(c));
+            sb.AppendLine("ReturnSpeed=" + ReturnSpeed.ToString(c));
             sb.AppendLine("UserModel=" + UserModel);
             sb.AppendLine("UserModelDevice=" + UserModelDevice);
             sb.AppendLine("UserModelPeakNm=" + UserModelPeakNm.ToString(c));
@@ -203,6 +205,7 @@ namespace FS25RealFFB
                         case "SettingsVersion": sawVersion = isNum && (int)d == Version; break;
                         case "BaseNm": if (isNum) s.BaseNm = Math.Max(TorqueLimits.MinNm, Math.Min(TorqueLimits.GenericCeilingNm, d)); break;
                         case "EngineStart": if (isNum) s.EngineStart = Clamp01(d); break;
+                        case "ReturnSpeed": if (isNum) s.ReturnSpeed = Clamp01(d); break;
                         case "UserModel": s.UserModel = v; break;
                         case "UserModelDevice": s.UserModelDevice = v; break;
                         case "UserModelPeakNm": if (isNum) s.UserModelPeakNm = Math.Max(0, Math.Min(TorqueLimits.GenericCeilingNm, d)); break;
