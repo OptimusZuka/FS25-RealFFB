@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.16.0] - 2026-11-25 (beta)
+Steering centering on **direct drive wheels** (Fanatec, MOZA, Simucube...): the wheel came back to the centre much faster than in a real vehicle.
+
+### What was wrong
+- **Return assist.** Since 0.13 the centering spring got up to 80 % stronger whenever the wheel was moving back to the centre (meant to overcome the wheel base's own damper). The faster it returned, the harder it was pushed.
+- **Almost constant force down to the centre.** The centering reached full force at about 35 degrees and kept it until about 15 degrees from the centre, so the wheel was thrown back instead of slowing down at the end like a real vehicle.
+
+### Changes
+- Return assist removed.
+- Centering builds up more gradually (full force at about 50 degrees on a 900-degree wheel), so the return slows down near the centre.
+- New **Return speed** slider (Force feedback page, default 30 %): the highest speed at which the wheel may return to the centre when you let go. Above it, damping is added. It only acts while the wheel is returning to the centre, never when you turn it yourself, so the weight when turning does not change. 0 % about 27 deg/s, 30 % about 95 deg/s, 100 % about 250 deg/s (900-degree wheel).
+- Logitech/Thrustmaster gear and belt wheels are not changed.
+
+### If something feels different
+- Still too fast: lower **Return speed**. Too slow or "sticky": raise it.
+- Wheel too light around the centre on the straight: raise **Centering**.
+- The wheel base's own damper (Fanatec NDP, MOZA natural damping) also slows the return; with a lower return speed you can lower it.
+
+### Not verified
+- Tested only by automated checks; not yet on a real wheel.
+
 ## [0.15.2] - 2026-11-15 (beta)
 Support for the **Microsoft Store / Xbox app / PC Game Pass** edition of FS25 (GitHub issue #3).
 
